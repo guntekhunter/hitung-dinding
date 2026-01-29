@@ -80,23 +80,51 @@ const WallEditor = () => {
 
     // 3. Generate the Panels Visual
     const {
-        interactionMode, designAreas, currentDrawingArea,
-        startDesignArea, updateDesignArea, finishDesignArea, removeDesignArea
+        interactionMode, designAreas, currentDrawingArea, openings,
+        startDesignArea, updateDesignArea, finishDesignArea, removeDesignArea,
+        startOpening, updateOpening, finishOpening, removeOpening
     } = useCanvasStore();
 
     const renderAreaContent = (area: DesignArea | any) => {
+        // Guard: ensure it's a product area
+        if (!('productId' in area)) return null;
+
         const product = PRODUCTS.find(p => p.id === area.productId);
         if (!product) return null;
 
         const panelWidthPx = product.width * SCALE;
-        const count = Math.ceil(area.width / panelWidthPx);
+        const panelHeightPx = product.height * SCALE;
+
+        // Grid lines calculation (visual only)
+        const horizontalCount = Math.ceil(Math.abs(area.width) / panelWidthPx);
+        const verticalCount = Math.ceil(Math.abs(area.height) / panelHeightPx);
+
+        // Area-based count for the label
+        const areaM2 = (Math.abs(area.width) / SCALE) * (Math.abs(area.height) / SCALE);
+        const productAreaM2 = product.width * product.height;
+        const count = Math.ceil(areaM2 / productAreaM2);
+
         const lines = [];
 
-        for (let i = 1; i < count; i++) {
+        // Vertical lines (columns)
+        for (let i = 1; i < horizontalCount; i++) {
             lines.push(
                 <Line
-                    key={`line-${i}`}
+                    key={`vline-${i}`}
                     points={[i * panelWidthPx, 0, i * panelWidthPx, area.height]}
+                    stroke="rgba(255,255,255,0.5)"
+                    strokeWidth={1}
+                    dash={[5, 5]}
+                />
+            );
+        }
+
+        // Horizontal lines (rows)
+        for (let i = 1; i < verticalCount; i++) {
+            lines.push(
+                <Line
+                    key={`hline-${i}`}
+                    points={[0, i * panelHeightPx, area.width, i * panelHeightPx]}
                     stroke="rgba(255,255,255,0.5)"
                     strokeWidth={1}
                     dash={[5, 5]}
@@ -138,6 +166,53 @@ const WallEditor = () => {
         );
     };
 
+    const renderOpeningContent = (opening: any) => {
+        // Guard: ensure it's an opening
+        if (!('type' in opening)) return null;
+
+        const isWindow = opening.type === 'window';
+        const color = isWindow ? "rgba(14, 165, 233, 0.6)" : "rgba(217, 119, 6, 0.6)";
+        const label = isWindow ? "Window" : "Door";
+
+        return (
+            <Group x={opening.x} y={opening.y}>
+                <Rect
+                    width={opening.width}
+                    height={opening.height}
+                    fill={color}
+                    stroke="white"
+                    strokeWidth={2}
+                    onClick={() => {
+                        if (interactionMode === 'delete') removeOpening(opening.id);
+                    }}
+                    onTap={() => {
+                        if (interactionMode === 'delete') removeOpening(opening.id);
+                    }}
+                />
+                {/* Cross lines to indicate opening */}
+                <Line
+                    points={[0, 0, opening.width, opening.height]}
+                    stroke="white"
+                    strokeWidth={2}
+                />
+                <Line
+                    points={[0, opening.height, opening.width, 0]}
+                    stroke="white"
+                    strokeWidth={2}
+                />
+                <Text
+                    text={label}
+                    fontSize={14}
+                    fill="white"
+                    fontStyle="bold"
+                    align="center"
+                    width={opening.width}
+                    y={opening.height / 2 - 7}
+                />
+            </Group>
+        );
+    };
+
     const renderedAreas = useMemo(() => {
         return (
             <Group clipFunc={clipFunc}>
@@ -146,10 +221,20 @@ const WallEditor = () => {
                         {renderAreaContent(area)}
                     </React.Fragment>
                 ))}
-                {currentDrawingArea && renderAreaContent(currentDrawingArea)}
+                {openings.map(op => (
+                    <React.Fragment key={op.id}>
+                        {renderOpeningContent(op)}
+                    </React.Fragment>
+                ))}
+
+                {currentDrawingArea && (
+                    'productId' in currentDrawingArea
+                        ? renderAreaContent(currentDrawingArea)
+                        : renderOpeningContent(currentDrawingArea)
+                )}
             </Group>
         );
-    }, [designAreas, currentDrawingArea, clipFunc, interactionMode]);
+    }, [designAreas, openings, currentDrawingArea, clipFunc, interactionMode]);
 
     const handleMouseDown = (e: any) => {
         const stage = e.target.getStage();
@@ -160,6 +245,8 @@ const WallEditor = () => {
             addPoint(pos.x, pos.y);
         } else if (interactionMode === 'place') {
             startDesignArea(pos.x, pos.y);
+        } else if (interactionMode === 'window' || interactionMode === 'door') {
+            startOpening(pos.x, pos.y, interactionMode);
         }
     };
 
@@ -168,11 +255,22 @@ const WallEditor = () => {
         const stage = e.target.getStage();
         const pos = stage.getPointerPosition();
         if (!pos) return;
-        updateDesignArea(pos.x, pos.y);
+
+        if ('productId' in currentDrawingArea) {
+            updateDesignArea(pos.x, pos.y);
+        } else {
+            updateOpening(pos.x, pos.y);
+        }
     };
 
     const handleMouseUp = () => {
-        if (currentDrawingArea) finishDesignArea();
+        if (!currentDrawingArea) return;
+
+        if ('productId' in currentDrawingArea) {
+            finishDesignArea();
+        } else {
+            finishOpening();
+        }
     };
 
 
@@ -296,7 +394,7 @@ const WallEditor = () => {
                             onKeyDown={handleKeyDown}
                             style={{
                                 position: 'absolute',
-                                left: midX - 30,
+                                left: midX - 40,
                                 top: midY - 15,
                                 width: 60,
                                 zIndex: 10

@@ -8,17 +8,54 @@ export default function Toolbar() {
         getDimensions, reset, isClosed,
         selectedProductId, setSelectedProduct,
         designAreas, clearDesignAreas,
-        interactionMode, setInteractionMode
+        interactionMode, setInteractionMode,
+        openings,
+        undo, redo, past, future
     } = useCanvasStore();
     const { area, perimeter } = getDimensions();
 
-    // Calculate product totals
-    const productCounts = designAreas.reduce((acc, designArea) => {
+    // Calculate total area per product and total design area
+    const { productAreas, totalDesignArea } = designAreas.reduce((acc, designArea) => {
         const product = PRODUCTS.find(p => p.id === designArea.productId);
         if (product) {
-            const panelWidthPx = product.width * SCALE;
-            const count = Math.ceil(Math.abs(designArea.width) / panelWidthPx);
-            acc[designArea.productId] = (acc[designArea.productId] || 0) + count;
+            // Gross Area in m²
+            let areaM2 = (Math.abs(designArea.width) * Math.abs(designArea.height)) / (SCALE * SCALE);
+
+            // Calculate intersections with openings
+            const daLeft = designArea.x;
+            const daRight = designArea.x + designArea.width;
+            const daTop = designArea.y;
+            const daBottom = designArea.y + designArea.height;
+
+            let subtractM2 = 0;
+
+            openings.forEach(op => {
+                const opLeft = op.x;
+                const opRight = op.x + op.width;
+                const opTop = op.y;
+                const opBottom = op.y + op.height;
+
+                const overlapWidth = Math.max(0, Math.min(daRight, opRight) - Math.max(daLeft, opLeft));
+                const overlapHeight = Math.max(0, Math.min(daBottom, opBottom) - Math.max(daTop, opTop));
+
+                const overlapAreaPx = overlapWidth * overlapHeight;
+                subtractM2 += overlapAreaPx / (SCALE * SCALE);
+            });
+
+            areaM2 = Math.max(0, areaM2 - subtractM2);
+
+            acc.productAreas[designArea.productId] = (acc.productAreas[designArea.productId] || 0) + areaM2;
+            acc.totalDesignArea += areaM2;
+        }
+        return acc;
+    }, { productAreas: {} as Record<string, number>, totalDesignArea: 0 });
+
+    // Calculate product counts based on total area
+    const productCounts = Object.entries(productAreas).reduce((acc, [productId, area]) => {
+        const product = PRODUCTS.find(p => p.id === productId);
+        if (product) {
+            const unitArea = product.width * product.height;
+            acc[productId] = Math.ceil(area / unitArea);
         }
         return acc;
     }, {} as Record<string, number>);
@@ -54,6 +91,41 @@ export default function Toolbar() {
                     }}
                 >
                     🔄 Clear Wall
+                </button>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                    onClick={undo}
+                    disabled={past.length === 0}
+                    style={{
+                        flex: 1,
+                        padding: "8px",
+                        background: past.length === 0 ? "#e2e8f0" : "white",
+                        color: past.length === 0 ? "#94a3b8" : "#475569",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        cursor: past.length === 0 ? "not-allowed" : "pointer",
+                        fontWeight: "bold",
+                    }}
+                >
+                    ↩️ Undo
+                </button>
+                <button
+                    onClick={redo}
+                    disabled={future.length === 0}
+                    style={{
+                        flex: 1,
+                        padding: "8px",
+                        background: future.length === 0 ? "#e2e8f0" : "white",
+                        color: future.length === 0 ? "#94a3b8" : "#475569",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        cursor: future.length === 0 ? "not-allowed" : "pointer",
+                        fontWeight: "bold",
+                    }}
+                >
+                    ↪️ Redo
                 </button>
             </div>
 
@@ -131,6 +203,44 @@ export default function Toolbar() {
                 ))}
             </div>
 
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
+                    Add Openings
+                </h3>
+                <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                        onClick={() => setInteractionMode('window')}
+                        style={{
+                            flex: 1,
+                            padding: "10px",
+                            background: interactionMode === 'window' ? "#0ea5e9" : "white",
+                            color: interactionMode === 'window' ? "white" : "#475569",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        🪟 Window
+                    </button>
+                    <button
+                        onClick={() => setInteractionMode('door')}
+                        style={{
+                            flex: 1,
+                            padding: "10px",
+                            background: interactionMode === 'door' ? "#d97706" : "white",
+                            color: interactionMode === 'door' ? "white" : "#475569",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        🚪 Door
+                    </button>
+                </div>
+            </div>
+
             {isClosed && (
                 <div style={{ display: "flex", gap: "10px" }}>
                     <button
@@ -171,7 +281,8 @@ export default function Toolbar() {
                     </div>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        <StatCard label="Total Area" value={`${area.toFixed(2)} m²`} icon="📐" />
+                        <StatCard label="Total Wall Area" value={`${area.toFixed(2)} m²`} icon="📐" />
+                        <StatCard label="Total Design Area" value={`${totalDesignArea.toFixed(2)} m²`} icon="🎯" />
 
                         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
                             {PRODUCTS.map(product => (

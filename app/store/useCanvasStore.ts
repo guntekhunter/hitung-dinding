@@ -14,7 +14,8 @@ export type Product = {
 
 export const PRODUCTS: Product[] = [
     { id: "wallpanel", name: "Wallpanel (16cm)", width: 0.16, height: 2.9, color: "rgba(14, 165, 233, 0.4)" },
-    { id: "wallboard", name: "Wallboard (30cm)", width: 0.30, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
+    { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
+    { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)" },
 ];
 
 export type DesignArea = {
@@ -24,6 +25,20 @@ export type DesignArea = {
     y: number;
     width: number;
     height: number;
+};
+
+export type Opening = {
+    id: string;
+    type: 'window' | 'door';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+type HistoryEntry = {
+    designAreas: DesignArea[];
+    openings: Opening[];
 };
 
 export type Wall = {
@@ -42,12 +57,17 @@ type CanvasState = {
     direction: 'horizontal' | 'vertical';
 
     // Interaction mode
-    interactionMode: 'draw' | 'place' | 'delete';
+    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door';
 
     // Product state
     selectedProductId: string;
     designAreas: DesignArea[];
-    currentDrawingArea: DesignArea | null;
+    openings: Opening[];
+    currentDrawingArea: DesignArea | Opening | null;
+
+    // History
+    past: HistoryEntry[];
+    future: HistoryEntry[];
 
     // Actions
     addPoint: (x: number, y: number) => void;
@@ -57,7 +77,7 @@ type CanvasState = {
 
     // Product actions
     setSelectedProduct: (id: string) => void;
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete') => void;
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door') => void;
 
     // Area Actions
     startDesignArea: (x: number, y: number) => void;
@@ -65,6 +85,16 @@ type CanvasState = {
     finishDesignArea: () => void;
     removeDesignArea: (id: string) => void;
     clearDesignAreas: () => void;
+
+    // Opening Actions
+    startOpening: (x: number, y: number, type: 'window' | 'door') => void;
+    updateOpening: (x: number, y: number) => void;
+    finishOpening: () => void;
+    removeOpening: (id: string) => void;
+
+    // History Actions
+    undo: () => void;
+    redo: () => void;
 
     // Helper to calculate
     getDimensions: () => { area: number; perimeter: number };
@@ -77,7 +107,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     interactionMode: 'draw',
     selectedProductId: PRODUCTS[0].id,
     designAreas: [],
+    openings: [],
     currentDrawingArea: null,
+    past: [],
+    future: [],
+
+    // Internal helper to save state for undo/redo
+    _saveHistory: () => {
+        const { designAreas, openings, past } = get();
+        set({
+            past: [...past, { designAreas: [...designAreas], openings: [...openings] }],
+            future: [], // Clear future when a new action is performed
+        });
+    },
 
     addPoint: (x, y) => {
         const { points, isClosed } = get();
@@ -129,7 +171,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         });
     },
 
-    reset: () => set({ points: [], isClosed: false, designAreas: [], interactionMode: 'draw', currentDrawingArea: null }),
+    reset: () => set({ points: [], isClosed: false, designAreas: [], openings: [], interactionMode: 'draw', currentDrawingArea: null }),
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
 
@@ -149,6 +191,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         });
     },
 
+    startOpening: (x, y, type) => {
+        set({
+            currentDrawingArea: {
+                id: 'temp',
+                type,
+                x,
+                y,
+                width: 0,
+                height: 0
+            } as any // Flexible typing for temp drawing
+        });
+    },
+
+    updateOpening: (x, y) => {
+        // Reusing updateDesignArea logic via generic update if possible, but distinct update function is fine
+        // Actually updateDesignArea below fits both if we type check inside or just assume currentDrawingArea is the target
+        get().updateDesignArea(x, y);
+    },
+
     updateDesignArea: (x, y) => {
         set((state) => {
             if (!state.currentDrawingArea) return state;
@@ -164,24 +225,59 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     finishDesignArea: () => {
         set((state) => {
-            if (!state.currentDrawingArea) return state;
+            if (!state.currentDrawingArea || !('productId' in state.currentDrawingArea)) return state;
+
+            const area = state.currentDrawingArea as DesignArea;
+
             // Only add if it has some dimension
-            if (Math.abs(state.currentDrawingArea.width) < 5 || Math.abs(state.currentDrawingArea.height) < 5) {
+            if (Math.abs(area.width) < 5 || Math.abs(area.height) < 5) {
                 return { currentDrawingArea: null };
             }
 
-            // Normalize rectangle (handle negative width/height from dragging left/up)
+            // Normalize rectangle
             const normalized: DesignArea = {
                 id: Math.random().toString(36).substr(2, 9),
-                productId: state.currentDrawingArea.productId,
-                x: state.currentDrawingArea.width > 0 ? state.currentDrawingArea.x : state.currentDrawingArea.x + state.currentDrawingArea.width,
-                y: state.currentDrawingArea.height > 0 ? state.currentDrawingArea.y : state.currentDrawingArea.y + state.currentDrawingArea.height,
-                width: Math.abs(state.currentDrawingArea.width),
-                height: Math.abs(state.currentDrawingArea.height),
+                productId: area.productId,
+                x: area.width > 0 ? area.x : area.x + area.width,
+                y: area.height > 0 ? area.y : area.y + area.height,
+                width: Math.abs(area.width),
+                height: Math.abs(area.height),
             };
 
             return {
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+                future: [],
                 designAreas: [...state.designAreas, normalized],
+                currentDrawingArea: null
+            };
+        });
+    },
+
+    finishOpening: () => {
+        set((state) => {
+            if (!state.currentDrawingArea || !('type' in state.currentDrawingArea)) return state;
+
+            const area = state.currentDrawingArea as Opening;
+
+            // Only add if it has some dimension
+            if (Math.abs(area.width) < 5 || Math.abs(area.height) < 5) {
+                return { currentDrawingArea: null };
+            }
+
+            // Normalize rectangle
+            const normalized: Opening = {
+                id: Math.random().toString(36).substr(2, 9),
+                type: area.type,
+                x: area.width > 0 ? area.x : area.x + area.width,
+                y: area.height > 0 ? area.y : area.y + area.height,
+                width: Math.abs(area.width),
+                height: Math.abs(area.height),
+            };
+
+            return {
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+                future: [],
+                openings: [...state.openings, normalized],
                 currentDrawingArea: null
             };
         });
@@ -189,11 +285,61 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     removeDesignArea: (id) => {
         set((state) => ({
+            past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+            future: [],
             designAreas: state.designAreas.filter(a => a.id !== id)
         }));
     },
 
-    clearDesignAreas: () => set({ designAreas: [] }),
+    removeOpening: (id) => {
+        set((state) => ({
+            past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+            future: [],
+            openings: state.openings.filter(a => a.id !== id)
+        }));
+    },
+
+    clearDesignAreas: () => set((state) => ({
+        past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+        future: [],
+        designAreas: [],
+        openings: [] // Should probably clear openings too if clearing areas? Or just areas? 
+        // The previous clearDesignAreas only cleared designAreas. 
+        // If I clear areas, openings might look weird floating?
+        // I'll keep behavior but save history.
+    })),
+
+    undo: () => {
+        set((state) => {
+            if (state.past.length === 0) return state;
+
+            const previous = state.past[state.past.length - 1];
+            const newPast = state.past.slice(0, -1);
+
+            return {
+                past: newPast,
+                future: [{ designAreas: state.designAreas, openings: state.openings }, ...state.future],
+                designAreas: previous.designAreas,
+                openings: previous.openings
+            };
+        });
+    },
+
+    redo: () => {
+        set((state) => {
+            if (state.future.length === 0) return state;
+
+            const next = state.future[0];
+            const newFuture = state.future.slice(1);
+
+            return {
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+                future: newFuture,
+                designAreas: next.designAreas,
+                openings: next.openings
+            };
+        });
+    },
 
     getDimensions: () => {
         const { points, isClosed } = get();
