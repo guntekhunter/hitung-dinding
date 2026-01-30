@@ -2,6 +2,7 @@
 
 import { useCanvasStore, PRODUCTS, SCALE } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
+import { subtractRect, Rect } from "../function/geometry";
 
 export default function Toolbar() {
     const {
@@ -9,46 +10,73 @@ export default function Toolbar() {
         selectedProductId, setSelectedProduct,
         designAreas, clearDesignAreas,
         interactionMode, setInteractionMode,
-        openings,
+        openings, lists,
         undo, redo, past, future
     } = useCanvasStore();
     const { area, perimeter } = getDimensions();
 
     // Calculate total area per product and total design area
-    const { productAreas, totalDesignArea } = designAreas.reduce((acc, designArea) => {
-        const product = PRODUCTS.find(p => p.id === designArea.productId);
-        if (product) {
-            // Gross Area in m²
-            let areaM2 = (Math.abs(designArea.width) * Math.abs(designArea.height)) / (SCALE * SCALE);
+    // Calculate total area per product and total design area
+    // NEW: Robust occlusion logic
+    const productAreas: Record<string, number> = {};
+    let totalDesignArea = 0;
 
-            // Calculate intersections with openings
-            const daLeft = designArea.x;
-            const daRight = designArea.x + designArea.width;
-            const daTop = designArea.y;
-            const daBottom = designArea.y + designArea.height;
+    designAreas.forEach((da, index) => {
+        // Start with the full rectangle area
+        // Ensure standard Rect format (positive width/height)
+        let currentRects: Rect[] = [{
+            x: da.width > 0 ? da.x : da.x + da.width,
+            y: da.height > 0 ? da.y : da.y + da.height,
+            width: Math.abs(da.width),
+            height: Math.abs(da.height)
+        }];
 
-            let subtractM2 = 0;
+        // 1. Subtract Openings (Windows/Doors) - they cut through everything
+        openings.forEach(op => {
+            const opRect: Rect = {
+                x: op.width > 0 ? op.x : op.x + op.width,
+                y: op.height > 0 ? op.y : op.y + op.height,
+                width: Math.abs(op.width),
+                height: Math.abs(op.height)
+            };
 
-            openings.forEach(op => {
-                const opLeft = op.x;
-                const opRight = op.x + op.width;
-                const opTop = op.y;
-                const opBottom = op.y + op.height;
-
-                const overlapWidth = Math.max(0, Math.min(daRight, opRight) - Math.max(daLeft, opLeft));
-                const overlapHeight = Math.max(0, Math.min(daBottom, opBottom) - Math.max(daTop, opTop));
-
-                const overlapAreaPx = overlapWidth * overlapHeight;
-                subtractM2 += overlapAreaPx / (SCALE * SCALE);
+            const nextRects: Rect[] = [];
+            currentRects.forEach(r => {
+                nextRects.push(...subtractRect(r, opRect));
             });
+            currentRects = nextRects;
+        });
 
-            areaM2 = Math.max(0, areaM2 - subtractM2);
+        // 2. Subtract Overlapping Design Areas (only those on top / later in array)
+        for (let i = index + 1; i < designAreas.length; i++) {
+            const topDA = designAreas[i];
+            const topRect: Rect = {
+                x: topDA.width > 0 ? topDA.x : topDA.x + topDA.width,
+                y: topDA.height > 0 ? topDA.y : topDA.y + topDA.height,
+                width: Math.abs(topDA.width),
+                height: Math.abs(topDA.height)
+            };
 
-            acc.productAreas[designArea.productId] = (acc.productAreas[designArea.productId] || 0) + areaM2;
-            acc.totalDesignArea += areaM2;
+            const nextRects: Rect[] = [];
+            currentRects.forEach(r => {
+                nextRects.push(...subtractRect(r, topRect));
+            });
+            currentRects = nextRects;
         }
-        return acc;
-    }, { productAreas: {} as Record<string, number>, totalDesignArea: 0 });
+
+        // 3. Sum up the remaining area
+        let areaPx = 0;
+        currentRects.forEach(r => {
+            areaPx += r.width * r.height;
+        });
+
+        const areaM2 = areaPx / (SCALE * SCALE);
+
+        if (da.productId) {
+            productAreas[da.productId] = (productAreas[da.productId] || 0) + areaM2;
+            totalDesignArea += areaM2;
+        }
+    });
 
     // Calculate product counts based on total area
     const productCounts = Object.entries(productAreas).reduce((acc, [productId, area]) => {
@@ -205,7 +233,7 @@ export default function Toolbar() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Add Openings
+                    Add Extras
                 </h3>
                 <div style={{ display: "flex", gap: "8px" }}>
                     <button
@@ -237,6 +265,21 @@ export default function Toolbar() {
                         }}
                     >
                         🚪 Door
+                    </button>
+                    <button
+                        onClick={() => setInteractionMode('list')}
+                        style={{
+                            flex: 1,
+                            padding: "10px",
+                            background: interactionMode === 'list' ? "#8b5cf6" : "white",
+                            color: interactionMode === 'list' ? "white" : "#475569",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        📏 List
                     </button>
                 </div>
             </div>
@@ -294,6 +337,14 @@ export default function Toolbar() {
                                     unit="pcs"
                                 />
                             ))}
+                            {lists.length > 0 && (
+                                <MaterialItem
+                                    label="List / Molding"
+                                    sub="2.90m length"
+                                    count={Math.ceil(lists.reduce((acc, l) => acc + Math.hypot(l.x2 - l.x1, l.y2 - l.y1), 0) / SCALE / 2.9)}
+                                    unit="btg"
+                                />
+                            )}
                         </div>
                     </div>
                 )}

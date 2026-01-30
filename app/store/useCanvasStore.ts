@@ -15,6 +15,7 @@ export type Product = {
 export const PRODUCTS: Product[] = [
     { id: "wallpanel", name: "Wallpanel (16cm)", width: 0.16, height: 2.9, color: "rgba(14, 165, 233, 0.4)" },
     { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
+    { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)" },
     { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)" },
 ];
 
@@ -36,9 +37,19 @@ export type Opening = {
     height: number;
 };
 
+export type ListElement = {
+    id: string;
+    type: 'list';
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+};
+
 type HistoryEntry = {
     designAreas: DesignArea[];
     openings: Opening[];
+    lists: ListElement[];
 };
 
 export type Wall = {
@@ -57,13 +68,15 @@ type CanvasState = {
     direction: 'horizontal' | 'vertical';
 
     // Interaction mode
-    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door';
+    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list';
 
     // Product state
     selectedProductId: string;
     designAreas: DesignArea[];
     openings: Opening[];
+    lists: ListElement[];
     currentDrawingArea: DesignArea | Opening | null;
+    currentDrawingList: ListElement | null;
 
     // History
     past: HistoryEntry[];
@@ -77,7 +90,7 @@ type CanvasState = {
 
     // Product actions
     setSelectedProduct: (id: string) => void;
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door') => void;
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list') => void;
 
     // Area Actions
     startDesignArea: (x: number, y: number) => void;
@@ -91,6 +104,12 @@ type CanvasState = {
     updateOpening: (x: number, y: number) => void;
     finishOpening: () => void;
     removeOpening: (id: string) => void;
+
+    // List Actions
+    startList: (x: number, y: number) => void;
+    updateList: (x: number, y: number) => void;
+    finishList: () => void;
+    removeList: (id: string) => void;
 
     // History Actions
     undo: () => void;
@@ -108,15 +127,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     selectedProductId: PRODUCTS[0].id,
     designAreas: [],
     openings: [],
+    lists: [],
     currentDrawingArea: null,
+    currentDrawingList: null,
     past: [],
     future: [],
 
     // Internal helper to save state for undo/redo
     _saveHistory: () => {
-        const { designAreas, openings, past } = get();
+        const { designAreas, openings, lists, past } = get();
         set({
-            past: [...past, { designAreas: [...designAreas], openings: [...openings] }],
+            past: [...past, { designAreas: [...designAreas], openings: [...openings], lists: [...lists] }],
             future: [], // Clear future when a new action is performed
         });
     },
@@ -171,7 +192,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         });
     },
 
-    reset: () => set({ points: [], isClosed: false, designAreas: [], openings: [], interactionMode: 'draw', currentDrawingArea: null }),
+    reset: () => set({ points: [], isClosed: false, designAreas: [], openings: [], lists: [], interactionMode: 'draw', currentDrawingArea: null, currentDrawingList: null }),
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
 
@@ -205,8 +226,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     updateOpening: (x, y) => {
-        // Reusing updateDesignArea logic via generic update if possible, but distinct update function is fine
-        // Actually updateDesignArea below fits both if we type check inside or just assume currentDrawingArea is the target
         get().updateDesignArea(x, y);
     },
 
@@ -245,7 +264,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             };
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
                 future: [],
                 designAreas: [...state.designAreas, normalized],
                 currentDrawingArea: null
@@ -275,7 +294,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             };
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
                 future: [],
                 openings: [...state.openings, normalized],
                 currentDrawingArea: null
@@ -283,9 +302,68 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         });
     },
 
+    startList: (x, y) => {
+        set({
+            currentDrawingList: {
+                id: 'temp',
+                type: 'list',
+                x1: x,
+                y1: y,
+                x2: x,
+                y2: y
+            }
+        });
+    },
+
+    updateList: (x, y) => {
+        set((state) => {
+            if (!state.currentDrawingList) return state;
+            return {
+                currentDrawingList: {
+                    ...state.currentDrawingList,
+                    x2: x,
+                    y2: y
+                }
+            };
+        });
+    },
+
+    finishList: () => {
+        set((state) => {
+            if (!state.currentDrawingList) return state;
+
+            const list = state.currentDrawingList;
+            const length = Math.hypot(list.x2 - list.x1, list.y2 - list.y1);
+
+            if (length < 5) {
+                return { currentDrawingList: null };
+            }
+
+            const newList: ListElement = {
+                ...list,
+                id: Math.random().toString(36).substr(2, 9)
+            };
+
+            return {
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+                future: [],
+                lists: [...state.lists, newList],
+                currentDrawingList: null
+            };
+        });
+    },
+
+    removeList: (id) => {
+        set((state) => ({
+            past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+            future: [],
+            lists: state.lists.filter(a => a.id !== id)
+        }));
+    },
+
     removeDesignArea: (id) => {
         set((state) => ({
-            past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+            past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
             future: [],
             designAreas: state.designAreas.filter(a => a.id !== id)
         }));
@@ -293,20 +371,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     removeOpening: (id) => {
         set((state) => ({
-            past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+            past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
             future: [],
             openings: state.openings.filter(a => a.id !== id)
         }));
     },
 
     clearDesignAreas: () => set((state) => ({
-        past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+        past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
         future: [],
         designAreas: [],
-        openings: [] // Should probably clear openings too if clearing areas? Or just areas? 
-        // The previous clearDesignAreas only cleared designAreas. 
-        // If I clear areas, openings might look weird floating?
-        // I'll keep behavior but save history.
+        openings: [],
+        lists: []
     })),
 
     undo: () => {
@@ -318,9 +394,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
             return {
                 past: newPast,
-                future: [{ designAreas: state.designAreas, openings: state.openings }, ...state.future],
+                future: [{ designAreas: state.designAreas, openings: state.openings, lists: state.lists }, ...state.future],
                 designAreas: previous.designAreas,
-                openings: previous.openings
+                openings: previous.openings,
+                lists: previous.lists
             };
         });
     },
@@ -333,10 +410,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             const newFuture = state.future.slice(1);
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings }],
+                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
                 future: newFuture,
                 designAreas: next.designAreas,
-                openings: next.openings
+                openings: next.openings,
+                lists: next.lists
             };
         });
     },

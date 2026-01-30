@@ -80,9 +80,10 @@ const WallEditor = () => {
 
     // 3. Generate the Panels Visual
     const {
-        interactionMode, designAreas, currentDrawingArea, openings,
+        interactionMode, designAreas, currentDrawingArea, openings, lists, currentDrawingList,
         startDesignArea, updateDesignArea, finishDesignArea, removeDesignArea,
-        startOpening, updateOpening, finishOpening, removeOpening
+        startOpening, updateOpening, finishOpening, removeOpening,
+        startList, updateList, finishList, removeList
     } = useCanvasStore();
 
     const renderAreaContent = (area: DesignArea | any) => {
@@ -213,6 +214,49 @@ const WallEditor = () => {
         );
     };
 
+    const renderListContent = (list: any) => {
+        const length = Math.hypot(list.x2 - list.x1, list.y2 - list.y1);
+        const midX = (list.x1 + list.x2) / 2;
+        const midY = (list.y1 + list.y2) / 2;
+        const count = Math.ceil((length / SCALE) / 2.9);
+
+        return (
+            <Group>
+                <Line
+                    points={[list.x1, list.y1, list.x2, list.y2]}
+                    stroke="#8b5cf6"
+                    strokeWidth={10}
+                    lineCap="round"
+                    onClick={() => {
+                        if (interactionMode === 'delete') removeList(list.id);
+                    }}
+                    onTap={() => {
+                        if (interactionMode === 'delete') removeList(list.id);
+                    }}
+                />
+                <Rect
+                    x={midX - 30}
+                    y={midY - 10}
+                    width={60}
+                    height={20}
+                    fill="rgba(255, 255, 255, 0.8)"
+                    cornerRadius={4}
+                />
+                <Text
+                    x={midX}
+                    y={midY}
+                    text={`${(length / SCALE).toFixed(2)}m (${count})`}
+                    fontSize={10}
+                    fill="#5b21b6"
+                    offsetX={30}
+                    offsetY={5}
+                    align="center"
+                    width={60}
+                />
+            </Group>
+        );
+    };
+
     const renderedAreas = useMemo(() => {
         return (
             <Group clipFunc={clipFunc}>
@@ -226,15 +270,21 @@ const WallEditor = () => {
                         {renderOpeningContent(op)}
                     </React.Fragment>
                 ))}
+                {lists.map(list => (
+                    <React.Fragment key={list.id}>
+                        {renderListContent(list)}
+                    </React.Fragment>
+                ))}
 
                 {currentDrawingArea && (
                     'productId' in currentDrawingArea
                         ? renderAreaContent(currentDrawingArea)
                         : renderOpeningContent(currentDrawingArea)
                 )}
+                {currentDrawingList && renderListContent(currentDrawingList)}
             </Group>
         );
-    }, [designAreas, openings, currentDrawingArea, clipFunc, interactionMode]);
+    }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode]);
 
     const handleMouseDown = (e: any) => {
         const stage = e.target.getStage();
@@ -247,14 +297,22 @@ const WallEditor = () => {
             startDesignArea(pos.x, pos.y);
         } else if (interactionMode === 'window' || interactionMode === 'door') {
             startOpening(pos.x, pos.y, interactionMode);
+        } else if (interactionMode === 'list') {
+            startList(pos.x, pos.y);
         }
     };
 
     const handleMouseMove = (e: any) => {
-        if (!currentDrawingArea) return;
         const stage = e.target.getStage();
         const pos = stage.getPointerPosition();
         if (!pos) return;
+
+        if (currentDrawingList) {
+            updateList(pos.x, pos.y);
+            return;
+        }
+
+        if (!currentDrawingArea) return;
 
         if ('productId' in currentDrawingArea) {
             updateDesignArea(pos.x, pos.y);
@@ -264,6 +322,11 @@ const WallEditor = () => {
     };
 
     const handleMouseUp = () => {
+        if (currentDrawingList) {
+            finishList();
+            return;
+        }
+
         if (!currentDrawingArea) return;
 
         if ('productId' in currentDrawingArea) {
