@@ -133,15 +133,24 @@ const WallEditor = () => {
             );
         }
 
+        const isLengthBased = product.countType === 'length';
+        const color = product.color.replace('0.4', '1');
+        const absWidth = Math.abs(area.width);
+        const absHeight = Math.abs(area.height);
+
+        // Dimensions for professional look
+        const dimOffset = 20; // Closer than wall dimensions (40px)
+        const tickLen = 4;
+
         return (
             <Group x={area.x} y={area.y}>
                 <Rect
                     name="design-area"
                     width={area.width}
                     height={area.height}
-                    fill={product.color}
-                    stroke="#1e293b"
-                    strokeWidth={1}
+                    fill={isLengthBased ? "transparent" : product.color}
+                    stroke={isLengthBased ? color : "#1e293b"}
+                    strokeWidth={isLengthBased ? 2 : 1}
                     onClick={() => {
                         if (interactionMode === 'delete') removeDesignArea(area.id);
                     }}
@@ -149,20 +158,67 @@ const WallEditor = () => {
                         if (interactionMode === 'delete') removeDesignArea(area.id);
                     }}
                 />
-                <Group clipFunc={(ctx) => {
-                    ctx.rect(0, 0, area.width, area.height);
-                }}>
-                    {lines}
-                </Group>
+
+                {/* Product Name */}
                 <Text
-                    text={`${product.name}\n${count} pcs`}
-                    fontSize={12}
+                    text={product.name}
+                    fontSize={10}
                     fill="#1e293b"
                     fontStyle="bold"
                     x={5}
                     y={5}
-                    align="center"
+                    width={area.width - 10}
                 />
+
+                {/* Width Dimension Line (Bottom) */}
+                <Group y={area.height + dimOffset}>
+                    <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8} />
+                    {/* Ticks */}
+                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1} />
+                    <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1} />
+                    <Text
+                        text={`${(absWidth / SCALE).toFixed(2)}m`}
+                        fontSize={9}
+                        fill="#475569"
+                        x={area.width / 2}
+                        y={-12}
+                        offsetX={15}
+                    />
+                </Group>
+
+                {/* Height Dimension Line (Right) */}
+                <Group x={area.width + dimOffset}>
+                    <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8} />
+                    {/* Ticks */}
+                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1} />
+                    <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1} />
+                    <Text
+                        text={`${(absHeight / SCALE).toFixed(2)}m`}
+                        fontSize={9}
+                        fill="#475569"
+                        x={4}
+                        y={area.height / 2}
+                        rotation={90}
+                        offsetX={15}
+                    />
+                </Group>
+
+                {!isLengthBased && (
+                    <Group clipFunc={(ctx) => {
+                        ctx.rect(0, 0, area.width, area.height);
+                    }}>
+                        {lines}
+                        <Text
+                            text={`${count} pcs`}
+                            fontSize={11}
+                            fill="#1e293b"
+                            fontStyle="bold"
+                            x={area.width / 2}
+                            y={area.height / 2}
+                            offsetX={20}
+                        />
+                    </Group>
+                )}
             </Group>
         );
     };
@@ -215,18 +271,26 @@ const WallEditor = () => {
     };
 
     const renderListContent = (list: any) => {
-        const length = Math.hypot(list.x2 - list.x1, list.y2 - list.y1);
+        const product = PRODUCTS.find(p => p.id === list.productId);
+        const color = product?.color.replace('0.4', '1') || "#8b5cf6";
+        const unitLength = product?.unitLength || 2.9;
+        const dx = list.x2 - list.x1;
+        const dy = list.y2 - list.y1;
+        const lengthPx = Math.hypot(dx, dy);
+        const lengthM = (lengthPx / SCALE).toFixed(2);
         const midX = (list.x1 + list.x2) / 2;
         const midY = (list.y1 + list.y2) / 2;
-        const count = Math.ceil((length / SCALE) / 2.9);
+        const count = Math.ceil((lengthPx / SCALE) / unitLength);
+        const angle = Math.atan2(dy, dx);
+        const tickLen = 6;
 
         return (
             <Group>
+                {/* Main segment */}
                 <Line
                     points={[list.x1, list.y1, list.x2, list.y2]}
-                    stroke="#8b5cf6"
-                    strokeWidth={10}
-                    lineCap="round"
+                    stroke={color}
+                    strokeWidth={2}
                     onClick={() => {
                         if (interactionMode === 'delete') removeList(list.id);
                     }}
@@ -234,24 +298,36 @@ const WallEditor = () => {
                         if (interactionMode === 'delete') removeList(list.id);
                     }}
                 />
-                <Rect
-                    x={midX - 30}
-                    y={midY - 10}
-                    width={60}
-                    height={20}
-                    fill="rgba(255, 255, 255, 0.8)"
-                    cornerRadius={4}
+
+                {/* Architectural Ticks */}
+                <Line
+                    points={[
+                        list.x1 - Math.cos(angle + Math.PI / 4) * tickLen, list.y1 - Math.sin(angle + Math.PI / 4) * tickLen,
+                        list.x1 + Math.cos(angle + Math.PI / 4) * tickLen, list.y1 + Math.sin(angle + Math.PI / 4) * tickLen
+                    ]}
+                    stroke={color}
+                    strokeWidth={1.5}
                 />
+                <Line
+                    points={[
+                        list.x2 - Math.cos(angle + Math.PI / 4) * tickLen, list.y2 - Math.sin(angle + Math.PI / 4) * tickLen,
+                        list.x2 + Math.cos(angle + Math.PI / 4) * tickLen, list.y2 + Math.sin(angle + Math.PI / 4) * tickLen
+                    ]}
+                    stroke={color}
+                    strokeWidth={1.5}
+                />
+
+                {/* Label */}
                 <Text
                     x={midX}
                     y={midY}
-                    text={`${(length / SCALE).toFixed(2)}m (${count})`}
+                    text={`${lengthM}m (${count}btg)`}
                     fontSize={10}
-                    fill="#5b21b6"
+                    fill={color}
+                    fontStyle="bold"
                     offsetX={30}
-                    offsetY={5}
-                    align="center"
-                    width={60}
+                    offsetY={12}
+                    rotation={(angle * 180) / Math.PI}
                 />
             </Group>
         );
@@ -359,10 +435,19 @@ const WallEditor = () => {
         updatePoint(index, newX, newY);
     };
 
-    if (!mounted) return <div className="w-full h-[600px] bg-gray-100 flex items-center justify-center">Loading Editor...</div>;
+    if (!mounted) return <div className="w-full h-[600px] bg-[#fdfbf7] flex items-center justify-center">Loading Editor...</div>;
+
+    const gridSize = 50;
+    const gridLines = [];
+    for (let i = 0; i < 900 / gridSize; i++) {
+        gridLines.push(<Line key={`v-${i}`} points={[i * gridSize, 0, i * gridSize, 600]} stroke="#e2e8f0" strokeWidth={1} />);
+    }
+    for (let i = 0; i < 600 / gridSize; i++) {
+        gridLines.push(<Line key={`h-${i}`} points={[0, i * gridSize, 900, i * gridSize]} stroke="#e2e8f0" strokeWidth={1} />);
+    }
 
     return (
-        <div className="relative border-2 border-slate-200 rounded-lg overflow-hidden bg-white shadow-inner">
+        <div className="relative border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl">
             <Stage
                 width={900}
                 height={600}
@@ -372,69 +457,140 @@ const WallEditor = () => {
                 style={{ cursor: isClosed ? 'default' : 'crosshair' }}
             >
                 <Layer>
+                    {gridLines}
                     {!isClosed && (
-                        <Text text="Click to place corners. Click start point to close." x={20} y={20} fill="gray" />
+                        <Text text="Click to place corners. Click start point to close." x={20} y={20} fill="#64748b" fontStyle="italic" />
                     )}
 
                     {isClosed && renderedAreas}
 
                     <Line
                         points={flattenedPoints}
-                        stroke="#0ea5e9"
-                        strokeWidth={3}
+                        stroke="#0f172a"
+                        strokeWidth={1.5}
                         closed={isClosed}
-                        fill={isClosed ? "rgba(14, 165, 233, 0.05)" : undefined}
+                        fill={isClosed ? "rgba(15, 23, 42, 0.03)" : undefined}
                     />
 
-                    {/* Measurements */}
+                    {/* Measurements & Dimensions */}
                     {points.map((point, i) => {
                         if (i === points.length - 1 && !isClosed) return null;
 
                         const nextPoint = points[(i + 1) % points.length];
-                        const midX = (point.x + nextPoint.x) / 2;
-                        const midY = (point.y + nextPoint.y) / 2;
-                        const lengthPx = Math.hypot(nextPoint.x - point.x, nextPoint.y - point.y);
+                        const dx = nextPoint.x - point.x;
+                        const dy = nextPoint.y - point.y;
+                        const lengthPx = Math.hypot(dx, dy);
+                        if (lengthPx < 5) return null;
+
                         const lengthM = (lengthPx / SCALE).toFixed(2);
                         const isEditing = editingIndex === i;
 
+                        // Calculate normal for dimension line offset
+                        // We want to point "outside". For now we'll use a simple approach:
+                        // point away from the centroid of the points.
+                        const midX = (point.x + nextPoint.x) / 2;
+                        const midY = (point.y + nextPoint.y) / 2;
+
+                        const centerX = bounds.minX + bounds.width / 2;
+                        const centerY = bounds.minY + bounds.height / 2;
+
+                        let nx = -dy / lengthPx;
+                        let ny = dx / lengthPx;
+
+                        // If (mid + normal) is closer to center than (mid), flip it
+                        const distWithNormal = Math.hypot(midX + nx * 10 - centerX, midY + ny * 10 - centerY);
+                        const distWithoutNormal = Math.hypot(midX - centerX, midY - centerY);
+                        if (distWithNormal < distWithoutNormal) {
+                            nx = -nx;
+                            ny = -ny;
+                        }
+
+                        const offset = 40;
+                        const dimX1 = point.x + nx * offset;
+                        const dimY1 = point.y + ny * offset;
+                        const dimX2 = nextPoint.x + nx * offset;
+                        const dimY2 = nextPoint.y + ny * offset;
+
+                        // Architectural Tick angle
+                        const tickLen = 6;
+                        const angle = Math.atan2(dy, dx);
+
                         return (
-                            <Group key={`label-${i}`} onClick={() => handleLabelClick(i, lengthM)}>
+                            <Group key={`dim-${i}`} onClick={() => handleLabelClick(i, lengthM)}>
+                                {/* Extension Lines */}
+                                <Line
+                                    points={[point.x + nx * 5, point.y + ny * 5, point.x + nx * (offset + 10), point.y + ny * (offset + 10)]}
+                                    stroke="#94a3b8"
+                                    strokeWidth={1}
+                                />
+                                <Line
+                                    points={[nextPoint.x + nx * 5, nextPoint.y + ny * 5, nextPoint.x + nx * (offset + 10), nextPoint.y + ny * (offset + 10)]}
+                                    stroke="#94a3b8"
+                                    strokeWidth={1}
+                                />
+
+                                {/* Dimension Line */}
+                                <Line
+                                    points={[dimX1, dimY1, dimX2, dimY2]}
+                                    stroke="#475569"
+                                    strokeWidth={1}
+                                />
+
+                                {/* Architectural Ticks */}
+                                <Line
+                                    points={[
+                                        dimX1 - Math.cos(angle + Math.PI / 4) * tickLen, dimY1 - Math.sin(angle + Math.PI / 4) * tickLen,
+                                        dimX1 + Math.cos(angle + Math.PI / 4) * tickLen, dimY1 + Math.sin(angle + Math.PI / 4) * tickLen
+                                    ]}
+                                    stroke="#475569"
+                                    strokeWidth={1.5}
+                                />
+                                <Line
+                                    points={[
+                                        dimX2 - Math.cos(angle + Math.PI / 4) * tickLen, dimY2 - Math.sin(angle + Math.PI / 4) * tickLen,
+                                        dimX2 + Math.cos(angle + Math.PI / 4) * tickLen, dimY2 + Math.sin(angle + Math.PI / 4) * tickLen
+                                    ]}
+                                    stroke="#475569"
+                                    strokeWidth={1.5}
+                                />
+
                                 {!isEditing && (
-                                    <>
-                                        <Rect
-                                            x={midX - 25}
-                                            y={midY - 12}
-                                            width={50}
-                                            height={24}
-                                            fill="rgba(255,255,255,0.8)"
-                                            cornerRadius={4}
-                                        />
-                                        <Text
-                                            x={midX}
-                                            y={midY}
-                                            text={`${lengthM}m`}
-                                            fontSize={12}
-                                            fill="#0f172a"
-                                            offsetX={15}
-                                            offsetY={6}
-                                        />
-                                    </>
+                                    <Text
+                                        x={(dimX1 + dimX2) / 2}
+                                        y={(dimY1 + dimY2) / 2}
+                                        text={`${lengthM}m`}
+                                        fontSize={11}
+                                        fill="#1e293b"
+                                        fontStyle="bold"
+                                        offsetX={15}
+                                        offsetY={15}
+                                        rotation={(angle * 180) / Math.PI}
+                                    />
                                 )}
                             </Group>
                         );
                     })}
 
                     {points.map((point, i) => (
-                        <Circle
+                        <Rect
                             key={i}
-                            x={point.x}
-                            y={point.y}
-                            radius={6}
+                            x={point.x - 4}
+                            y={point.y - 4}
+                            width={8}
+                            height={8}
                             fill="white"
-                            stroke="#0284c7"
-                            strokeWidth={2}
+                            stroke="#0f172a"
+                            strokeWidth={1}
                             draggable
                             onDragMove={(e) => handleDragMove(e, i)}
+                            onMouseEnter={(e: any) => {
+                                const container = e.target.getStage().container();
+                                container.style.cursor = 'move';
+                            }}
+                            onMouseLeave={(e: any) => {
+                                const container = e.target.getStage().container();
+                                container.style.cursor = isClosed ? 'default' : 'crosshair';
+                            }}
                         />
                     ))}
                 </Layer>

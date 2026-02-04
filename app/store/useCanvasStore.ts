@@ -10,6 +10,8 @@ export type Product = {
     width: number; // in meters
     height: number; // in meters
     color: string;
+    countType?: 'area' | 'length';
+    unitLength?: number; // meters per stick (for length-based)
 };
 
 export const PRODUCTS: Product[] = [
@@ -17,6 +19,8 @@ export const PRODUCTS: Product[] = [
     { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
     { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)" },
     { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)" },
+    { id: "moulding", name: "Moulding (4m)", width: 0.05, height: 4, color: "rgba(244, 63, 94, 0.4)", countType: 'length', unitLength: 4 },
+    { id: "list", name: "List (2.9m)", width: 0.02, height: 2.9, color: "rgba(139, 92, 246, 0.4)", countType: 'length', unitLength: 2.9 },
 ];
 
 export type DesignArea = {
@@ -40,6 +44,7 @@ export type Opening = {
 export type ListElement = {
     id: string;
     type: 'list';
+    productId: string;
     x1: number;
     y1: number;
     x2: number;
@@ -303,10 +308,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     startList: (x, y) => {
+        const { selectedProductId } = get();
         set({
             currentDrawingList: {
                 id: 'temp',
                 type: 'list',
+                productId: selectedProductId,
                 x1: x,
                 y1: y,
                 x2: x,

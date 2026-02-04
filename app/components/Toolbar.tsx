@@ -19,71 +19,91 @@ export default function Toolbar() {
     // Calculate total area per product and total design area
     // NEW: Robust occlusion logic
     const productAreas: Record<string, number> = {};
+    const productLengths: Record<string, number> = {};
     let totalDesignArea = 0;
 
     designAreas.forEach((da, index) => {
-        // Start with the full rectangle area
-        // Ensure standard Rect format (positive width/height)
-        let currentRects: Rect[] = [{
+        const product = PRODUCTS.find(p => p.id === da.productId);
+        const isLengthBased = product?.countType === 'length';
+
+        // Start with the full rectangle area/perimeter
+        const rect: Rect = {
             x: da.width > 0 ? da.x : da.x + da.width,
             y: da.height > 0 ? da.y : da.y + da.height,
             width: Math.abs(da.width),
             height: Math.abs(da.height)
-        }];
+        };
 
-        // 1. Subtract Openings (Windows/Doors) - they cut through everything
-        openings.forEach(op => {
-            const opRect: Rect = {
-                x: op.width > 0 ? op.x : op.x + op.width,
-                y: op.height > 0 ? op.y : op.y + op.height,
-                width: Math.abs(op.width),
-                height: Math.abs(op.height)
-            };
+        if (isLengthBased) {
+            // For moulding rectangles, we count the perimeter
+            const perimeterM = (rect.width * 2 + rect.height * 2) / SCALE;
+            productLengths[da.productId] = (productLengths[da.productId] || 0) + perimeterM;
+        } else {
+            let currentRects: Rect[] = [rect];
 
-            const nextRects: Rect[] = [];
-            currentRects.forEach(r => {
-                nextRects.push(...subtractRect(r, opRect));
+            // 1. Subtract Openings (Windows/Doors) - they cut through everything
+            openings.forEach(op => {
+                const opRect: Rect = {
+                    x: op.width > 0 ? op.x : op.x + op.width,
+                    y: op.height > 0 ? op.y : op.y + op.height,
+                    width: Math.abs(op.width),
+                    height: Math.abs(op.height)
+                };
+
+                const nextRects: Rect[] = [];
+                currentRects.forEach(r => {
+                    nextRects.push(...subtractRect(r, opRect));
+                });
+                currentRects = nextRects;
             });
-            currentRects = nextRects;
-        });
 
-        // 2. Subtract Overlapping Design Areas (only those on top / later in array)
-        for (let i = index + 1; i < designAreas.length; i++) {
-            const topDA = designAreas[i];
-            const topRect: Rect = {
-                x: topDA.width > 0 ? topDA.x : topDA.x + topDA.width,
-                y: topDA.height > 0 ? topDA.y : topDA.y + topDA.height,
-                width: Math.abs(topDA.width),
-                height: Math.abs(topDA.height)
-            };
+            // 2. Subtract Overlapping Design Areas (only those on top / later in array)
+            for (let i = index + 1; i < designAreas.length; i++) {
+                const topDA = designAreas[i];
+                const topRect: Rect = {
+                    x: topDA.width > 0 ? topDA.x : topDA.x + topDA.width,
+                    y: topDA.height > 0 ? topDA.y : topDA.y + topDA.height,
+                    width: Math.abs(topDA.width),
+                    height: Math.abs(topDA.height)
+                };
 
-            const nextRects: Rect[] = [];
+                const nextRects: Rect[] = [];
+                currentRects.forEach(r => {
+                    nextRects.push(...subtractRect(r, topRect));
+                });
+                currentRects = nextRects;
+            }
+
+            // 3. Sum up the remaining area
+            let areaPx = 0;
             currentRects.forEach(r => {
-                nextRects.push(...subtractRect(r, topRect));
+                areaPx += r.width * r.height;
             });
-            currentRects = nextRects;
-        }
 
-        // 3. Sum up the remaining area
-        let areaPx = 0;
-        currentRects.forEach(r => {
-            areaPx += r.width * r.height;
-        });
+            const areaM2 = areaPx / (SCALE * SCALE);
 
-        const areaM2 = areaPx / (SCALE * SCALE);
-
-        if (da.productId) {
-            productAreas[da.productId] = (productAreas[da.productId] || 0) + areaM2;
-            totalDesignArea += areaM2;
+            if (da.productId) {
+                productAreas[da.productId] = (productAreas[da.productId] || 0) + areaM2;
+                totalDesignArea += areaM2;
+            }
         }
     });
 
-    // Calculate product counts based on total area
-    const productCounts = Object.entries(productAreas).reduce((acc, [productId, area]) => {
-        const product = PRODUCTS.find(p => p.id === productId);
-        if (product) {
+    // Add lengths from lists
+    lists.forEach(list => {
+        const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
+        productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
+    });
+
+    // Calculate product counts
+    const productCounts = PRODUCTS.reduce((acc, product) => {
+        if (product.countType === 'length') {
+            const totalLength = productLengths[product.id] || 0;
+            acc[product.id] = Math.ceil(totalLength / (product.unitLength || 1));
+        } else {
+            const area = productAreas[product.id] || 0;
             const unitArea = product.width * product.height;
-            acc[productId] = Math.ceil(area / unitArea);
+            acc[product.id] = Math.ceil(area / unitArea);
         }
         return acc;
     }, {} as Record<string, number>);
@@ -204,7 +224,15 @@ export default function Toolbar() {
                 {PRODUCTS.map(product => (
                     <button
                         key={product.id}
-                        onClick={() => setSelectedProduct(product.id)}
+                        onClick={() => {
+                            setSelectedProduct(product.id);
+                            // Automatically switch back to a drawing mode when selecting a product
+                            if (product.countType === 'length') {
+                                setInteractionMode('list');
+                            } else {
+                                setInteractionMode('place');
+                            }
+                        }}
                         style={{
                             padding: "12px",
                             background: selectedProductId === product.id ? "#4f46e5" : "white",
@@ -267,12 +295,15 @@ export default function Toolbar() {
                         🚪 Door
                     </button>
                     <button
-                        onClick={() => setInteractionMode('list')}
+                        onClick={() => {
+                            setSelectedProduct('list');
+                            setInteractionMode('list');
+                        }}
                         style={{
                             flex: 1,
                             padding: "10px",
-                            background: interactionMode === 'list' ? "#8b5cf6" : "white",
-                            color: interactionMode === 'list' ? "white" : "#475569",
+                            background: interactionMode === 'list' && selectedProductId === 'list' ? "#8b5cf6" : "white",
+                            color: interactionMode === 'list' && selectedProductId === 'list' ? "white" : "#475569",
                             border: "1px solid #e2e8f0",
                             borderRadius: "8px",
                             cursor: "pointer",
@@ -280,6 +311,24 @@ export default function Toolbar() {
                         }}
                     >
                         📏 List
+                    </button>
+                    <button
+                        onClick={() => {
+                            setSelectedProduct('moulding');
+                            setInteractionMode('list');
+                        }}
+                        style={{
+                            flex: 1,
+                            padding: "10px",
+                            background: interactionMode === 'list' && selectedProductId === 'moulding' ? "#f43f5e" : "white",
+                            color: interactionMode === 'list' && selectedProductId === 'moulding' ? "white" : "#475569",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        🪄 Moulding
                     </button>
                 </div>
             </div>
@@ -332,19 +381,11 @@ export default function Toolbar() {
                                 <MaterialItem
                                     key={product.id}
                                     label={product.name}
-                                    sub={`${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
+                                    sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
                                     count={productCounts[product.id] || 0}
-                                    unit="pcs"
+                                    unit={product.countType === 'length' ? "btg" : "pcs"}
                                 />
                             ))}
-                            {lists.length > 0 && (
-                                <MaterialItem
-                                    label="List / Molding"
-                                    sub="2.90m length"
-                                    count={Math.ceil(lists.reduce((acc, l) => acc + Math.hypot(l.x2 - l.x1, l.y2 - l.y1), 0) / SCALE / 2.9)}
-                                    unit="btg"
-                                />
-                            )}
                         </div>
                     </div>
                 )}
