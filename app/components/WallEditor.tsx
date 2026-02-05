@@ -1,9 +1,14 @@
 'use client';
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import { useCanvasStore, SCALE, PANEL_WIDTH_METERS, PRODUCTS, DesignArea } from '../store/useCanvasStore';
 
-const WallEditor = () => {
+const WallEditor = forwardRef((props, ref) => {
+    const stageRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+        getStage: () => stageRef.current
+    }));
     const {
         points, isClosed, addPoint, updatePoint, updateEdgeLength,
         direction, selectedProductId,
@@ -449,6 +454,7 @@ const WallEditor = () => {
     return (
         <div className="relative border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl">
             <Stage
+                ref={stageRef}
                 width={900}
                 height={600}
                 onMouseDown={handleMouseDown}
@@ -624,6 +630,6 @@ const WallEditor = () => {
             )}
         </div>
     );
-};
+});
 
 export default WallEditor;

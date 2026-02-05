@@ -4,7 +4,7 @@ import { useCanvasStore, PRODUCTS, SCALE } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
 import { subtractRect, Rect } from "../function/geometry";
 
-export default function Toolbar() {
+export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const {
         getDimensions, reset, isClosed,
         selectedProductId, setSelectedProduct,
@@ -107,6 +107,85 @@ export default function Toolbar() {
         }
         return acc;
     }, {} as Record<string, number>);
+
+    const handleExport = () => {
+        if (!wallEditorRef.current) return;
+        const stage = wallEditorRef.current.getStage();
+        if (!stage) return;
+
+        // 1. Get Stage Image (Data URL)
+        // We temporarily hide things we don't want in the export if necessary,
+        // but Konva Stage.toDataURL() is quite flexible.
+        const dataURL = stage.toDataURL({ pixelRatio: 2 }); // High res
+
+        // 2. Create a temporary canvas to combine drawing + text
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const img = new Image();
+        img.onload = () => {
+            const padding = 40;
+            const rowHeight = 30;
+            const headerHeight = 60;
+            const footerHeight = headerHeight + (PRODUCTS.length + 2) * rowHeight + padding * 2;
+
+            canvas.width = img.width;
+            canvas.height = img.height + footerHeight;
+
+            // Fill background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Stage Image
+            ctx.drawImage(img, 0, 0);
+
+            // Draw Divider
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, img.height);
+            ctx.lineTo(canvas.width, img.height);
+            ctx.stroke();
+
+            // Draw Bill of Materials Header
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('Bill of Materials', padding, img.height + padding + 20);
+
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText(`Total Wall Area: ${area.toFixed(2)} m²`, padding, img.height + padding + 55);
+            ctx.fillText(`Total Design Area: ${totalDesignArea.toFixed(2)} m²`, padding, img.height + padding + 80);
+
+            // Draw Material Table
+            let currentY = img.height + padding + 120;
+            ctx.font = 'bold 16px Arial';
+            ctx.fillStyle = '#334155';
+
+            PRODUCTS.forEach((product) => {
+                const count = productCounts[product.id] || 0;
+                if (count > 0) {
+                    ctx.fillStyle = '#334155';
+                    ctx.fillText(product.name, padding, currentY);
+
+                    ctx.fillStyle = '#4f46e5';
+                    const countText = `${count} ${product.countType === 'length' ? 'btg' : 'pcs'}`;
+                    const metrics = ctx.measureText(countText);
+                    ctx.fillText(countText, canvas.width - padding - metrics.width, currentY);
+
+                    currentY += rowHeight;
+                }
+            });
+
+            // Trigger Download
+            const link = document.createElement('a');
+            link.download = `wall-plan-${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        };
+        img.src = dataURL;
+    };
 
     return (
         <div style={{
@@ -393,6 +472,7 @@ export default function Toolbar() {
 
 
             <button
+                onClick={handleExport}
                 disabled={!isClosed}
                 style={{
                     padding: "14px",
