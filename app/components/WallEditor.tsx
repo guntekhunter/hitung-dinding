@@ -305,22 +305,7 @@ const WallEditor = forwardRef((props, ref) => {
                 />
 
                 {/* Architectural Ticks */}
-                <Line
-                    points={[
-                        list.x1 - Math.cos(angle + Math.PI / 4) * tickLen, list.y1 - Math.sin(angle + Math.PI / 4) * tickLen,
-                        list.x1 + Math.cos(angle + Math.PI / 4) * tickLen, list.y1 + Math.sin(angle + Math.PI / 4) * tickLen
-                    ]}
-                    stroke={color}
-                    strokeWidth={1.5}
-                />
-                <Line
-                    points={[
-                        list.x2 - Math.cos(angle + Math.PI / 4) * tickLen, list.y2 - Math.sin(angle + Math.PI / 4) * tickLen,
-                        list.x2 + Math.cos(angle + Math.PI / 4) * tickLen, list.y2 + Math.sin(angle + Math.PI / 4) * tickLen
-                    ]}
-                    stroke={color}
-                    strokeWidth={1.5}
-                />
+
 
                 {/* Label */}
                 <Text
@@ -389,7 +374,18 @@ const WallEditor = forwardRef((props, ref) => {
         if (!pos) return;
 
         if (currentDrawingList) {
-            updateList(pos.x, pos.y);
+            let newX = pos.x;
+            let newY = pos.y;
+
+            // Snap to Horizontal/Vertical relative to start point
+            if (Math.abs(newX - currentDrawingList.x1) < SNAP_THRESHOLD) {
+                newX = currentDrawingList.x1;
+            }
+            if (Math.abs(newY - currentDrawingList.y1) < SNAP_THRESHOLD) {
+                newY = currentDrawingList.y1;
+            }
+
+            updateList(newX, newY);
             return;
         }
 
