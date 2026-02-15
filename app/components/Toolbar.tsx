@@ -155,8 +155,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
             ctx.font = '16px Arial';
             ctx.fillStyle = '#64748b';
-            ctx.fillText(`Total Wall Area: ${area.toFixed(2)} m²`, padding, img.height + padding + 55);
-            ctx.fillText(`Total Design Area: ${totalDesignArea.toFixed(2)} m²`, padding, img.height + padding + 80);
+            ctx.fillText(`Total Wall Area: ${Math.ceil(area)} m²`, padding, img.height + padding + 55);
+            ctx.fillText(`Total Design Area: ${Math.ceil(totalDesignArea)} m²`, padding, img.height + padding + 80);
 
             // Draw Material Table
             let currentY = img.height + padding + 120;
@@ -452,8 +452,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     </div>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        <StatCard label="Total Wall Area" value={`${area.toFixed(2)} m²`} icon="📐" />
-                        <StatCard label="Total Design Area" value={`${totalDesignArea.toFixed(2)} m²`} icon="🎯" />
+                        <StatCard label="Total Wall Area" value={`${Math.ceil(area)} m²`} icon="📐" />
+                        <StatCard label="Total Design Area" value={`${Math.ceil(totalDesignArea)} m²`} icon="🎯" />
 
                         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
                             {PRODUCTS.map(product => (

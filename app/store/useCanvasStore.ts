@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { polygonPerimeter, polygonArea, Point } from "../function/geometry";
+import { polygonPerimeter, polygonArea, Point, Rect, isRectInPolygon } from "../function/geometry";
 
 export const SCALE = 100; // 100px = 1m (Increased for better dragging)
 export const PANEL_WIDTH_METERS = 0.2; // 20cm
@@ -121,7 +121,14 @@ type CanvasState = {
     redo: () => void;
 
     // Helper to calculate
+    // Helper to calculate
     getDimensions: () => { area: number; perimeter: number };
+
+    // Zoom and Pan
+    zoom: number;
+    offset: { x: number; y: number };
+    setZoom: (zoom: number) => void;
+    setOffset: (x: number, y: number) => void;
 };
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -137,6 +144,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     currentDrawingList: null,
     past: [],
     future: [],
+
+    // Zoom and Pan
+    zoom: 1,
+    offset: { x: 0, y: 0 },
+    setZoom: (zoom: number) => set({ zoom }),
+    setOffset: (x: number, y: number) => set({ offset: { x, y } }),
 
     // Internal helper to save state for undo/redo
     _saveHistory: () => {
@@ -177,7 +190,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             if (index >= points.length) return state;
 
             const p1 = points[index];
-            const p2 = points[(index + 1) % points.length];
+            const p2Index = (index + 1) % points.length;
+            const p2 = points[p2Index];
 
             const currentLengthPx = Math.hypot(p2.x - p1.x, p2.y - p1.y);
             const targetLengthPx = lengthMeters * SCALE;
@@ -192,7 +206,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             const newX = p1.x + dx * ratio;
             const newY = p1.y + dy * ratio;
 
-            points[(index + 1) % points.length] = { x: newX, y: newY };
+            const deltaX = newX - p2.x;
+            const deltaY = newY - p2.y;
+
+            // Move the target point
+            points[p2Index] = { x: newX, y: newY };
+
+            // PUSH subsequent points to preserve shape
+            // Only push if we're not moving point 0 (which happens for the closing edge)
+            if (index < points.length - 1) {
+                for (let i = index + 2; i < points.length; i++) {
+                    points[i] = {
+                        x: points[i].x + deltaX,
+                        y: points[i].y + deltaY
+                    };
+                }
+            }
+
             return { points };
         });
     },
