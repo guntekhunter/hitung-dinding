@@ -121,7 +121,8 @@ const WallEditor = forwardRef((props, ref) => {
         const intersectAreaPx2 = getPolygonRectIntersectionArea(points, area);
         const areaM2 = intersectAreaPx2 / (SCALE * SCALE);
         const productAreaM2 = product.width * product.height;
-        const count = Math.ceil(areaM2 / productAreaM2);
+        const baseCount = Math.ceil(areaM2 / productAreaM2);
+        const count = baseCount > 0 ? baseCount + 1 : 0;
 
         const lines = [];
 
@@ -350,7 +351,8 @@ const WallEditor = forwardRef((props, ref) => {
         const lengthM = (lengthPx / SCALE).toFixed(2);
         const midX = (list.x1 + list.x2) / 2;
         const midY = (list.y1 + list.y2) / 2;
-        const count = Math.ceil((lengthPx / SCALE) / unitLength);
+        const baseCount = Math.ceil((lengthPx / SCALE) / unitLength);
+        const count = baseCount > 0 ? baseCount + 1 : 0;
         const angle = Math.atan2(dy, dx);
         const tickLen = 6 / zoom;
 

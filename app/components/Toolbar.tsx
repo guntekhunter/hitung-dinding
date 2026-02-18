@@ -99,11 +99,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const productCounts = PRODUCTS.reduce((acc, product) => {
         if (product.countType === 'length') {
             const totalLength = productLengths[product.id] || 0;
-            acc[product.id] = Math.ceil(totalLength / (product.unitLength || 1));
+            const baseCount = Math.ceil(totalLength / (product.unitLength || 1));
+            acc[product.id] = baseCount > 0 ? baseCount + 1 : 0;
         } else {
             const area = productAreas[product.id] || 0;
             const unitArea = product.width * product.height;
-            acc[product.id] = Math.ceil(area / unitArea);
+            const baseCount = Math.ceil(area / unitArea);
+            acc[product.id] = baseCount > 0 ? baseCount + 1 : 0;
         }
         return acc;
     }, {} as Record<string, number>);
