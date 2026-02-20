@@ -11,7 +11,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         designAreas, clearDesignAreas,
         interactionMode, setInteractionMode,
         openings, lists,
-        undo, redo, past, future
+        undo, redo, past, future,
+        isWallLocked, toggleWallLock
     } = useCanvasStore();
     const { area, perimeter } = getDimensions();
 
@@ -222,6 +223,24 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     }}
                 >
                     🔄 Clear Wall
+                </button>
+                <button
+                    onClick={toggleWallLock}
+                    disabled={!isClosed}
+                    style={{
+                        flex: 1,
+                        padding: "10px",
+                        background: isWallLocked ? "#4b5563" : "white",
+                        color: isWallLocked ? "white" : "#4b5563",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        cursor: isClosed ? "pointer" : "not-allowed",
+                        fontWeight: "600",
+                        opacity: isClosed ? 1 : 0.5,
+                        transition: "all 0.2s"
+                    }}
+                >
+                    {isWallLocked ? "🔒 Unlock Wall" : "🔓 Lock Wall"}
                 </button>
             </div>
 

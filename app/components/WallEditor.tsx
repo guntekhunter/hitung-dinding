@@ -17,7 +17,7 @@ const WallEditor = forwardRef((props, ref) => {
         startOpening, updateOpening, finishOpening, removeOpening,
         startList, updateList, finishList, removeList,
         zoom, offset, setZoom, setOffset,
-        undo, redo
+        undo, redo, isWallLocked
     } = useCanvasStore();
 
     // Interaction State
@@ -81,8 +81,8 @@ const WallEditor = forwardRef((props, ref) => {
     }, [undo, redo]);
 
     const handleLabelClick = (index: number, currentLength: string) => {
-        // Prevent editing while dragging points or not closed
-        if (!isClosed) return;
+        // Prevent editing while dragging points or not closed or locked
+        if (!isClosed || isWallLocked) return;
         setEditingIndex(index);
         setInputValue(currentLength);
     };
@@ -484,6 +484,7 @@ const WallEditor = forwardRef((props, ref) => {
         }
 
         if (!isClosed) {
+            if (isWallLocked) return; // Prevent adding points when locked
             addPoint(pos.x, pos.y);
         } else if (interactionMode === 'place') {
             startDesignArea(pos.x, pos.y);
@@ -558,6 +559,8 @@ const WallEditor = forwardRef((props, ref) => {
     };
 
     const handleDragMove = (e: any, index: number) => {
+        if (isWallLocked) return; // Prevent dragging points when locked
+
         let newX = e.target.x();
         let newY = e.target.y();
 
@@ -674,15 +677,17 @@ const WallEditor = forwardRef((props, ref) => {
                         />
                     )}
 
-                    {isClosed && renderedAreas}
-
+                    {/* Wall Surface (Background) */}
                     <Line
-                        points={flattenedPoints}
-                        stroke="#0f172a"
-                        strokeWidth={1.5 / zoom}
+                        points={points.flatMap(p => [p.x, p.y])}
+                        fill="#f1f5f9"
+                        stroke="#64748b"
+                        strokeWidth={2 / zoom}
                         closed={isClosed}
-                        fill={isClosed ? "rgba(15, 23, 42, 0.03)" : undefined}
+                        listening={false}
                     />
+
+                    {isClosed && renderedAreas}
 
                     {/* Measurements & Dimensions */}
                     {points.map((point, i) => {
@@ -726,7 +731,7 @@ const WallEditor = forwardRef((props, ref) => {
                         const angle = Math.atan2(dy, dx);
 
                         return (
-                            <Group key={`dim-${i}`} onClick={() => handleLabelClick(i, lengthM)}>
+                            <Group key={`dim-${i}`} onClick={() => { if (!isWallLocked) handleLabelClick(i, lengthM); }}>
                                 {/* Extension Lines */}
                                 <Line
                                     points={[point.x + nx * (5 / zoom), point.y + ny * (5 / zoom), point.x + nx * (offsetVal + 10 / zoom), point.y + ny * (offsetVal + 10 / zoom)]}
@@ -783,28 +788,47 @@ const WallEditor = forwardRef((props, ref) => {
                         );
                     })}
 
-                    {points.map((point, i) => (
-                        <Rect
-                            key={i}
-                            x={point.x - 4 / zoom}
-                            y={point.y - 4 / zoom}
-                            width={8 / zoom}
-                            height={8 / zoom}
-                            fill="white"
-                            stroke="#0f172a"
-                            strokeWidth={1 / zoom}
-                            draggable
-                            onDragMove={(e) => handleDragMove(e, i)}
-                            onMouseEnter={(e: any) => {
-                                const container = e.target.getStage().container();
-                                container.style.cursor = 'move';
-                            }}
-                            onMouseLeave={(e: any) => {
-                                const container = e.target.getStage().container();
-                                container.style.cursor = isClosed ? 'default' : 'crosshair';
-                            }}
-                        />
-                    ))}
+                    {/* Points and Labels */}
+                    {points.map((p, i) => {
+                        const nextPoint = points[(i + 1) % points.length];
+                        const dx = nextPoint.x - p.x;
+                        const dy = nextPoint.y - p.y;
+                        const angle = Math.atan2(dy, dx);
+                        const lengthM = (Math.hypot(dx, dy) / SCALE).toFixed(2);
+                        const isEditing = editingIndex === i;
+
+                        const dimX1 = p.x + Math.sin(angle) * (30 / zoom);
+                        const dimY1 = p.y - Math.cos(angle) * (30 / zoom);
+                        const dimX2 = nextPoint.x + Math.sin(angle) * (30 / zoom);
+                        const dimY2 = nextPoint.y - Math.cos(angle) * (30 / zoom);
+
+                        return (
+                            <Group key={i}>
+                                {/* Point Handle (Hide when locked) */}
+                                {!isWallLocked && (
+                                    <Rect
+                                        x={p.x - 4 / zoom}
+                                        y={p.y - 4 / zoom}
+                                        width={8 / zoom}
+                                        height={8 / zoom}
+                                        fill="white"
+                                        stroke="#0f172a"
+                                        strokeWidth={1 / zoom}
+                                        draggable
+                                        onDragMove={(e) => handleDragMove(e, i)}
+                                        onMouseEnter={(e: any) => {
+                                            const container = e.target.getStage().container();
+                                            container.style.cursor = 'move';
+                                        }}
+                                        onMouseLeave={(e: any) => {
+                                            const container = e.target.getStage().container();
+                                            container.style.cursor = isClosed ? 'default' : 'crosshair';
+                                        }}
+                                    />
+                                )}
+                            </Group>
+                        );
+                    })}
                 </Layer>
             </Stage>
 

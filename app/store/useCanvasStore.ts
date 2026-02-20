@@ -137,6 +137,10 @@ type CanvasState = {
     setZoom: (zoom: number) => void;
     setOffset: (x: number, y: number) => void;
 
+    // Wall Lock state
+    isWallLocked: boolean;
+    toggleWallLock: () => void;
+
     // Internal
     _saveHistory: () => void;
 };
@@ -154,12 +158,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     currentDrawingList: null,
     past: [],
     future: [],
+    isWallLocked: false,
 
     // Zoom and Pan
     zoom: 1,
     offset: { x: 0, y: 0 },
     setZoom: (zoom: number) => set({ zoom }),
     setOffset: (x: number, y: number) => set({ offset: { x, y } }),
+
+    toggleWallLock: () => set((state) => ({ isWallLocked: !state.isWallLocked })),
 
     // Internal helper to save state for undo/redo
     _saveHistory: () => {
