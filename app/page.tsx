@@ -8,8 +8,8 @@ export default function Home() {
 
   return (
     <main style={{ display: "flex", height: "100vh" }}>
-      <Toolbar wallEditorRef={wallEditorRef} />
       <WallEditor ref={wallEditorRef} />
+      <Toolbar wallEditorRef={wallEditorRef} />
     </main>
   );
 }

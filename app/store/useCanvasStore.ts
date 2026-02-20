@@ -16,10 +16,15 @@ export type Product = {
 
 export const PRODUCTS: Product[] = [
     { id: "wallpanel", name: "Wallpanel (16cm)", width: 0.16, height: 2.9, color: "rgba(14, 165, 233, 0.4)" },
+    { id: "wallpanel30", name: "Wallpanel (30cm)", width: 0.30, height: 2.9, color: "rgba(2, 132, 199, 0.4)" },
     { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
     { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)" },
     { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)" },
-    { id: "moulding", name: "Moulding (4m)", width: 0.05, height: 4, color: "rgba(244, 63, 94, 0.4)", countType: 'length', unitLength: 4 },
+    { id: "moulding", name: "Moulding (2.9m)", width: 0.05, height: 2.9, color: "rgba(244, 63, 94, 0.4)", countType: 'length', unitLength: 2.9 },
+    { id: "moulding8", name: "Moulding 8cm", width: 0.08, height: 2.9, color: "rgba(245, 158, 11, 0.4)", countType: 'length', unitLength: 2.9 },
+    { id: "moulding6", name: "Moulding 6cm", width: 0.06, height: 2.9, color: "rgba(132, 204, 22, 0.4)", countType: 'length', unitLength: 2.9 },
+    { id: "moulding4", name: "Moulding 4cm", width: 0.04, height: 2.9, color: "rgba(6, 182, 212, 0.4)", countType: 'length', unitLength: 2.9 },
+    { id: "moulding2-5", name: "Moulding 2.5cm", width: 0.025, height: 2.9, color: "rgba(99, 102, 241, 0.4)", countType: 'length', unitLength: 2.9 },
     { id: "list", name: "List (2.9m)", width: 0.02, height: 2.9, color: "rgba(139, 92, 246, 0.4)", countType: 'length', unitLength: 2.9 },
 ];
 
@@ -55,6 +60,8 @@ type HistoryEntry = {
     designAreas: DesignArea[];
     openings: Opening[];
     lists: ListElement[];
+    points: Point[];
+    isClosed: boolean;
 };
 
 export type Wall = {
@@ -129,6 +136,9 @@ type CanvasState = {
     offset: { x: number; y: number };
     setZoom: (zoom: number) => void;
     setOffset: (x: number, y: number) => void;
+
+    // Internal
+    _saveHistory: () => void;
 };
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -153,9 +163,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     // Internal helper to save state for undo/redo
     _saveHistory: () => {
-        const { designAreas, openings, lists, past } = get();
+        const { designAreas, openings, lists, points, isClosed, past } = get();
         set({
-            past: [...past, { designAreas: [...designAreas], openings: [...openings], lists: [...lists] }],
+            past: [...past, {
+                designAreas: [...designAreas],
+                openings: [...openings],
+                lists: [...lists],
+                points: [...points],
+                isClosed
+            }],
             future: [], // Clear future when a new action is performed
         });
     },
@@ -169,10 +185,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             const first = points[0];
             const dist = Math.hypot(first.x - x, first.y - y);
             if (dist < 20) { // Snap to close
+                get()._saveHistory();
                 set({ isClosed: true, interactionMode: 'place' });
                 return;
             }
         }
+        get()._saveHistory();
         set({ points: [...points, { x, y }] });
     },
 
@@ -185,6 +203,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     updateEdgeLength: (index, lengthMeters) => {
+        get()._saveHistory();
         set((state) => {
             const points = [...state.points];
             if (index >= points.length) return state;
@@ -227,7 +246,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         });
     },
 
-    reset: () => set({ points: [], isClosed: false, designAreas: [], openings: [], lists: [], interactionMode: 'draw', currentDrawingArea: null, currentDrawingList: null }),
+    reset: () => {
+        get()._saveHistory();
+        set({
+            points: [],
+            isClosed: false,
+            designAreas: [],
+            openings: [],
+            lists: [],
+            interactionMode: 'draw',
+            currentDrawingArea: null,
+            currentDrawingList: null
+        });
+    },
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
 
@@ -299,7 +330,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             };
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+                past: [...state.past, {
+                    designAreas: state.designAreas,
+                    openings: state.openings,
+                    lists: state.lists,
+                    points: state.points,
+                    isClosed: state.isClosed
+                }],
                 future: [],
                 designAreas: [...state.designAreas, normalized],
                 currentDrawingArea: null
@@ -329,7 +366,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             };
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+                past: [...state.past, {
+                    designAreas: state.designAreas,
+                    openings: state.openings,
+                    lists: state.lists,
+                    points: state.points,
+                    isClosed: state.isClosed
+                }],
                 future: [],
                 openings: [...state.openings, normalized],
                 currentDrawingArea: null
@@ -382,7 +425,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             };
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+                past: [...state.past, {
+                    designAreas: state.designAreas,
+                    openings: state.openings,
+                    lists: state.lists,
+                    points: state.points,
+                    isClosed: state.isClosed
+                }],
                 future: [],
                 lists: [...state.lists, newList],
                 currentDrawingList: null
@@ -392,7 +441,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     removeList: (id) => {
         set((state) => ({
-            past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+            past: [...state.past, {
+                designAreas: state.designAreas,
+                openings: state.openings,
+                lists: state.lists,
+                points: state.points,
+                isClosed: state.isClosed
+            }],
             future: [],
             lists: state.lists.filter(a => a.id !== id)
         }));
@@ -400,7 +455,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     removeDesignArea: (id) => {
         set((state) => ({
-            past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+            past: [...state.past, {
+                designAreas: state.designAreas,
+                openings: state.openings,
+                lists: state.lists,
+                points: state.points,
+                isClosed: state.isClosed
+            }],
             future: [],
             designAreas: state.designAreas.filter(a => a.id !== id)
         }));
@@ -408,14 +469,26 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     removeOpening: (id) => {
         set((state) => ({
-            past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+            past: [...state.past, {
+                designAreas: state.designAreas,
+                openings: state.openings,
+                lists: state.lists,
+                points: state.points,
+                isClosed: state.isClosed
+            }],
             future: [],
             openings: state.openings.filter(a => a.id !== id)
         }));
     },
 
     clearDesignAreas: () => set((state) => ({
-        past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+        past: [...state.past, {
+            designAreas: state.designAreas,
+            openings: state.openings,
+            lists: state.lists,
+            points: state.points,
+            isClosed: state.isClosed
+        }],
         future: [],
         designAreas: [],
         openings: [],
@@ -431,10 +504,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
             return {
                 past: newPast,
-                future: [{ designAreas: state.designAreas, openings: state.openings, lists: state.lists }, ...state.future],
+                future: [{
+                    designAreas: state.designAreas,
+                    openings: state.openings,
+                    lists: state.lists,
+                    points: state.points,
+                    isClosed: state.isClosed
+                }, ...state.future],
                 designAreas: previous.designAreas,
                 openings: previous.openings,
-                lists: previous.lists
+                lists: previous.lists,
+                points: previous.points,
+                isClosed: previous.isClosed,
+                interactionMode: previous.isClosed ? 'place' : 'draw'
             };
         });
     },
@@ -447,11 +529,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             const newFuture = state.future.slice(1);
 
             return {
-                past: [...state.past, { designAreas: state.designAreas, openings: state.openings, lists: state.lists }],
+                past: [...state.past, {
+                    designAreas: state.designAreas,
+                    openings: state.openings,
+                    lists: state.lists,
+                    points: state.points,
+                    isClosed: state.isClosed
+                }],
                 future: newFuture,
                 designAreas: next.designAreas,
                 openings: next.openings,
-                lists: next.lists
+                lists: next.lists,
+                points: next.points,
+                isClosed: next.isClosed,
+                interactionMode: next.isClosed ? 'place' : 'draw'
             };
         });
     },

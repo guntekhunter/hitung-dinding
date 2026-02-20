@@ -16,7 +16,8 @@ const WallEditor = forwardRef((props, ref) => {
         startDesignArea, updateDesignArea, finishDesignArea, removeDesignArea,
         startOpening, updateOpening, finishOpening, removeOpening,
         startList, updateList, finishList, removeList,
-        zoom, offset, setZoom, setOffset
+        zoom, offset, setZoom, setOffset,
+        undo, redo
     } = useCanvasStore();
 
     // Interaction State
@@ -28,6 +29,9 @@ const WallEditor = forwardRef((props, ref) => {
     const [mounted, setMounted] = useState(false);
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Dynamic Text Scale: Text grows slightly as you zoom in
+    const textScale = 1 / Math.pow(zoom, 0.7);
 
     useEffect(() => {
         setMounted(true);
@@ -49,6 +53,32 @@ const WallEditor = forwardRef((props, ref) => {
             inputRef.current.focus();
         }
     }, [editingIndex]);
+
+    useEffect(() => {
+        const handleKeyDownGlobal = (e: KeyboardEvent) => {
+            // Don't undo/redo if user is typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+                return;
+            }
+
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') {
+                    if (e.shiftKey) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'y') {
+                    redo();
+                    e.preventDefault();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDownGlobal);
+        return () => window.removeEventListener('keydown', handleKeyDownGlobal);
+    }, [undo, redo]);
 
     const handleLabelClick = (index: number, currentLength: string) => {
         // Prevent editing while dragging points or not closed
@@ -181,14 +211,14 @@ const WallEditor = forwardRef((props, ref) => {
                 {/* Product Name */}
                 <Text
                     text={product.name}
-                    fontSize={10 / zoom}
+                    fontSize={10}
                     fill="#1e293b"
                     fontStyle="bold"
                     x={5 / zoom}
                     y={5 / zoom}
                     width={area.width - 10 / zoom}
-                    scaleX={1 / zoom}
-                    scaleY={1 / zoom}
+                    scaleX={textScale}
+                    scaleY={textScale}
                 />
 
                 {/* Width Dimension Line (Bottom) */}
@@ -199,13 +229,13 @@ const WallEditor = forwardRef((props, ref) => {
                     <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text
                         text={`${(absWidth / SCALE).toFixed(2)}m`}
-                        fontSize={9 / zoom}
+                        fontSize={9}
                         fill="#475569"
                         x={area.width / 2}
                         y={-12 / zoom}
                         offsetX={15}
-                        scaleX={1 / zoom}
-                        scaleY={1 / zoom}
+                        scaleX={textScale}
+                        scaleY={textScale}
                     />
                 </Group>
 
@@ -217,14 +247,14 @@ const WallEditor = forwardRef((props, ref) => {
                     <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text
                         text={`${(absHeight / SCALE).toFixed(2)}m`}
-                        fontSize={9 / zoom}
+                        fontSize={9}
                         fill="#475569"
                         x={4 / zoom}
                         y={area.height / 2}
                         rotation={90}
                         offsetX={15}
-                        scaleX={1 / zoom}
-                        scaleY={1 / zoom}
+                        scaleX={textScale}
+                        scaleY={textScale}
                     />
                 </Group>
 
@@ -235,14 +265,14 @@ const WallEditor = forwardRef((props, ref) => {
                         {lines}
                         <Text
                             text={`${count} pcs`}
-                            fontSize={11 / zoom}
+                            fontSize={11}
                             fill="#1e293b"
                             fontStyle="bold"
                             x={area.width / 2}
                             y={area.height / 2}
                             offsetX={20}
-                            scaleX={1 / zoom}
-                            scaleY={1 / zoom}
+                            scaleX={textScale}
+                            scaleY={textScale}
                         />
                     </Group>
                 )}
@@ -293,14 +323,14 @@ const WallEditor = forwardRef((props, ref) => {
                 />
                 <Text
                     text={label}
-                    fontSize={12 / zoom}
+                    fontSize={12}
                     fill="white"
                     fontStyle="bold"
                     align="center"
                     width={opening.width}
                     y={opening.height / 2 - 12 / zoom}
-                    scaleX={1 / zoom}
-                    scaleY={1 / zoom}
+                    scaleX={textScale}
+                    scaleY={textScale}
                 />
 
                 {/* Width Dimension Line (Bottom) */}
@@ -310,13 +340,13 @@ const WallEditor = forwardRef((props, ref) => {
                     <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text
                         text={`${(absWidth / SCALE).toFixed(2)}m`}
-                        fontSize={9 / zoom}
+                        fontSize={9}
                         fill="#475569"
                         x={opening.width / 2}
                         y={-12 / zoom}
                         offsetX={15}
-                        scaleX={1 / zoom}
-                        scaleY={1 / zoom}
+                        scaleX={textScale}
+                        scaleY={textScale}
                     />
                 </Group>
 
@@ -327,14 +357,14 @@ const WallEditor = forwardRef((props, ref) => {
                     <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text
                         text={`${(absHeight / SCALE).toFixed(2)}m`}
-                        fontSize={9 / zoom}
+                        fontSize={9}
                         fill="#475569"
                         x={4 / zoom}
                         y={opening.height / 2}
                         rotation={90}
                         offsetX={15}
-                        scaleX={1 / zoom}
-                        scaleY={1 / zoom}
+                        scaleX={textScale}
+                        scaleY={textScale}
                     />
                 </Group>
             </Group>
@@ -378,14 +408,14 @@ const WallEditor = forwardRef((props, ref) => {
                     x={midX}
                     y={midY}
                     text={`${lengthM}m (${count}btg)`}
-                    fontSize={10 / zoom}
+                    fontSize={10}
                     fill={color}
                     fontStyle="bold"
                     offsetX={30}
                     offsetY={12}
                     rotation={(angle * 180) / Math.PI}
-                    scaleX={1 / zoom}
-                    scaleY={1 / zoom}
+                    scaleX={textScale}
+                    scaleY={textScale}
                 />
             </Group>
         );
@@ -549,26 +579,12 @@ const WallEditor = forwardRef((props, ref) => {
     };
 
     const handleWheel = (e: any) => {
-        e.evt.preventDefault();
         const stage = stageRef.current;
         if (!stage) return;
 
-        // Check for Zoom (Ctrl or Shift or just default behavior as requested)
-        // User asked for Shift + Scrollbar behavior like Figma, which usually means Pan Horizontal
-        // But user said: "zoom out and zoom in using shift scrollbar like figma"
-        // In Figma: Ctrl + Scroll = Zoom, Shift + Scroll = Horizontal Pan, Scroll = Vertical Pan
-        // User specifically asked "shift scrollbar like figma" to ZOOM.
-        // We will support:
-        // 1. Ctrl + Wheel -> Zoom
-        // 2. Shift + Wheel -> Zoom (As requested)
-        // 3. Wheel -> Pan (Vertical/Horizontal based on shift, but overridden here for Zoom)
-
-        // Correction: Figma "Shift + Scroll" = Horizontal Pan.
-        // Maybe user meant "Ctrl + Scroll" like Figma? Or maybe they WANT Shift+Scroll to Zoom.
-        // Let's implement flexibility.
-
         // ZOOM LOGIC
         if (e.evt.ctrlKey || e.evt.shiftKey) {
+            e.evt.preventDefault();
             const scaleBy = 1.1;
             const oldScale = stage.scaleX();
             const pointer = stage.getPointerPosition();
@@ -591,13 +607,9 @@ const WallEditor = forwardRef((props, ref) => {
             };
 
             setOffset(newPos.x, newPos.y);
-        } else {
-            // PAN LOGIC (Simple Scroll Panning)
-            const dx = -e.evt.deltaX;
-            const dy = -e.evt.deltaY;
-
-            setOffset(offset.x + dx, offset.y + dy);
         }
+        // Simple wheel scroll (no Ctrl/Shift) is allowed to propagate to browser,
+        // and doesn't pan the canvas anymore.
     };
 
     if (!mounted) return <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center">Loading Editor...</div>;
@@ -656,9 +668,9 @@ const WallEditor = forwardRef((props, ref) => {
                             y={visibleY + 20 / zoom}
                             fill="#64748b"
                             fontStyle="italic"
-                            fontSize={14 / zoom}
-                            scaleX={1 / zoom}
-                            scaleY={1 / zoom}
+                            fontSize={14}
+                            scaleX={textScale}
+                            scaleY={textScale}
                         />
                     )}
 
@@ -757,14 +769,14 @@ const WallEditor = forwardRef((props, ref) => {
                                         x={(dimX1 + dimX2) / 2}
                                         y={(dimY1 + dimY2) / 2}
                                         text={`${lengthM}m`}
-                                        fontSize={11 / zoom}
+                                        fontSize={11}
                                         fill="#1e293b"
                                         fontStyle="bold"
                                         offsetX={15}
                                         offsetY={15}
                                         rotation={(angle * 180) / Math.PI}
-                                        scaleX={1 / zoom}
-                                        scaleY={1 / zoom}
+                                        scaleX={textScale}
+                                        scaleY={textScale}
                                     />
                                 )}
                             </Group>

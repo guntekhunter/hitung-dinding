@@ -192,13 +192,15 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     return (
         <div style={{
             padding: "24px",
-            borderRight: "1px solid #e2e8f0",
+            borderLeft: "1px solid #e2e8f0",
             width: "350px",
             background: "#f8fafc",
             display: "flex",
             flexDirection: "column",
             gap: "20px",
-            boxShadow: "4px 0 15px rgba(0,0,0,0.05)"
+            boxShadow: "-4px 0 15px rgba(0,0,0,0.05)",
+            overflowY: "auto",
+            maxHeight: "100vh"
         }}>
             <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", margin: 0 }}>
                 Wall Planner
@@ -429,7 +431,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             fontWeight: "600",
                         }}
                     >
-                        🗑️ Clear Areas
+                        🗑️ Hapus Semua Material
                     </button>
                 </div>
             )}
@@ -450,7 +452,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         textAlign: "center",
                         color: "#64748b"
                     }}>
-                        <p style={{ margin: 0 }}>Start clicking on the canvas to draw your wall. Close the shape to see estimates.</p>
+                        <p style={{ margin: 0 }}>Klik area dinding untuk memulai</p>
                     </div>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -487,7 +489,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     fontSize: "16px"
                 }}
             >
-                📥 Export Quote
+                📥 Export Hasil
             </button>
         </div>
     );
