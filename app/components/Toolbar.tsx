@@ -12,22 +12,22 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         interactionMode, setInteractionMode,
         openings, lists,
         undo, redo, past, future,
-        isWallLocked, toggleWallLock
+        isWallLocked, toggleWallLock,
+        wastePercentage, setWastePercentage
     } = useCanvasStore();
     const { area, perimeter } = getDimensions();
 
     // Calculate total area per product and total design area
-    // Calculate total area per product and total design area
-    // NEW: Robust occlusion logic
     const productAreas: Record<string, number> = {};
     const productLengths: Record<string, number> = {};
+    const mouldingBreakdown: Record<string, { segmentLengths: number[], totalSticksNoWaste: number }> = {};
+    const areaBreakdown: Record<string, { areas: { width: number, height: number, sticks: number }[], totalSticksNoWaste: number }> = {};
     let totalDesignArea = 0;
 
     designAreas.forEach((da, index) => {
         const product = PRODUCTS.find(p => p.id === da.productId);
         const isLengthBased = product?.countType === 'length';
 
-        // Start with the full rectangle area/perimeter
         const rect: Rect = {
             x: da.width > 0 ? da.x : da.x + da.width,
             y: da.height > 0 ? da.y : da.y + da.height,
@@ -36,13 +36,22 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         };
 
         if (isLengthBased) {
-            // For moulding rectangles, we count the perimeter
-            const perimeterM = (rect.width * 2 + rect.height * 2) / SCALE;
-            productLengths[da.productId] = (productLengths[da.productId] || 0) + perimeterM;
+            // For moulding rectangles, we count the perimeter as 4 segments (for more accuracy)
+            const segments = [rect.width / SCALE, rect.height / SCALE, rect.width / SCALE, rect.height / SCALE];
+            productLengths[da.productId] = (productLengths[da.productId] || 0) + (rect.width * 2 + rect.height * 2) / SCALE;
+
+            if (!mouldingBreakdown[da.productId]) {
+                mouldingBreakdown[da.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
+            }
+            segments.forEach(len => {
+                if (len > 0) {
+                    mouldingBreakdown[da.productId].segmentLengths.push(len);
+                    mouldingBreakdown[da.productId].totalSticksNoWaste += Math.ceil(len / 2.9);
+                }
+            });
         } else {
             let currentRects: Rect[] = [rect];
 
-            // 1. Subtract Openings (Windows/Doors) - they cut through everything
             openings.forEach(op => {
                 const opRect: Rect = {
                     x: op.width > 0 ? op.x : op.x + op.width,
@@ -58,7 +67,6 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 currentRects = nextRects;
             });
 
-            // 2. Subtract Overlapping Design Areas (only those on top / later in array)
             for (let i = index + 1; i < designAreas.length; i++) {
                 const topDA = designAreas[i];
                 const topRect: Rect = {
@@ -75,7 +83,6 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 currentRects = nextRects;
             }
 
-            // 3. Sum up the remaining area
             let areaPx = 0;
             currentRects.forEach(r => {
                 areaPx += r.width * r.height;
@@ -83,30 +90,71 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
             const areaM2 = areaPx / (SCALE * SCALE);
 
-            if (da.productId) {
+            if (da.productId && product) {
                 productAreas[da.productId] = (productAreas[da.productId] || 0) + areaM2;
                 totalDesignArea += areaM2;
+
+                if (!areaBreakdown[da.productId]) {
+                    areaBreakdown[da.productId] = { areas: [], totalSticksNoWaste: 0 };
+                }
+
+                const wM = Math.abs(da.width) / SCALE;
+                const hM = Math.abs(da.height) / SCALE;
+                const boardH = product.height || 2.9;
+                const boardW = product.width || 1;
+                const columns = Math.ceil(wM / boardW);
+
+                let sticksForArea = 0;
+                const isStripProduct = da.productId.toLowerCase().includes('wallboard') || da.productId.toLowerCase().includes('uvboard');
+
+                if (isStripProduct) {
+                    // Specific logic for wallboard and UV Board (one horizontal line joint)
+                    if (hM <= boardH) {
+                        sticksForArea = columns;
+                    } else {
+                        const kekurangan = hM - boardH;
+                        const totalStripHeight = columns * kekurangan;
+                        const boardTambahan = Math.ceil(totalStripHeight / boardH);
+                        sticksForArea = columns + boardTambahan;
+                    }
+                } else {
+                    // Regular piece-based logic for other area products (wallpanels, etc.)
+                    const sticksPerColumn = Math.ceil(hM / boardH);
+                    sticksForArea = columns * sticksPerColumn;
+                }
+
+                areaBreakdown[da.productId].areas.push({ width: wM, height: hM, sticks: sticksForArea });
+                areaBreakdown[da.productId].totalSticksNoWaste += sticksForArea;
             }
         }
     });
 
-    // Add lengths from lists
     lists.forEach(list => {
         const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
         productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
+
+        if (!mouldingBreakdown[list.productId]) {
+            mouldingBreakdown[list.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
+        }
+        mouldingBreakdown[list.productId].segmentLengths.push(lengthM);
+        mouldingBreakdown[list.productId].totalSticksNoWaste += Math.ceil(lengthM / 2.9);
     });
 
     // Calculate product counts
     const productCounts = PRODUCTS.reduce((acc, product) => {
         if (product.countType === 'length') {
             const totalLength = productLengths[product.id] || 0;
-            const baseCount = Math.ceil(totalLength / (product.unitLength || 1));
-            acc[product.id] = baseCount > 0 ? baseCount + 1 : 0;
+            const totalWithWaste = totalLength * (1 + wastePercentage / 100);
+            const finalCount = Math.ceil(totalWithWaste / (product.unitLength || 2.9));
+            acc[product.id] = finalCount;
         } else {
-            const area = productAreas[product.id] || 0;
-            const unitArea = product.width * product.height;
-            const baseCount = Math.ceil(area / unitArea);
-            acc[product.id] = baseCount > 0 ? baseCount + 1 : 0;
+            const breakdown = areaBreakdown[product.id];
+            if (breakdown) {
+                // Apply waste to the total sticks sum
+                acc[product.id] = Math.ceil(breakdown.totalSticksNoWaste * (1 + wastePercentage / 100));
+            } else {
+                acc[product.id] = 0;
+            }
         }
         return acc;
     }, {} as Record<string, number>);
@@ -435,6 +483,30 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 </div>
             </div>
 
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
+                    Waste Percentage (%)
+                </h3>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                        type="number"
+                        value={wastePercentage}
+                        onChange={(e) => setWastePercentage(Number(e.target.value))}
+                        style={{
+                            width: "80px",
+                            padding: "8px",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            textAlign: "center",
+                            fontSize: "14px",
+                            fontWeight: "bold",
+                            color: "#1e293b"
+                        }}
+                    />
+                    <span style={{ fontSize: "14px", color: "#64748b" }}>Default 10%</span>
+                </div>
+            </div>
+
             {isClosed && (
                 <div style={{ display: "flex", gap: "10px" }}>
                     <button
@@ -479,15 +551,63 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <StatCard label="Total Design Area" value={`${Math.ceil(totalDesignArea)} m²`} icon="🎯" />
 
                         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {PRODUCTS.map(product => (
-                                <MaterialItem
-                                    key={product.id}
-                                    label={product.name}
-                                    sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
-                                    count={productCounts[product.id] || 0}
-                                    unit={product.countType === 'length' ? "btg" : "pcs"}
-                                />
-                            ))}
+                            {PRODUCTS.map(product => {
+                                const count = productCounts[product.id] || 0;
+                                const mBreakdown = mouldingBreakdown[product.id];
+                                const aBreakdown = areaBreakdown[product.id];
+                                const totalValue = product.countType === 'length' ? (productLengths[product.id] || 0) : (productAreas[product.id] || 0);
+                                const unit = product.countType === 'length' ? "btg" : "pcs";
+
+                                return (
+                                    <div key={product.id}>
+                                        <MaterialItem
+                                            label={product.name}
+                                            sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
+                                            count={count}
+                                            unit={unit}
+                                        />
+                                        {count > 0 && (
+                                            <div style={{
+                                                fontSize: "11px",
+                                                color: "#64748b",
+                                                background: "#f1f5f9",
+                                                padding: "8px",
+                                                borderRadius: "6px",
+                                                marginTop: "4px",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "2px"
+                                            }}>
+                                                {product.countType === 'length' ? (
+                                                    <>
+                                                        <div>📏 Total Panjang: <b>{totalValue.toFixed(2)}m</b></div>
+                                                        <div>♻️ Dengan Waste ({wastePercentage}%): <b>{(totalValue * (1 + wastePercentage / 100)).toFixed(2)}m</b></div>
+                                                        {mBreakdown && (
+                                                            <>
+                                                                <div>📦 Batang per sisi (Pcs/Side): {mBreakdown.segmentLengths.map(l => Math.ceil(l / 2.9)).join(', ')}</div>
+                                                                <div>🔢 Total Batang (Tanpa Waste): <b>{mBreakdown.totalSticksNoWaste} btg</b></div>
+                                                            </>
+                                                        )}
+                                                        <div>✅ Total Batang (Dengan Waste): <b>{count} btg</b></div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div>📐 Total Luas: <b>{totalValue.toFixed(2)}m²</b></div>
+                                                        <div>♻️ Dengan Waste ({wastePercentage}%): <b>{(totalValue * (1 + wastePercentage / 100)).toFixed(2)}m²</b></div>
+                                                        {aBreakdown && (
+                                                            <>
+                                                                <div>📦 Batang per area (Pcs/Area): {aBreakdown.areas.map(a => a.sticks).join(', ')}</div>
+                                                                <div>🔢 Total Batang (Tanpa Waste): <b>{aBreakdown.totalSticksNoWaste} pcs</b></div>
+                                                            </>
+                                                        )}
+                                                        <div>✅ Total Batang (Dengan Waste): <b>{count} pcs</b></div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

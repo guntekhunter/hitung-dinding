@@ -15,7 +15,7 @@ export type Product = {
 };
 
 export const PRODUCTS: Product[] = [
-    { id: "wallpanel", name: "Wallpanel (16cm)", width: 0.16, height: 2.9, color: "rgba(14, 165, 233, 0.4)" },
+    { id: "wallpanel", name: "Wallpanel (15cm)", width: 0.15, height: 2.9, color: "rgba(14, 165, 233, 0.4)" },
     { id: "wallpanel30", name: "Wallpanel (30cm)", width: 0.30, height: 2.9, color: "rgba(2, 132, 199, 0.4)" },
     { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
     { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)" },
@@ -141,6 +141,10 @@ type CanvasState = {
     isWallLocked: boolean;
     toggleWallLock: () => void;
 
+    // Waste Percentage
+    wastePercentage: number;
+    setWastePercentage: (waste: number) => void;
+
     // Internal
     _saveHistory: () => void;
 };
@@ -165,6 +169,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     offset: { x: 0, y: 0 },
     setZoom: (zoom: number) => set({ zoom }),
     setOffset: (x: number, y: number) => set({ offset: { x, y } }),
+
+    wastePercentage: 10,
+    setWastePercentage: (waste: number) => set({ wastePercentage: waste }),
 
     toggleWallLock: () => set((state) => ({ isWallLocked: !state.isWallLocked })),
 
