@@ -11,14 +11,19 @@ const WallEditor = forwardRef((props, ref) => {
         getStage: () => stageRef.current
     }));
     const {
-        points, isClosed, addPoint, updatePoint, updateEdgeLength,
-        interactionMode, designAreas, currentDrawingArea, openings, lists, currentDrawingList,
+        walls, activeWallId, addPoint, updatePoint, updateEdgeLength,
+        interactionMode, currentDrawingArea, currentDrawingList,
         startDesignArea, updateDesignArea, finishDesignArea, removeDesignArea,
         startOpening, updateOpening, finishOpening, removeOpening,
         startList, updateList, finishList, removeList,
         zoom, offset, setZoom, setOffset,
-        undo, redo, isWallLocked
+        undo, redo
     } = useCanvasStore();
+
+    const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
+    const {
+        points, isClosed, designAreas, openings, lists, isWallLocked
+    } = activeWall;
 
     // Interaction State
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -152,7 +157,7 @@ const WallEditor = forwardRef((props, ref) => {
         const areaM2 = intersectAreaPx2 / (SCALE * SCALE);
         const productAreaM2 = product.width * product.height;
         const baseCount = Math.ceil(areaM2 / productAreaM2);
-        const count = baseCount > 0 ? baseCount + 1 : 0;
+        const count = baseCount;
 
         const lines = [];
 
@@ -382,7 +387,7 @@ const WallEditor = forwardRef((props, ref) => {
         const midX = (list.x1 + list.x2) / 2;
         const midY = (list.y1 + list.y2) / 2;
         const baseCount = Math.ceil((lengthPx / SCALE) / unitLength);
-        const count = baseCount > 0 ? baseCount + 1 : 0;
+        const count = baseCount;
         const angle = Math.atan2(dy, dx);
         const tickLen = 6 / zoom;
 
@@ -448,7 +453,7 @@ const WallEditor = forwardRef((props, ref) => {
                 {currentDrawingList && renderListContent(currentDrawingList)}
             </Group>
         );
-    }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode, zoom]);
+    }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode, zoom, points]);
 
     const getPointerPosition = () => {
         const stage = stageRef.current;
@@ -611,8 +616,6 @@ const WallEditor = forwardRef((props, ref) => {
 
             setOffset(newPos.x, newPos.y);
         }
-        // Simple wheel scroll (no Ctrl/Shift) is allowed to propagate to browser,
-        // and doesn't pan the canvas anymore.
     };
 
     if (!mounted) return <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center">Loading Editor...</div>;

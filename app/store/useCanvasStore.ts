@@ -56,37 +56,31 @@ export type ListElement = {
     y2: number;
 };
 
-type HistoryEntry = {
+export type Wall = {
+    id: string;
+    name: string;
+    points: Point[];
+    isClosed: boolean;
     designAreas: DesignArea[];
     openings: Opening[];
     lists: ListElement[];
-    points: Point[];
-    isClosed: boolean;
+    isWallLocked: boolean;
 };
 
-export type Wall = {
-    id: string;
-    points: Point[];
-    isClosed: boolean;
-    area: number;
-    perimeter: number;
-    name: string;
+type HistoryEntry = {
+    walls: Wall[];
 };
 
 type CanvasState = {
     // Current editing state
-    points: Point[];
-    isClosed: boolean;
-    direction: 'horizontal' | 'vertical';
+    walls: Wall[];
+    activeWallId: string | null;
 
     // Interaction mode
     interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list';
 
     // Product state
     selectedProductId: string;
-    designAreas: DesignArea[];
-    openings: Opening[];
-    lists: ListElement[];
     currentDrawingArea: DesignArea | Opening | null;
     currentDrawingList: ListElement | null;
 
@@ -95,6 +89,12 @@ type CanvasState = {
     future: HistoryEntry[];
 
     // Actions
+    addWall: () => void;
+    removeWall: (id: string) => void;
+    setActiveWall: (id: string) => void;
+    updateWallName: (id: string, name: string) => void;
+
+    // Wall specific actions
     addPoint: (x: number, y: number) => void;
     updatePoint: (index: number, x: number, y: number) => void;
     updateEdgeLength: (index: number, lengthMeters: number) => void;
@@ -128,8 +128,7 @@ type CanvasState = {
     redo: () => void;
 
     // Helper to calculate
-    // Helper to calculate
-    getDimensions: () => { area: number; perimeter: number };
+    getDimensions: (wallId?: string) => { area: number; perimeter: number };
 
     // Zoom and Pan
     zoom: number;
@@ -138,7 +137,6 @@ type CanvasState = {
     setOffset: (x: number, y: number) => void;
 
     // Wall Lock state
-    isWallLocked: boolean;
     toggleWallLock: () => void;
 
     // Waste Percentage
@@ -149,20 +147,26 @@ type CanvasState = {
     _saveHistory: () => void;
 };
 
-export const useCanvasStore = create<CanvasState>((set, get) => ({
+const initialWall: Wall = {
+    id: 'wall-1',
+    name: 'Wall 1',
     points: [],
     isClosed: false,
-    direction: 'horizontal',
-    interactionMode: 'draw',
-    selectedProductId: PRODUCTS[0].id,
     designAreas: [],
     openings: [],
     lists: [],
+    isWallLocked: false,
+};
+
+export const useCanvasStore = create<CanvasState>((set, get) => ({
+    walls: [initialWall],
+    activeWallId: 'wall-1',
+    interactionMode: 'draw',
+    selectedProductId: PRODUCTS[0].id,
     currentDrawingArea: null,
     currentDrawingList: null,
     past: [],
     future: [],
-    isWallLocked: false,
 
     // Zoom and Pan
     zoom: 1,
@@ -173,101 +177,157 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     wastePercentage: 10,
     setWastePercentage: (waste: number) => set({ wastePercentage: waste }),
 
-    toggleWallLock: () => set((state) => ({ isWallLocked: !state.isWallLocked })),
+    addWall: () => {
+        const { walls } = get();
+        const id = `wall-${Date.now()}`;
+        const newWall: Wall = {
+            id,
+            name: `Wall ${walls.length + 1}`,
+            points: [],
+            isClosed: false,
+            designAreas: [],
+            openings: [],
+            lists: [],
+            isWallLocked: false,
+        };
+        get()._saveHistory();
+        set({
+            walls: [...walls, newWall],
+            activeWallId: id,
+            interactionMode: 'draw'
+        });
+    },
+
+    removeWall: (id) => {
+        const { walls, activeWallId } = get();
+        if (walls.length <= 1) return; // Keep at least one wall
+        get()._saveHistory();
+        const newWalls = walls.filter(w => w.id !== id);
+        let newActiveId = activeWallId;
+        if (activeWallId === id) {
+            newActiveId = newWalls[0].id;
+        }
+        set({ walls: newWalls, activeWallId: newActiveId });
+    },
+
+    setActiveWall: (id) => set({ activeWallId: id }),
+
+    updateWallName: (id, name) => {
+        set((state) => ({
+            walls: state.walls.map(w => w.id === id ? { ...w, name } : w)
+        }));
+    },
+
+    toggleWallLock: () => {
+        const { activeWallId } = get();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === activeWallId ? { ...w, isWallLocked: !w.isWallLocked } : w
+            )
+        }));
+    },
 
     // Internal helper to save state for undo/redo
     _saveHistory: () => {
-        const { designAreas, openings, lists, points, isClosed, past } = get();
+        const { walls, past } = get();
         set({
-            past: [...past, {
-                designAreas: [...designAreas],
-                openings: [...openings],
-                lists: [...lists],
-                points: [...points],
-                isClosed
-            }],
-            future: [], // Clear future when a new action is performed
+            past: [...past, { walls: JSON.parse(JSON.stringify(walls)) }],
+            future: [],
         });
     },
 
     addPoint: (x, y) => {
-        const { points, isClosed } = get();
-        if (isClosed) return;
+        const { walls, activeWallId } = get();
+        const activeWall = walls.find(w => w.id === activeWallId);
+        if (!activeWall || activeWall.isClosed) return;
 
         // Check if closing
-        if (points.length >= 3) {
-            const first = points[0];
+        if (activeWall.points.length >= 3) {
+            const first = activeWall.points[0];
             const dist = Math.hypot(first.x - x, first.y - y);
             if (dist < 20) { // Snap to close
                 get()._saveHistory();
-                set({ isClosed: true, interactionMode: 'place' });
+                set({
+                    walls: walls.map(w =>
+                        w.id === activeWallId ? { ...w, isClosed: true } : w
+                    ),
+                    interactionMode: 'place'
+                });
                 return;
             }
         }
         get()._saveHistory();
-        set({ points: [...points, { x, y }] });
-    },
-
-    updatePoint: (index, x, y) => {
-        set((state) => {
-            const newPoints = [...state.points];
-            newPoints[index] = { x, y };
-            return { points: newPoints };
+        set({
+            walls: walls.map(w =>
+                w.id === activeWallId ? { ...w, points: [...w.points, { x, y }] } : w
+            )
         });
     },
 
+    updatePoint: (index, x, y) => {
+        const { activeWallId } = get();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === activeWallId
+                    ? { ...w, points: w.points.map((p, i) => i === index ? { x, y } : p) }
+                    : w
+            )
+        }));
+    },
+
     updateEdgeLength: (index, lengthMeters) => {
+        const { activeWallId, walls } = get();
+        const activeWall = walls.find(w => w.id === activeWallId);
+        if (!activeWall) return;
+
         get()._saveHistory();
         set((state) => {
-            const points = [...state.points];
-            if (index >= points.length) return state;
+            const updatedWalls = state.walls.map(w => {
+                if (w.id !== activeWallId) return w;
 
-            const p1 = points[index];
-            const p2Index = (index + 1) % points.length;
-            const p2 = points[p2Index];
+                const points = [...w.points];
+                if (index >= points.length) return w;
 
-            const currentLengthPx = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-            const targetLengthPx = lengthMeters * SCALE;
+                const p1 = points[index];
+                const p2Index = (index + 1) % points.length;
+                const p2 = points[p2Index];
 
-            if (currentLengthPx === 0) return state;
+                const currentLengthPx = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                const targetLengthPx = lengthMeters * SCALE;
 
-            const ratio = targetLengthPx / currentLengthPx;
+                if (currentLengthPx === 0) return w;
 
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
+                const ratio = targetLengthPx / currentLengthPx;
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
 
-            const newX = p1.x + dx * ratio;
-            const newY = p1.y + dy * ratio;
+                const newX = p1.x + dx * ratio;
+                const newY = p1.y + dy * ratio;
 
-            const deltaX = newX - p2.x;
-            const deltaY = newY - p2.y;
+                const deltaX = newX - p2.x;
+                const deltaY = newY - p2.y;
 
-            // Move the target point
-            points[p2Index] = { x: newX, y: newY };
+                points[p2Index] = { x: newX, y: newY };
 
-            // PUSH subsequent points to preserve shape
-            // Only push if we're not moving point 0 (which happens for the closing edge)
-            if (index < points.length - 1) {
-                for (let i = index + 2; i < points.length; i++) {
-                    points[i] = {
-                        x: points[i].x + deltaX,
-                        y: points[i].y + deltaY
-                    };
+                if (index < points.length - 1) {
+                    for (let i = index + 2; i < points.length; i++) {
+                        points[i] = {
+                            x: points[i].x + deltaX,
+                            y: points[i].y + deltaY
+                        };
+                    }
                 }
-            }
-
-            return { points };
+                return { ...w, points };
+            });
+            return { walls: updatedWalls };
         });
     },
 
     reset: () => {
         get()._saveHistory();
         set({
-            points: [],
-            isClosed: false,
-            designAreas: [],
-            openings: [],
-            lists: [],
+            walls: [initialWall],
+            activeWallId: initialWall.id,
             interactionMode: 'draw',
             currentDrawingArea: null,
             currentDrawingList: null
@@ -275,7 +335,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
-
     setInteractionMode: (mode) => set({ interactionMode: mode }),
 
     startDesignArea: (x, y) => {
@@ -301,13 +360,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 y,
                 width: 0,
                 height: 0
-            } as any // Flexible typing for temp drawing
+            } as any
         });
     },
 
-    updateOpening: (x, y) => {
-        get().updateDesignArea(x, y);
-    },
+    updateOpening: (x, y) => get().updateDesignArea(x, y),
 
     updateDesignArea: (x, y) => {
         set((state) => {
@@ -325,15 +382,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     finishDesignArea: () => {
         set((state) => {
             if (!state.currentDrawingArea || !('productId' in state.currentDrawingArea)) return state;
-
             const area = state.currentDrawingArea as DesignArea;
-
-            // Only add if it has some dimension
             if (Math.abs(area.width) < 5 || Math.abs(area.height) < 5) {
                 return { currentDrawingArea: null };
             }
 
-            // Normalize rectangle
             const normalized: DesignArea = {
                 id: Math.random().toString(36).substr(2, 9),
                 productId: area.productId,
@@ -343,16 +396,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 height: Math.abs(area.height),
             };
 
+            const updatedWalls = state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, designAreas: [...w.designAreas, normalized] }
+                    : w
+            );
+
             return {
-                past: [...state.past, {
-                    designAreas: state.designAreas,
-                    openings: state.openings,
-                    lists: state.lists,
-                    points: state.points,
-                    isClosed: state.isClosed
-                }],
+                past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
                 future: [],
-                designAreas: [...state.designAreas, normalized],
+                walls: updatedWalls,
                 currentDrawingArea: null
             };
         });
@@ -361,15 +414,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     finishOpening: () => {
         set((state) => {
             if (!state.currentDrawingArea || !('type' in state.currentDrawingArea)) return state;
-
             const area = state.currentDrawingArea as Opening;
-
-            // Only add if it has some dimension
             if (Math.abs(area.width) < 5 || Math.abs(area.height) < 5) {
                 return { currentDrawingArea: null };
             }
 
-            // Normalize rectangle
             const normalized: Opening = {
                 id: Math.random().toString(36).substr(2, 9),
                 type: area.type,
@@ -379,16 +428,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 height: Math.abs(area.height),
             };
 
+            const updatedWalls = state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, openings: [...w.openings, normalized] }
+                    : w
+            );
+
             return {
-                past: [...state.past, {
-                    designAreas: state.designAreas,
-                    openings: state.openings,
-                    lists: state.lists,
-                    points: state.points,
-                    isClosed: state.isClosed
-                }],
+                past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
                 future: [],
-                openings: [...state.openings, normalized],
+                walls: updatedWalls,
                 currentDrawingArea: null
             };
         });
@@ -425,29 +474,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     finishList: () => {
         set((state) => {
             if (!state.currentDrawingList) return state;
-
             const list = state.currentDrawingList;
             const length = Math.hypot(list.x2 - list.x1, list.y2 - list.y1);
-
-            if (length < 5) {
-                return { currentDrawingList: null };
-            }
+            if (length < 5) return { currentDrawingList: null };
 
             const newList: ListElement = {
                 ...list,
                 id: Math.random().toString(36).substr(2, 9)
             };
 
+            const updatedWalls = state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, lists: [...w.lists, newList] }
+                    : w
+            );
+
             return {
-                past: [...state.past, {
-                    designAreas: state.designAreas,
-                    openings: state.openings,
-                    lists: state.lists,
-                    points: state.points,
-                    isClosed: state.isClosed
-                }],
+                past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
                 future: [],
-                lists: [...state.lists, newList],
+                walls: updatedWalls,
                 currentDrawingList: null
             };
         });
@@ -455,82 +500,61 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     removeList: (id) => {
         set((state) => ({
-            past: [...state.past, {
-                designAreas: state.designAreas,
-                openings: state.openings,
-                lists: state.lists,
-                points: state.points,
-                isClosed: state.isClosed
-            }],
+            past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
             future: [],
-            lists: state.lists.filter(a => a.id !== id)
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, lists: w.lists.filter(l => l.id !== id) }
+                    : w
+            )
         }));
     },
 
     removeDesignArea: (id) => {
         set((state) => ({
-            past: [...state.past, {
-                designAreas: state.designAreas,
-                openings: state.openings,
-                lists: state.lists,
-                points: state.points,
-                isClosed: state.isClosed
-            }],
+            past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
             future: [],
-            designAreas: state.designAreas.filter(a => a.id !== id)
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, designAreas: w.designAreas.filter(a => a.id !== id) }
+                    : w
+            )
         }));
     },
 
     removeOpening: (id) => {
         set((state) => ({
-            past: [...state.past, {
-                designAreas: state.designAreas,
-                openings: state.openings,
-                lists: state.lists,
-                points: state.points,
-                isClosed: state.isClosed
-            }],
+            past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
             future: [],
-            openings: state.openings.filter(a => a.id !== id)
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, openings: w.openings.filter(o => o.id !== id) }
+                    : w
+            )
         }));
     },
 
-    clearDesignAreas: () => set((state) => ({
-        past: [...state.past, {
-            designAreas: state.designAreas,
-            openings: state.openings,
-            lists: state.lists,
-            points: state.points,
-            isClosed: state.isClosed
-        }],
-        future: [],
-        designAreas: [],
-        openings: [],
-        lists: []
-    })),
+    clearDesignAreas: () => {
+        set((state) => ({
+            past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
+            future: [],
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, designAreas: [], openings: [], lists: [] }
+                    : w
+            )
+        }));
+    },
 
     undo: () => {
         set((state) => {
             if (state.past.length === 0) return state;
-
             const previous = state.past[state.past.length - 1];
             const newPast = state.past.slice(0, -1);
-
             return {
                 past: newPast,
-                future: [{
-                    designAreas: state.designAreas,
-                    openings: state.openings,
-                    lists: state.lists,
-                    points: state.points,
-                    isClosed: state.isClosed
-                }, ...state.future],
-                designAreas: previous.designAreas,
-                openings: previous.openings,
-                lists: previous.lists,
-                points: previous.points,
-                isClosed: previous.isClosed,
-                interactionMode: previous.isClosed ? 'place' : 'draw'
+                future: [{ walls: JSON.parse(JSON.stringify(state.walls)) }, ...state.future],
+                walls: previous.walls,
             };
         });
     },
@@ -538,35 +562,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     redo: () => {
         set((state) => {
             if (state.future.length === 0) return state;
-
             const next = state.future[0];
             const newFuture = state.future.slice(1);
-
             return {
-                past: [...state.past, {
-                    designAreas: state.designAreas,
-                    openings: state.openings,
-                    lists: state.lists,
-                    points: state.points,
-                    isClosed: state.isClosed
-                }],
+                past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
                 future: newFuture,
-                designAreas: next.designAreas,
-                openings: next.openings,
-                lists: next.lists,
-                points: next.points,
-                isClosed: next.isClosed,
-                interactionMode: next.isClosed ? 'place' : 'draw'
+                walls: next.walls,
             };
         });
     },
 
-    getDimensions: () => {
-        const { points, isClosed } = get();
-        if (!isClosed || points.length < 3) return { area: 0, perimeter: 0 };
+    getDimensions: (wallId) => {
+        const { walls, activeWallId } = get();
+        const id = wallId || activeWallId;
+        const wall = walls.find(w => w.id === id);
+        if (!wall || !wall.isClosed || wall.points.length < 3) return { area: 0, perimeter: 0 };
         return {
-            area: polygonArea(points) / (SCALE * SCALE), // Convert px^2 to m^2
-            perimeter: polygonPerimeter(points) / SCALE, // Convert px to m
+            area: polygonArea(wall.points) / (SCALE * SCALE),
+            perimeter: polygonPerimeter(wall.points) / SCALE,
         };
     }
 }));

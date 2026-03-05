@@ -1,163 +1,180 @@
 "use client";
 
-import { useCanvasStore, PRODUCTS, SCALE } from "../store/useCanvasStore";
+import { useCanvasStore, PRODUCTS, SCALE, Wall } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
 import { subtractRect, Rect } from "../function/geometry";
 
 export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const {
-        getDimensions, reset, isClosed,
+        walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName,
+        getDimensions, reset,
         selectedProductId, setSelectedProduct,
-        designAreas, clearDesignAreas,
         interactionMode, setInteractionMode,
-        openings, lists,
         undo, redo, past, future,
-        isWallLocked, toggleWallLock,
         wastePercentage, setWastePercentage
     } = useCanvasStore();
-    const { area, perimeter } = getDimensions();
 
-    // Calculate total area per product and total design area
-    const productAreas: Record<string, number> = {};
-    const productLengths: Record<string, number> = {};
-    const mouldingBreakdown: Record<string, { segmentLengths: number[], totalSticksNoWaste: number }> = {};
-    const areaBreakdown: Record<string, { areas: { width: number, height: number, sticks: number }[], totalSticksNoWaste: number }> = {};
-    let totalDesignArea = 0;
+    const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
+    const { isClosed, designAreas, openings, lists, isWallLocked } = activeWall;
+    const { area, perimeter } = getDimensions(activeWallId || undefined);
 
-    designAreas.forEach((da, index) => {
-        const product = PRODUCTS.find(p => p.id === da.productId);
-        const isLengthBased = product?.countType === 'length';
+    // Helper to calculate materials for a single wall
+    const calculateWallMaterials = (wall: Wall) => {
+        const wallProductAreas: Record<string, number> = {};
+        const wallProductLengths: Record<string, number> = {};
+        const wallMouldingBreakdown: Record<string, { segmentLengths: number[], totalSticksNoWaste: number }> = {};
+        const wallAreaBreakdown: Record<string, { areas: { width: number, height: number, sticks: number }[], totalSticksNoWaste: number }> = {};
+        let wallDesignArea = 0;
 
-        const rect: Rect = {
-            x: da.width > 0 ? da.x : da.x + da.width,
-            y: da.height > 0 ? da.y : da.y + da.height,
-            width: Math.abs(da.width),
-            height: Math.abs(da.height)
-        };
+        const wallLeftovers: Record<string, number[]> = {};
 
-        if (isLengthBased) {
-            // For moulding rectangles, we count the perimeter as 4 segments (for more accuracy)
-            const segments = [rect.width / SCALE, rect.height / SCALE, rect.width / SCALE, rect.height / SCALE];
-            productLengths[da.productId] = (productLengths[da.productId] || 0) + (rect.width * 2 + rect.height * 2) / SCALE;
+        wall.designAreas.forEach((da: any, index: number) => {
+            const product = PRODUCTS.find(p => p.id === da.productId);
+            const isLengthBased = product?.countType === 'length';
 
-            if (!mouldingBreakdown[da.productId]) {
-                mouldingBreakdown[da.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
-            }
-            segments.forEach(len => {
-                if (len > 0) {
-                    mouldingBreakdown[da.productId].segmentLengths.push(len);
-                    mouldingBreakdown[da.productId].totalSticksNoWaste += Math.ceil(len / 2.9);
+            const rect: Rect = {
+                x: da.width > 0 ? da.x : da.x + da.width,
+                y: da.height > 0 ? da.y : da.y + da.height,
+                width: Math.abs(da.width),
+                height: Math.abs(da.height)
+            };
+
+            if (isLengthBased) {
+                const segments = [rect.width / SCALE, rect.height / SCALE, rect.width / SCALE, rect.height / SCALE];
+                wallProductLengths[da.productId] = (wallProductLengths[da.productId] || 0) + (rect.width * 2 + rect.height * 2) / SCALE;
+
+                if (!wallMouldingBreakdown[da.productId]) {
+                    wallMouldingBreakdown[da.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
                 }
-            });
-        } else {
-            let currentRects: Rect[] = [rect];
-
-            openings.forEach(op => {
-                const opRect: Rect = {
-                    x: op.width > 0 ? op.x : op.x + op.width,
-                    y: op.height > 0 ? op.y : op.y + op.height,
-                    width: Math.abs(op.width),
-                    height: Math.abs(op.height)
-                };
-
-                const nextRects: Rect[] = [];
-                currentRects.forEach(r => {
-                    nextRects.push(...subtractRect(r, opRect));
-                });
-                currentRects = nextRects;
-            });
-
-            for (let i = index + 1; i < designAreas.length; i++) {
-                const topDA = designAreas[i];
-                const topRect: Rect = {
-                    x: topDA.width > 0 ? topDA.x : topDA.x + topDA.width,
-                    y: topDA.height > 0 ? topDA.y : topDA.y + topDA.height,
-                    width: Math.abs(topDA.width),
-                    height: Math.abs(topDA.height)
-                };
-
-                const nextRects: Rect[] = [];
-                currentRects.forEach(r => {
-                    nextRects.push(...subtractRect(r, topRect));
-                });
-                currentRects = nextRects;
-            }
-
-            let areaPx = 0;
-            currentRects.forEach(r => {
-                areaPx += r.width * r.height;
-            });
-
-            const areaM2 = areaPx / (SCALE * SCALE);
-
-            if (da.productId && product) {
-                productAreas[da.productId] = (productAreas[da.productId] || 0) + areaM2;
-                totalDesignArea += areaM2;
-
-                if (!areaBreakdown[da.productId]) {
-                    areaBreakdown[da.productId] = { areas: [], totalSticksNoWaste: 0 };
-                }
-
-                const wM = Math.abs(da.width) / SCALE;
-                const hM = Math.abs(da.height) / SCALE;
-                const boardH = product.height || 2.9;
-                const boardW = product.width || 1;
-                const columns = Math.ceil(wM / boardW);
-
-                let sticksForArea = 0;
-                const isStripProduct = da.productId.toLowerCase().includes('wallboard') || da.productId.toLowerCase().includes('uvboard');
-
-                if (isStripProduct) {
-                    // Specific logic for wallboard and UV Board (one horizontal line joint)
-                    if (hM <= boardH) {
-                        sticksForArea = columns;
-                    } else {
-                        const kekurangan = hM - boardH;
-                        const totalStripHeight = columns * kekurangan;
-                        const boardTambahan = Math.ceil(totalStripHeight / boardH);
-                        sticksForArea = columns + boardTambahan;
+                segments.forEach(len => {
+                    if (len > 0) {
+                        wallMouldingBreakdown[da.productId].segmentLengths.push(len);
+                        wallMouldingBreakdown[da.productId].totalSticksNoWaste += Math.ceil(len / 2.9);
                     }
-                } else {
-                    // Regular piece-based logic for other area products (wallpanels, etc.)
-                    const sticksPerColumn = Math.ceil(hM / boardH);
-                    sticksForArea = columns * sticksPerColumn;
+                });
+            } else {
+                let currentRects: Rect[] = [rect];
+                wall.openings.forEach((op: any) => {
+                    const opRect: Rect = {
+                        x: op.width > 0 ? op.x : op.x + op.width,
+                        y: op.height > 0 ? op.y : op.y + op.height,
+                        width: Math.abs(op.width),
+                        height: Math.abs(op.height)
+                    };
+                    const nextRects: Rect[] = [];
+                    currentRects.forEach(r => nextRects.push(...subtractRect(r, opRect)));
+                    currentRects = nextRects;
+                });
+
+                for (let i = index + 1; i < wall.designAreas.length; i++) {
+                    const topDA = wall.designAreas[i];
+                    const topRect: Rect = {
+                        x: topDA.width > 0 ? topDA.x : topDA.x + topDA.width,
+                        y: topDA.height > 0 ? topDA.y : topDA.y + topDA.height,
+                        width: Math.abs(topDA.width),
+                        height: Math.abs(topDA.height)
+                    };
+                    const nextRects: Rect[] = [];
+                    currentRects.forEach(r => nextRects.push(...subtractRect(r, topRect)));
+                    currentRects = nextRects;
                 }
 
-                areaBreakdown[da.productId].areas.push({ width: wM, height: hM, sticks: sticksForArea });
-                areaBreakdown[da.productId].totalSticksNoWaste += sticksForArea;
+                let areaPx = 0;
+                currentRects.forEach(r => areaPx += r.width * r.height);
+                const areaM2 = areaPx / (SCALE * SCALE);
+
+                if (da.productId && product) {
+                    wallProductAreas[da.productId] = (wallProductAreas[da.productId] || 0) + areaM2;
+                    wallDesignArea += areaM2;
+
+                    if (!wallAreaBreakdown[da.productId]) {
+                        wallAreaBreakdown[da.productId] = { areas: [], totalSticksNoWaste: 0 };
+                    }
+
+                    if (!wallLeftovers[da.productId]) wallLeftovers[da.productId] = [];
+
+                    const wM = Math.abs(da.width) / SCALE;
+                    const hM = Math.abs(da.height) / SCALE;
+                    const boardH = product.height || 2.9;
+                    const boardW = product.width || 1;
+                    const columns = Math.ceil(wM / boardW);
+
+                    let totalSticksUsedForThisArea = 0;
+                    const pool = wallLeftovers[da.productId];
+
+                    for (let c = 0; c < columns; c++) {
+                        let needed = hM;
+                        while (needed > 0.001) {
+                            pool.sort((a, b) => a - b); // Smallest that fits
+                            const foundIdx = pool.findIndex(l => l >= needed - 0.001);
+
+                            if (foundIdx !== -1) {
+                                pool[foundIdx] -= needed;
+                                if (pool[foundIdx] < 0.01) pool.splice(foundIdx, 1);
+                                needed = 0;
+                            } else {
+                                // Use a new stick
+                                totalSticksUsedForThisArea++;
+                                const used = Math.min(needed, boardH);
+                                const leftover = boardH - used;
+                                if (leftover > 0.01) pool.push(leftover);
+                                needed -= used;
+                            }
+                        }
+                    }
+
+                    wallAreaBreakdown[da.productId].areas.push({ width: wM, height: hM, sticks: totalSticksUsedForThisArea });
+                    wallAreaBreakdown[da.productId].totalSticksNoWaste += totalSticksUsedForThisArea;
+                }
             }
-        }
-    });
+        });
 
-    lists.forEach(list => {
-        const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
-        productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
+        wall.lists.forEach((list: any) => {
+            const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
+            wallProductLengths[list.productId] = (wallProductLengths[list.productId] || 0) + lengthM;
 
-        if (!mouldingBreakdown[list.productId]) {
-            mouldingBreakdown[list.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
-        }
-        mouldingBreakdown[list.productId].segmentLengths.push(lengthM);
-        mouldingBreakdown[list.productId].totalSticksNoWaste += Math.ceil(lengthM / 2.9);
-    });
+            if (!wallMouldingBreakdown[list.productId]) {
+                wallMouldingBreakdown[list.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
+            }
+            wallMouldingBreakdown[list.productId].segmentLengths.push(lengthM);
+            wallMouldingBreakdown[list.productId].totalSticksNoWaste += Math.ceil(lengthM / 2.9);
+        });
 
-    // Calculate product counts
-    const productCounts = PRODUCTS.reduce((acc, product) => {
-        if (product.countType === 'length') {
-            const totalLength = productLengths[product.id] || 0;
-            const totalWithWaste = totalLength * (1 + wastePercentage / 100);
-            const finalCount = Math.ceil(totalWithWaste / (product.unitLength || 2.9));
-            acc[product.id] = finalCount;
-        } else {
-            const breakdown = areaBreakdown[product.id];
-            if (breakdown) {
-                // Apply waste to the total sticks sum
-                acc[product.id] = Math.ceil(breakdown.totalSticksNoWaste * (1 + wastePercentage / 100));
+        const counts = PRODUCTS.reduce((acc, product) => {
+            if (product.countType === 'length') {
+                const totalLength = wallProductLengths[product.id] || 0;
+                const totalWithWaste = totalLength * (1 + wastePercentage / 100);
+                acc[product.id] = Math.ceil(totalWithWaste / (product.unitLength || 2.9));
             } else {
-                acc[product.id] = 0;
+                const breakdown = wallAreaBreakdown[product.id];
+                acc[product.id] = breakdown ? Math.ceil(breakdown.totalSticksNoWaste * (1 + wastePercentage / 100)) : 0;
             }
-        }
+            return acc;
+        }, {} as Record<string, number>);
+
+        const { area: wallArea } = getDimensions(wall.id);
+
+        return {
+            counts,
+            totalDesignArea: wallDesignArea,
+            wallArea,
+            areaBreakdown: wallAreaBreakdown,
+            mouldingBreakdown: wallMouldingBreakdown,
+            productAreas: wallProductAreas,
+            productLengths: wallProductLengths
+        };
+    };
+
+    const wallCalculations = walls.map(calculateWallMaterials);
+
+    // Total counts across all walls
+    const totalProductCounts = PRODUCTS.reduce((acc, product) => {
+        acc[product.id] = wallCalculations.reduce((sum, calc) => sum + (calc.counts[product.id] || 0), 0);
         return acc;
     }, {} as Record<string, number>);
+
+    const totalArea = wallCalculations.reduce((sum, calc) => sum + calc.wallArea, 0);
+    const totalDesignArea = wallCalculations.reduce((sum, calc) => sum + calc.totalDesignArea, 0);
 
     const handleExport = () => {
         if (!wallEditorRef.current) return;
@@ -215,7 +232,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             ctx.fillStyle = '#334155';
 
             PRODUCTS.forEach((product) => {
-                const count = productCounts[product.id] || 0;
+                const count = totalProductCounts[product.id] || 0;
                 if (count > 0) {
                     ctx.fillStyle = '#334155';
                     ctx.fillText(product.name, padding, currentY);
@@ -255,6 +272,79 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 Wall Planner
             </h1>
 
+            {/* Wall Manager */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#fff", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.05em", margin: 0 }}>
+                        Walls
+                    </h3>
+                    <button
+                        onClick={addWall}
+                        style={{
+                            padding: "4px 8px",
+                            background: "#4f46e5",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: "bold"
+                        }}
+                    >
+                        + New Wall
+                    </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {walls.map(wall => (
+                        <div
+                            key={wall.id}
+                            onClick={() => setActiveWall(wall.id)}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                padding: "8px",
+                                background: activeWallId === wall.id ? "#f1f5f9" : "transparent",
+                                borderRadius: "8px",
+                                cursor: "pointer",
+                                border: activeWallId === wall.id ? "1px solid #cbd5e1" : "1px solid transparent",
+                                transition: "all 0.2s"
+                            }}
+                        >
+                            <input
+                                value={wall.name}
+                                onChange={(e) => updateWallName(wall.id, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    flex: 1,
+                                    background: "transparent",
+                                    border: "none",
+                                    fontSize: "14px",
+                                    fontWeight: activeWallId === wall.id ? "bold" : "normal",
+                                    color: "#1e293b",
+                                    outline: "none"
+                                }}
+                            />
+                            {walls.length > 1 && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); removeWall(wall.id); }}
+                                    style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: "#94a3b8",
+                                        cursor: "pointer",
+                                        fontSize: "14px",
+                                        padding: "2px"
+                                    }}
+                                >
+                                    🗑️
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div style={{ display: "flex", gap: "10px" }}>
                 <button
                     onClick={reset}
@@ -273,7 +363,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     🔄 Clear Wall
                 </button>
                 <button
-                    onClick={toggleWallLock}
+                    onClick={() => useCanvasStore.getState().toggleWallLock()}
                     disabled={!isClosed}
                     style={{
                         flex: 1,
@@ -510,7 +600,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             {isClosed && (
                 <div style={{ display: "flex", gap: "10px" }}>
                     <button
-                        onClick={clearDesignAreas}
+                        onClick={() => useCanvasStore.getState().clearDesignAreas()}
                         style={{
                             flex: 1,
                             padding: "10px",
@@ -546,69 +636,93 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <p style={{ margin: 0 }}>Klik area dinding untuk memulai</p>
                     </div>
                 ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        <StatCard label="Total Wall Area" value={`${Math.ceil(area)} m²`} icon="📐" />
-                        <StatCard label="Total Design Area" value={`${Math.ceil(totalDesignArea)} m²`} icon="🎯" />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                        {/* Overall Totals */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <h4 style={{ fontSize: "12px", color: "#64748b", margin: "0 0 4px 0" }}>OVERALL SUMMARY</h4>
+                            <StatCard label="Total Area (All Walls)" value={`${Math.ceil(totalArea)} m²`} icon="📐" />
+                            <StatCard label="Total Design (All Walls)" value={`${Math.ceil(totalDesignArea)} m²`} icon="🎯" />
 
-                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {PRODUCTS.map(product => {
-                                const count = productCounts[product.id] || 0;
-                                const mBreakdown = mouldingBreakdown[product.id];
-                                const aBreakdown = areaBreakdown[product.id];
-                                const totalValue = product.countType === 'length' ? (productLengths[product.id] || 0) : (productAreas[product.id] || 0);
-                                const unit = product.countType === 'length' ? "btg" : "pcs";
-
-                                return (
-                                    <div key={product.id}>
-                                        <MaterialItem
-                                            label={product.name}
-                                            sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
-                                            count={count}
-                                            unit={unit}
-                                        />
-                                        {count > 0 && (
-                                            <div style={{
-                                                fontSize: "11px",
-                                                color: "#64748b",
-                                                background: "#f1f5f9",
-                                                padding: "8px",
-                                                borderRadius: "6px",
-                                                marginTop: "4px",
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "2px"
-                                            }}>
-                                                {product.countType === 'length' ? (
-                                                    <>
-                                                        <div>📏 Total Panjang: <b>{totalValue.toFixed(2)}m</b></div>
-                                                        <div>♻️ Dengan Waste ({wastePercentage}%): <b>{(totalValue * (1 + wastePercentage / 100)).toFixed(2)}m</b></div>
-                                                        {mBreakdown && (
-                                                            <>
-                                                                <div>📦 Batang per sisi (Pcs/Side): {mBreakdown.segmentLengths.map(l => Math.ceil(l / 2.9)).join(', ')}</div>
-                                                                <div>🔢 Total Batang (Tanpa Waste): <b>{mBreakdown.totalSticksNoWaste} btg</b></div>
-                                                            </>
-                                                        )}
-                                                        <div>✅ Total Batang (Dengan Waste): <b>{count} btg</b></div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div>📐 Total Luas: <b>{totalValue.toFixed(2)}m²</b></div>
-                                                        <div>♻️ Dengan Waste ({wastePercentage}%): <b>{(totalValue * (1 + wastePercentage / 100)).toFixed(2)}m²</b></div>
-                                                        {aBreakdown && (
-                                                            <>
-                                                                <div>📦 Batang per area (Pcs/Area): {aBreakdown.areas.map(a => a.sticks).join(', ')}</div>
-                                                                <div>🔢 Total Batang (Tanpa Waste): <b>{aBreakdown.totalSticksNoWaste} pcs</b></div>
-                                                            </>
-                                                        )}
-                                                        <div>✅ Total Batang (Dengan Waste): <b>{count} pcs</b></div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                            <div style={{ marginTop: "8px", background: "#f8fafc", padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                                <h5 style={{ fontSize: "11px", fontWeight: "bold", color: "#475569", marginBottom: "8px" }}>TOTAL MATERIALS</h5>
+                                {PRODUCTS.map(product => {
+                                    const count = totalProductCounts[product.id] || 0;
+                                    if (count === 0) return null;
+                                    return (
+                                        <div key={product.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#1e293b", padding: "4px 0" }}>
+                                            <span>{product.name}</span>
+                                            <span style={{ fontWeight: "bold", color: "#4f46e5" }}>{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
+
+                        {/* Per-Wall Breakdown */}
+                        {walls.map((wall, wallIdx) => {
+                            const calc = wallCalculations[wallIdx];
+                            const wallHasContent = Object.values(calc.counts).some(c => c > 0);
+
+                            return (
+                                <div key={wall.id} style={{ borderTop: "2px solid #e2e8f0", paddingTop: "16px" }}>
+                                    <h4 style={{ fontWeight: "bold", color: "#1e293b", fontSize: "14px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span style={{ background: "#4f46e5", color: "white", width: "20px", height: "20px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px" }}>{wallIdx + 1}</span>
+                                        {wall.name}
+                                    </h4>
+
+                                    {!wall.isClosed ? (
+                                        <div style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>Wall not closed yet</div>
+                                    ) : !wallHasContent ? (
+                                        <div style={{ fontSize: "12px", color: "#94a3b8" }}>No materials placed</div>
+                                    ) : (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                            {PRODUCTS.map(product => {
+                                                const count = calc.counts[product.id] || 0;
+                                                if (count === 0) return null;
+                                                const mBreakdown = calc.mouldingBreakdown[product.id];
+                                                const aBreakdown = calc.areaBreakdown[product.id];
+                                                const totalValue = product.countType === 'length' ? (calc.productLengths[product.id] || 0) : (calc.productAreas[product.id] || 0);
+                                                const unit = product.countType === 'length' ? "btg" : "pcs";
+
+                                                return (
+                                                    <div key={product.id}>
+                                                        <MaterialItem
+                                                            label={product.name}
+                                                            sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
+                                                            count={count}
+                                                            unit={unit}
+                                                        />
+                                                        <div style={{
+                                                            fontSize: "10px",
+                                                            color: "#64748b",
+                                                            background: "#f1f5f9",
+                                                            padding: "6px",
+                                                            borderRadius: "6px",
+                                                            marginTop: "2px",
+                                                            display: "flex",
+                                                            flexDirection: "column",
+                                                            gap: "1px"
+                                                        }}>
+                                                            {product.countType === 'length' ? (
+                                                                <>
+                                                                    <div>📏 Panjang: <b>{totalValue.toFixed(2)}m</b></div>
+                                                                    {mBreakdown && <div>📦 Batang/sisi: {mBreakdown.segmentLengths.map(l => Math.ceil(l / 2.9)).join(', ')}</div>}
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div>📐 Luas: <b>{totalValue.toFixed(2)}m²</b></div>
+                                                                    {aBreakdown && <div>📦 Batang/area: {aBreakdown.areas.map(a => a.sticks).join(', ')}</div>}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -630,7 +744,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             >
                 📥 Export Hasil
             </button>
-        </div>
+        </div >
     );
 }
 
