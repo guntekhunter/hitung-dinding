@@ -156,7 +156,8 @@ const WallEditor = forwardRef((props, ref) => {
         const intersectAreaPx2 = getPolygonRectIntersectionArea(points, area);
         const areaM2 = intersectAreaPx2 / (SCALE * SCALE);
         const productAreaM2 = product.width * product.height;
-        const baseCount = Math.ceil(areaM2 / productAreaM2);
+        const wastePercentage = useCanvasStore.getState().wastePercentage;
+        const baseCount = Math.ceil((areaM2 / productAreaM2) * (1 + wastePercentage / 100));
         const count = baseCount;
 
         const lines = [];

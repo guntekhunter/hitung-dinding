@@ -3,6 +3,7 @@
 import { useCanvasStore, PRODUCTS, SCALE, Wall } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
 import { subtractRect, Rect } from "../function/geometry";
+import { generateRAB } from "../utils/rabGenerator";
 
 export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const {
@@ -11,7 +12,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         selectedProductId, setSelectedProduct,
         interactionMode, setInteractionMode,
         undo, redo, past, future,
-        wastePercentage, setWastePercentage
+        wastePercentage, setWastePercentage,
+        customerInfo, setCustomerInfo
     } = useCanvasStore();
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
@@ -46,10 +48,31 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 if (!wallMouldingBreakdown[da.productId]) {
                     wallMouldingBreakdown[da.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
                 }
+
+                if (!wallLeftovers[da.productId]) wallLeftovers[da.productId] = [];
+                const pool = wallLeftovers[da.productId];
+                const unitLen = product.unitLength || 2.9;
+
                 segments.forEach(len => {
                     if (len > 0) {
                         wallMouldingBreakdown[da.productId].segmentLengths.push(len);
-                        wallMouldingBreakdown[da.productId].totalSticksNoWaste += Math.ceil(len / 2.9);
+
+                        let needed = len;
+                        while (needed > 0.001) {
+                            pool.sort((a, b) => a - b);
+                            const foundIdx = pool.findIndex(l => l >= needed - 0.001);
+                            if (foundIdx !== -1) {
+                                pool[foundIdx] -= needed;
+                                if (pool[foundIdx] < 0.01) pool.splice(foundIdx, 1);
+                                needed = 0;
+                            } else {
+                                wallMouldingBreakdown[da.productId].totalSticksNoWaste++;
+                                const used = Math.min(needed, unitLen);
+                                const leftover = unitLen - used;
+                                if (leftover > 0.01) pool.push(leftover);
+                                needed -= used;
+                            }
+                        }
                     }
                 });
             } else {
@@ -97,13 +120,16 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     const hM = Math.abs(da.height) / SCALE;
                     const boardH = product.height || 2.9;
                     const boardW = product.width || 1;
-                    const columns = Math.ceil(wM / boardW);
+                    const columns = Math.ceil(wM / boardW - 0.001); // Use small epsilon for floating point errors
 
                     let totalSticksUsedForThisArea = 0;
                     const pool = wallLeftovers[da.productId];
 
+                    // Apply waste percentage to the required height for each column
+                    const heightWithWaste = hM * (1 + wastePercentage / 100);
+
                     for (let c = 0; c < columns; c++) {
-                        let needed = hM;
+                        let needed = heightWithWaste;
                         while (needed > 0.001) {
                             pool.sort((a, b) => a - b); // Smallest that fits
                             const foundIdx = pool.findIndex(l => l >= needed - 0.001);
@@ -136,8 +162,29 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             if (!wallMouldingBreakdown[list.productId]) {
                 wallMouldingBreakdown[list.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
             }
+            if (!wallLeftovers[list.productId]) wallLeftovers[list.productId] = [];
+            const pool = wallLeftovers[list.productId];
+            const product = PRODUCTS.find(p => p.id === list.productId);
+            const unitLen = product?.unitLength || 2.9;
+
             wallMouldingBreakdown[list.productId].segmentLengths.push(lengthM);
-            wallMouldingBreakdown[list.productId].totalSticksNoWaste += Math.ceil(lengthM / 2.9);
+
+            let needed = lengthM;
+            while (needed > 0.001) {
+                pool.sort((a, b) => a - b);
+                const foundIdx = pool.findIndex(l => l >= needed - 0.001);
+                if (foundIdx !== -1) {
+                    pool[foundIdx] -= needed;
+                    if (pool[foundIdx] < 0.01) pool.splice(foundIdx, 1);
+                    needed = 0;
+                } else {
+                    wallMouldingBreakdown[list.productId].totalSticksNoWaste++;
+                    const used = Math.min(needed, unitLen);
+                    const leftover = unitLen - used;
+                    if (leftover > 0.01) pool.push(leftover);
+                    needed -= used;
+                }
+            }
         });
 
         const counts = PRODUCTS.reduce((acc, product) => {
@@ -147,7 +194,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 acc[product.id] = Math.ceil(totalWithWaste / (product.unitLength || 2.9));
             } else {
                 const breakdown = wallAreaBreakdown[product.id];
-                acc[product.id] = breakdown ? Math.ceil(breakdown.totalSticksNoWaste * (1 + wastePercentage / 100)) : 0;
+                acc[product.id] = breakdown ? breakdown.totalSticksNoWaste : 0;
             }
             return acc;
         }, {} as Record<string, number>);
@@ -342,6 +389,33 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             )}
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Customer Information */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#fff", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.05em", margin: 0 }}>
+                    Customer Information
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <input
+                        placeholder="Customer Name"
+                        value={customerInfo.name}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                        style={{ padding: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px" }}
+                    />
+                    <input
+                        placeholder="Phone Number"
+                        value={customerInfo.phone}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                        style={{ padding: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px" }}
+                    />
+                    <textarea
+                        placeholder="Address"
+                        value={customerInfo.address}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
+                        style={{ padding: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px", minHeight: "60px", resize: "vertical" }}
+                    />
                 </div>
             </div>
 
@@ -743,6 +817,23 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 }}
             >
                 📥 Export Hasil
+            </button>
+            <button
+                onClick={() => generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials)}
+                disabled={!isClosed}
+                style={{
+                    padding: "14px",
+                    background: isClosed ? "#10b981" : "#94a3b8",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: isClosed ? "pointer" : "not-allowed",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                    marginTop: "10px"
+                }}
+            >
+                📋 Buat RAB (PDF)
             </button>
         </div >
     );

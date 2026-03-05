@@ -10,22 +10,23 @@ export type Product = {
     width: number; // in meters
     height: number; // in meters
     color: string;
+    price: number; // in Rp
     countType?: 'area' | 'length';
     unitLength?: number; // meters per stick (for length-based)
 };
 
 export const PRODUCTS: Product[] = [
-    { id: "wallpanel", name: "Wallpanel (15cm)", width: 0.15, height: 2.9, color: "rgba(14, 165, 233, 0.4)" },
-    { id: "wallpanel30", name: "Wallpanel (30cm)", width: 0.30, height: 2.9, color: "rgba(2, 132, 199, 0.4)" },
-    { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)" },
-    { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)" },
-    { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)" },
-    { id: "moulding", name: "Moulding (2.9m)", width: 0.05, height: 2.9, color: "rgba(244, 63, 94, 0.4)", countType: 'length', unitLength: 2.9 },
-    { id: "moulding8", name: "Moulding 8cm", width: 0.08, height: 2.9, color: "rgba(245, 158, 11, 0.4)", countType: 'length', unitLength: 2.9 },
-    { id: "moulding6", name: "Moulding 6cm", width: 0.06, height: 2.9, color: "rgba(132, 204, 22, 0.4)", countType: 'length', unitLength: 2.9 },
-    { id: "moulding4", name: "Moulding 4cm", width: 0.04, height: 2.9, color: "rgba(6, 182, 212, 0.4)", countType: 'length', unitLength: 2.9 },
-    { id: "moulding2-5", name: "Moulding 2.5cm", width: 0.025, height: 2.9, color: "rgba(99, 102, 241, 0.4)", countType: 'length', unitLength: 2.9 },
-    { id: "list", name: "List (2.9m)", width: 0.02, height: 2.9, color: "rgba(139, 92, 246, 0.4)", countType: 'length', unitLength: 2.9 },
+    { id: "wallpanel", name: "Wallpanel (15cm)", width: 0.15, height: 2.9, color: "rgba(14, 165, 233, 0.4)", price: 250000 },
+    { id: "wallpanel30", name: "Wallpanel (30cm)", width: 0.30, height: 2.9, color: "rgba(2, 132, 199, 0.4)", price: 500000 },
+    { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)", price: 350000 },
+    { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)", price: 525000 },
+    { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)", price: 1200000 },
+    { id: "moulding", name: "Moulding (2.9m)", width: 0.05, height: 2.9, color: "rgba(244, 63, 94, 0.4)", price: 100000, countType: 'length', unitLength: 2.9 },
+    { id: "moulding8", name: "Moulding 8cm", width: 0.08, height: 2.9, color: "rgba(245, 158, 11, 0.4)", price: 150000, countType: 'length', unitLength: 2.9 },
+    { id: "moulding6", name: "Moulding 6cm", width: 0.06, height: 2.9, color: "rgba(132, 204, 22, 0.4)", price: 120000, countType: 'length', unitLength: 2.9 },
+    { id: "moulding4", name: "Moulding 4cm", width: 0.04, height: 2.9, color: "rgba(6, 182, 212, 0.4)", price: 80000, countType: 'length', unitLength: 2.9 },
+    { id: "moulding2-5", name: "Moulding 2.5cm", width: 0.025, height: 2.9, color: "rgba(99, 102, 241, 0.4)", price: 50000, countType: 'length', unitLength: 2.9 },
+    { id: "list", name: "List (2.9m)", width: 0.02, height: 2.9, color: "rgba(139, 92, 246, 0.4)", price: 60000, countType: 'length', unitLength: 2.9 },
 ];
 
 export type DesignArea = {
@@ -83,6 +84,14 @@ type CanvasState = {
     selectedProductId: string;
     currentDrawingArea: DesignArea | Opening | null;
     currentDrawingList: ListElement | null;
+
+    // Customer Info
+    customerInfo: {
+        name: string;
+        phone: string;
+        address: string;
+    };
+    setCustomerInfo: (info: { name: string, phone: string, address: string }) => void;
 
     // History
     past: HistoryEntry[];
@@ -176,6 +185,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     wastePercentage: 10,
     setWastePercentage: (waste: number) => set({ wastePercentage: waste }),
+
+    customerInfo: {
+        name: "",
+        phone: "",
+        address: ""
+    },
+    setCustomerInfo: (info) => set({ customerInfo: info }),
 
     addWall: () => {
         const { walls } = get();
