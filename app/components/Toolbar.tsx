@@ -13,7 +13,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         interactionMode, setInteractionMode,
         undo, redo, past, future,
         wastePercentage, setWastePercentage,
-        customerInfo, setCustomerInfo
+        customerInfo, setCustomerInfo,
+        materialPrices, setMaterialPrice
     } = useCanvasStore();
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
@@ -722,10 +723,30 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 {PRODUCTS.map(product => {
                                     const count = totalProductCounts[product.id] || 0;
                                     if (count === 0) return null;
+                                    const price = materialPrices[product.id] || 0;
                                     return (
-                                        <div key={product.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#1e293b", padding: "4px 0" }}>
-                                            <span>{product.name}</span>
-                                            <span style={{ fontWeight: "bold", color: "#4f46e5" }}>{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
+                                        <div key={product.id} style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#1e293b" }}>
+                                                <span>{product.name}</span>
+                                                <span style={{ fontWeight: "bold", color: "#4f46e5" }}>{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                <span style={{ fontSize: "11px", color: "#64748b" }}>Rp</span>
+                                                <input
+                                                    type="number"
+                                                    value={price}
+                                                    onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
+                                                    placeholder="Input price"
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: "4px 8px",
+                                                        border: "1px solid #e2e8f0",
+                                                        borderRadius: "6px",
+                                                        fontSize: "12px",
+                                                        background: "#fff"
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -802,40 +823,55 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             </div>
 
 
-            <button
-                onClick={handleExport}
-                disabled={!isClosed}
-                style={{
-                    padding: "14px",
-                    background: isClosed ? "#4f46e5" : "#94a3b8",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: isClosed ? "pointer" : "not-allowed",
-                    fontWeight: "bold",
-                    fontSize: "16px"
-                }}
-            >
-                📥 Export Hasil
-            </button>
-            <button
-                onClick={() => generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials)}
-                disabled={!isClosed}
-                style={{
-                    padding: "14px",
-                    background: isClosed ? "#10b981" : "#94a3b8",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: isClosed ? "pointer" : "not-allowed",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                    marginTop: "10px"
-                }}
-            >
-                📋 Buat RAB (PDF)
-            </button>
-        </div >
+            <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <button
+                    onClick={handleExport}
+                    disabled={!isClosed}
+                    style={{
+                        padding: "14px",
+                        background: isClosed ? "white" : "#e2e8f0",
+                        color: isClosed ? "#1e293b" : "#94a3b8",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        cursor: isClosed ? "pointer" : "not-allowed",
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px"
+                    }}
+                >
+                    🖼️ Export Plan (PNG)
+                </button>
+                <button
+                    onClick={async () => {
+                        try {
+                            await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices);
+                        } catch (e) {
+                            alert("Gagal membuat RAB: " + e);
+                        }
+                    }}
+                    disabled={!isClosed}
+                    style={{
+                        padding: "14px",
+                        background: isClosed ? "#1e293b" : "#94a3b8",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: isClosed ? "pointer" : "not-allowed",
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px"
+                    }}
+                >
+                    📑 Export RAB (PDF)
+                </button>
+            </div>
+        </div>
     );
 }
 

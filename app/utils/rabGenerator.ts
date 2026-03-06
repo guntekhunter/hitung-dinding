@@ -12,34 +12,67 @@ const formatIDR = (amount: number) => {
     }).format(amount).replace("Rp", "Rp ");
 };
 
-export const generateRAB = (
+const loadImage = (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+    });
+};
+
+export const generateRAB = async (
     walls: Wall[],
     customerInfo: { name: string; phone: string; address: string },
     wastePercentage: number,
-    calculateWallMaterials: (wall: Wall) => any // Pass the calculation function from Toolbar
+    calculateWallMaterials: (wall: Wall) => any, // Pass the calculation function from Toolbar
+    materialPrices: Record<string, number>
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
     // 1. Header
-    doc.setFontSize(18);
-    doc.setTextColor(213, 163, 21); // Gold-ish color for Aslastri
-    doc.text("ASLASTRI TEGUH", 14, 20);
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("INTERNASIONAL", 14, 25);
+    try {
+        const logoAslastri = await loadImage("/pt aslastri.png");
+        const logoPevesindo = await loadImage("/pevesindo.png");
 
-    doc.setFontSize(18);
-    doc.setTextColor(0, 0, 0);
-    doc.text("PEVESINDO", pageWidth - 14, 20, { align: "right" });
+        // Scale logos
+        // pt aslastri.png is roughly 18KB, pevesindo.png is 7KB
+        // Let's aim for a certain height, say 15mm
+        const logoHeight = 10;
+
+        // PT Aslastri (Left)
+        const aslastriRatio = logoAslastri.width / logoAslastri.height;
+        const aslastriWidth = logoHeight * aslastriRatio;
+        doc.addImage(logoAslastri, 'PNG', 14, 10, aslastriWidth, logoHeight);
+
+        // Pevesindo (Right)
+        const pevesindoRatio = logoPevesindo.width / logoPevesindo.height;
+        const pevesindoWidth = logoHeight * pevesindoRatio;
+        doc.addImage(logoPevesindo, 'PNG', pageWidth - 14 - pevesindoWidth, 10, pevesindoWidth, logoHeight);
+
+    } catch (error) {
+        console.error("Error loading logos", error);
+        // Fallback to text if logos fail
+        doc.setFontSize(18);
+        doc.setTextColor(213, 163, 21);
+        doc.text("ASLASTRI TEGUH", 14, 20);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text("INTERNASIONAL", 14, 25);
+
+        doc.setFontSize(18);
+        doc.setTextColor(0, 0, 0);
+        doc.text("PEVESINDO", pageWidth - 14, 20, { align: "right" });
+    }
 
     doc.setDrawColor(200, 200, 200);
-    doc.line(14, 30, pageWidth - 14, 30);
+    doc.line(14, 32, pageWidth - 14, 32);
 
     // 2. Title
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("RANCANGAN ANGGARAN DAN BIAYA", pageWidth / 2, 40, { align: "center" });
+    doc.text("RANCANGAN ANGGARAN DAN BIAYA", pageWidth / 2, 42, { align: "center" });
 
     // 3. Customer Info
     doc.setFontSize(10);
@@ -69,7 +102,7 @@ export const generateRAB = (
         wallMaterials.forEach((product, pIndex) => {
             const qty = calc.counts[product.id];
             const satuan = product.countType === 'length' ? 'Batang' : 'Lembar';
-            const price = product.price || 0;
+            const price = materialPrices[product.id] ?? product.price ?? 0;
             const subtotal = qty * price;
             grandTotal += subtotal;
 
@@ -136,12 +169,12 @@ export const generateRAB = (
 
     doc.setFont("helvetica", "bold");
     const termsText = "Bila disepakati, maka formulir ini juga berlaku sebagai kontrak kesepakatan kerja antara pelanggan dengan PEVESINDO Setelah disepakati dan ditandatangani oleh manajer development project dan manajer operasional, satu kopi formulir akan diberikan pada pelanggan.";
-    const splitTerms = doc.splitTextToSize(termsText, pageWidth - 28);
+    const splitTerms = doc.splitTextToSize(termsText, pageWidth - 20);
     doc.setFont("helvetica", "normal");
     doc.text(splitTerms, 14, summaryY + 25);
 
     const warningText = "Harga yang di sepakati adalah harga yang mengikat pemilihan motif & model dan tidak di perkenankan untuk merubah motif, model yang telah di sepakati apabila ada perubahan luas ruangan maka costumer bersedia menambah biaya sesuai dengan harga yang telah di tentukan. Proyek di nyatakan selesai setelah di buktikan dengan form serah terima proyek yang telah di tanda tangani costumer.";
-    const splitWarning = doc.splitTextToSize(warningText, pageWidth - 28);
+    const splitWarning = doc.splitTextToSize(warningText, pageWidth - 40);
     doc.setFont("helvetica", "bold");
     doc.text(splitWarning, 14, summaryY + 40);
 

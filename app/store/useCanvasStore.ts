@@ -152,6 +152,10 @@ type CanvasState = {
     wastePercentage: number;
     setWastePercentage: (waste: number) => void;
 
+    // Material Prices
+    materialPrices: Record<string, number>;
+    setMaterialPrice: (productId: string, price: number) => void;
+
     // Internal
     _saveHistory: () => void;
 };
@@ -191,6 +195,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         phone: "",
         address: ""
     },
+    materialPrices: PRODUCTS.reduce((acc, p) => ({ ...acc, [p.id]: p.price }), {}),
+    setMaterialPrice: (productId, price) => set((state) => ({
+        materialPrices: { ...state.materialPrices, [productId]: price }
+    })),
+
     setCustomerInfo: (info) => set({ customerInfo: info }),
 
     addWall: () => {
