@@ -17,7 +17,7 @@ const WallEditor = forwardRef((props, ref) => {
         startOpening, updateOpening, finishOpening, removeOpening,
         startList, updateList, finishList, removeList,
         zoom, offset, setZoom, setOffset,
-        undo, redo
+        undo, redo, mouldingGap, listDrawingType, setListDrawingType
     } = useCanvasStore();
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
@@ -108,6 +108,75 @@ const WallEditor = forwardRef((props, ref) => {
     };
 
     const SNAP_THRESHOLD = 20 / zoom; // Adjust snap threshold based on zoom
+
+    const allSegments = useMemo(() => {
+        const segs: { p1: { x: number; y: number }; p2: { x: number; y: number } }[] = [];
+        // Wall edges
+        if (points.length >= 2) {
+            for (let i = 0; i < points.length; i++) {
+                if (i === points.length - 1 && !isClosed) break;
+                segs.push({ p1: points[i], p2: points[(i + 1) % points.length] });
+            }
+        }
+        // Other mouldings
+        lists.forEach(l => {
+            segs.push({ p1: { x: l.x1, y: l.y1 }, p2: { x: l.x2, y: l.y2 } });
+        });
+        // Design Areas
+        designAreas.forEach(a => {
+            segs.push({ p1: { x: a.x, y: a.y }, p2: { x: a.x + a.width, y: a.y } });
+            segs.push({ p1: { x: a.x + a.width, y: a.y }, p2: { x: a.x + a.width, y: a.y + a.height } });
+            segs.push({ p1: { x: a.x + a.width, y: a.y + a.height }, p2: { x: a.x, y: a.y + a.height } });
+            segs.push({ p1: { x: a.x, y: a.y + a.height }, p2: { x: a.x, y: a.y } });
+        });
+        // Openings
+        openings.forEach(o => {
+            segs.push({ p1: { x: o.x, y: o.y }, p2: { x: o.x + o.width, y: o.y } });
+            segs.push({ p1: { x: o.x + o.width, y: o.y }, p2: { x: o.x + o.width, y: o.y + o.height } });
+            segs.push({ p1: { x: o.x + o.width, y: o.y + o.height }, p2: { x: o.x, y: o.y + o.height } });
+            segs.push({ p1: { x: o.x, y: o.y + o.height }, p2: { x: o.x, y: o.y } });
+        });
+        return segs;
+    }, [points, isClosed, lists, designAreas, openings]);
+
+    const snapToGap = (pos: { x: number; y: number }, useGap: boolean = true) => {
+        let snappedX = pos.x;
+        let snappedY = pos.y;
+        const gapPx = useGap ? mouldingGap * SCALE : 0;
+
+        allSegments.forEach(seg => {
+            // Is it vertical?
+            if (Math.abs(seg.p1.x - seg.p2.x) < 0.1) {
+                const x = seg.p1.x;
+                const yMin = Math.min(seg.p1.y, seg.p2.y);
+                const yMax = Math.max(seg.p1.y, seg.p2.y);
+                if (pos.y >= yMin - 10 && pos.y <= yMax + 10) {
+                    if (useGap) {
+                        if (Math.abs(pos.x - (x - gapPx)) < SNAP_THRESHOLD) snappedX = x - gapPx;
+                        if (Math.abs(pos.x - (x + gapPx)) < SNAP_THRESHOLD) snappedX = x + gapPx;
+                    } else {
+                        if (Math.abs(pos.x - x) < SNAP_THRESHOLD) snappedX = x;
+                    }
+                }
+            }
+            // Is it horizontal?
+            else if (Math.abs(seg.p1.y - seg.p2.y) < 0.1) {
+                const y = seg.p1.y;
+                const xMin = Math.min(seg.p1.x, seg.p2.x);
+                const xMax = Math.max(seg.p1.x, seg.p2.x);
+                if (pos.x >= xMin - 10 && pos.x <= xMax + 10) {
+                    if (useGap) {
+                        if (Math.abs(pos.y - (y - gapPx)) < SNAP_THRESHOLD) snappedY = y - gapPx;
+                        if (Math.abs(pos.y - (y + gapPx)) < SNAP_THRESHOLD) snappedY = y + gapPx;
+                    } else {
+                        if (Math.abs(pos.y - y) < SNAP_THRESHOLD) snappedY = y;
+                    }
+                }
+            }
+        });
+
+        return { x: snappedX, y: snappedY };
+    };
 
     // Flatten points for Konva Line [x1, y1, x2, y2...]
     const flattenedPoints = points.flatMap(p => [p.x, p.y]);
@@ -455,7 +524,19 @@ const WallEditor = forwardRef((props, ref) => {
                         ? renderAreaContent(currentDrawingArea)
                         : renderOpeningContent(currentDrawingArea)
                 )}
-                {currentDrawingList && renderListContent(currentDrawingList)}
+                {currentDrawingList && (
+                    listDrawingType === 'line' ? renderListContent(currentDrawingList) : (
+                        <Rect
+                            x={Math.min(currentDrawingList.x1, currentDrawingList.x2)}
+                            y={Math.min(currentDrawingList.y1, currentDrawingList.y2)}
+                            width={Math.abs(currentDrawingList.x2 - currentDrawingList.x1)}
+                            height={Math.abs(currentDrawingList.y2 - currentDrawingList.y1)}
+                            stroke="rgba(244, 63, 94, 0.8)"
+                            strokeWidth={2 / zoom}
+                            dash={[5 / zoom, 5 / zoom]}
+                        />
+                    )
+                )}
             </Group>
         );
     }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode, zoom, points]);
@@ -497,11 +578,14 @@ const WallEditor = forwardRef((props, ref) => {
             if (isWallLocked) return; // Prevent adding points when locked
             addPoint(pos.x, pos.y);
         } else if (interactionMode === 'place') {
-            startDesignArea(pos.x, pos.y);
+            const snappedPos = snapToGap(pos, false);
+            startDesignArea(snappedPos.x, snappedPos.y);
         } else if (interactionMode === 'window' || interactionMode === 'door') {
-            startOpening(pos.x, pos.y, interactionMode);
+            const snappedPos = snapToGap(pos, false);
+            startOpening(snappedPos.x, snappedPos.y, interactionMode);
         } else if (interactionMode === 'list') {
-            startList(pos.x, pos.y);
+            const snappedPos = snapToGap(pos, true);
+            startList(snappedPos.x, snappedPos.y);
         }
     };
 
@@ -535,6 +619,10 @@ const WallEditor = forwardRef((props, ref) => {
                 newY = currentDrawingList.y1;
             }
 
+            const snappedPos = snapToGap({ x: newX, y: newY }, true);
+            newX = snappedPos.x;
+            newY = snappedPos.y;
+
             updateList(newX, newY);
             return;
         }
@@ -542,9 +630,11 @@ const WallEditor = forwardRef((props, ref) => {
         if (!currentDrawingArea) return;
 
         if ('productId' in currentDrawingArea) {
-            updateDesignArea(pos.x, pos.y);
+            const snappedPos = snapToGap(pos, false);
+            updateDesignArea(snappedPos.x, snappedPos.y);
         } else {
-            updateOpening(pos.x, pos.y);
+            const snappedPos = snapToGap(pos, false);
+            updateOpening(snappedPos.x, snappedPos.y);
         }
     };
 

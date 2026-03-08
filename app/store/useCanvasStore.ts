@@ -152,9 +152,17 @@ type CanvasState = {
     wastePercentage: number;
     setWastePercentage: (waste: number) => void;
 
+    // Gap for Moulding
+    mouldingGap: number; // in meters
+    setMouldingGap: (gap: number) => void;
+
     // Material Prices
     materialPrices: Record<string, number>;
     setMaterialPrice: (productId: string, price: number) => void;
+
+    // Moulding Drawing Mode
+    listDrawingType: 'line' | 'rectangle';
+    setListDrawingType: (type: 'line' | 'rectangle') => void;
 
     // Internal
     _saveHistory: () => void;
@@ -190,6 +198,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     wastePercentage: 10,
     setWastePercentage: (waste: number) => set({ wastePercentage: waste }),
 
+    mouldingGap: 0.1, // Default 10cm
+    setMouldingGap: (gap: number) => set({ mouldingGap: gap }),
+
     customerInfo: {
         name: "",
         phone: "",
@@ -199,6 +210,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     setMaterialPrice: (productId, price) => set((state) => ({
         materialPrices: { ...state.materialPrices, [productId]: price }
     })),
+
+    listDrawingType: 'line',
+    setListDrawingType: (type) => set({ listDrawingType: type }),
 
     setCustomerInfo: (info) => set({ customerInfo: info }),
 
@@ -503,14 +517,38 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             const length = Math.hypot(list.x2 - list.x1, list.y2 - list.y1);
             if (length < 5) return { currentDrawingList: null };
 
-            const newList: ListElement = {
-                ...list,
-                id: Math.random().toString(36).substr(2, 9)
-            };
+            const newLists: ListElement[] = [];
+            if (state.listDrawingType === 'line') {
+                newLists.push({
+                    ...list,
+                    id: Math.random().toString(36).substr(2, 9)
+                });
+            } else {
+                // Rectangle: 4 segments
+                const points = [
+                    { x: list.x1, y: list.y1 },
+                    { x: list.x2, y: list.y1 },
+                    { x: list.x2, y: list.y2 },
+                    { x: list.x1, y: list.y2 }
+                ];
+                for (let i = 0; i < 4; i++) {
+                    const p1 = points[i];
+                    const p2 = points[(i + 1) % 4];
+                    newLists.push({
+                        id: Math.random().toString(36).substr(2, 9),
+                        type: 'list',
+                        productId: list.productId,
+                        x1: p1.x,
+                        y1: p1.y,
+                        x2: p2.x,
+                        y2: p2.y
+                    });
+                }
+            }
 
             const updatedWalls = state.walls.map(w =>
                 w.id === state.activeWallId
-                    ? { ...w, lists: [...w.lists, newList] }
+                    ? { ...w, lists: [...w.lists, ...newLists] }
                     : w
             );
 

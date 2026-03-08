@@ -13,6 +13,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         interactionMode, setInteractionMode,
         undo, redo, past, future,
         wastePercentage, setWastePercentage,
+        listDrawingType, setListDrawingType,
         customerInfo, setCustomerInfo,
         materialPrices, setMaterialPrice
     } = useCanvasStore();
@@ -534,6 +535,44 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
+                    Moulding Mode
+                </h3>
+                <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                        onClick={() => setListDrawingType('line')}
+                        style={{
+                            flex: 1,
+                            padding: "10px",
+                            background: listDrawingType === 'line' ? "#4f46e5" : "white",
+                            color: listDrawingType === 'line' ? "white" : "#475569",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        📏 Line
+                    </button>
+                    <button
+                        onClick={() => setListDrawingType('rectangle')}
+                        style={{
+                            flex: 1,
+                            padding: "10px",
+                            background: listDrawingType === 'rectangle' ? "#4f46e5" : "white",
+                            color: listDrawingType === 'rectangle' ? "white" : "#475569",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        ⬛ Square
+                    </button>
+                </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
                     Select Product
                 </h3>
                 {PRODUCTS.map(product => (
@@ -669,6 +708,30 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         }}
                     />
                     <span style={{ fontSize: "14px", color: "#64748b" }}>Default 10%</span>
+                </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
+                    Moulding Gap (cm)
+                </h3>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                        type="number"
+                        value={useCanvasStore.getState().mouldingGap * 100}
+                        onChange={(e) => useCanvasStore.getState().setMouldingGap(Number(e.target.value) / 100)}
+                        style={{
+                            width: "80px",
+                            padding: "8px",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            textAlign: "center",
+                            fontSize: "14px",
+                            fontWeight: "bold",
+                            color: "#1e293b"
+                        }}
+                    />
+                    <span style={{ fontSize: "14px", color: "#64748b" }}>Default 10cm</span>
                 </div>
             </div>
 
