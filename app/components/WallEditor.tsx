@@ -163,11 +163,13 @@ const WallEditor = forwardRef((props, ref) => {
         const lines = [];
 
         // Vertical lines (columns)
+        const startX = Math.min(0, area.width);
         for (let i = 1; i < horizontalCount; i++) {
+            const x = startX + i * panelWidthPx;
             lines.push(
                 <Line
                     key={`vline-${i}`}
-                    points={[i * panelWidthPx, 0, i * panelWidthPx, area.height]}
+                    points={[x, 0, x, area.height]}
                     stroke="rgba(255,255,255,0.5)"
                     strokeWidth={1 / zoom}
                     dash={[5 / zoom, 5 / zoom]}
@@ -175,12 +177,14 @@ const WallEditor = forwardRef((props, ref) => {
             );
         }
 
-        // Horizontal lines (rows)
+        // Horizontal lines (rows) - Starting from bottom to put seam at top
+        const startY = Math.max(0, area.height);
         for (let i = 1; i < verticalCount; i++) {
+            const y = startY - i * panelHeightPx;
             lines.push(
                 <Line
                     key={`hline-${i}`}
-                    points={[0, i * panelHeightPx, area.width, i * panelHeightPx]}
+                    points={[0, y, area.width, y]}
                     stroke="rgba(255,255,255,0.5)"
                     strokeWidth={1 / zoom}
                     dash={[5 / zoom, 5 / zoom]}
