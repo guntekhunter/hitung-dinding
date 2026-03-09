@@ -742,7 +742,7 @@ const WallEditor = forwardRef((props, ref) => {
     }
 
     return (
-        <div ref={containerRef} className="relative flex-1 w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl" style={{ minHeight: '600px' }}>
+        <div ref={containerRef} className="relative w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl">
             <Stage
                 ref={stageRef}
                 width={width}

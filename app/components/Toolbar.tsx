@@ -305,675 +305,448 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     };
 
     return (
-        <div style={{
-            padding: "24px",
-            borderLeft: "1px solid #e2e8f0",
-            width: "350px",
-            background: "#f8fafc",
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-            boxShadow: "-4px 0 15px rgba(0,0,0,0.05)",
-            overflowY: "auto",
-            maxHeight: "100vh"
-        }}>
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", margin: 0 }}>
-                Wall Planner
-            </h1>
-
-            {/* Wall Manager */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#fff", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.05em", margin: 0 }}>
-                        Walls
-                    </h3>
-                    <button
-                        onClick={addWall}
-                        style={{
-                            padding: "4px 8px",
-                            background: "#4f46e5",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: "bold"
-                        }}
-                    >
-                        + New Wall
-                    </button>
+        <div className="flex flex-col h-full w-full md:w-[350px] bg-slate-50 border-l border-slate-200 shadow-xl overflow-hidden">
+            <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0">
+                <h1 className="text-xl font-black text-slate-800 tracking-tight">Wall Planner</h1>
+                <div className="md:hidden">
+                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase tracking-widest">Mobile</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {walls.map(wall => (
-                        <div
-                            key={wall.id}
-                            onClick={() => setActiveWall(wall.id)}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                                padding: "8px",
-                                background: activeWallId === wall.id ? "#f1f5f9" : "transparent",
-                                borderRadius: "8px",
-                                cursor: "pointer",
-                                border: activeWallId === wall.id ? "1px solid #cbd5e1" : "1px solid transparent",
-                                transition: "all 0.2s"
-                            }}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 md:pb-8">
+                {/* Wall Manager */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest">Walls</h3>
+                        <button
+                            onClick={addWall}
+                            className="px-2 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm"
                         >
-                            <input
-                                value={wall.name}
-                                onChange={(e) => updateWallName(wall.id, e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                    flex: 1,
-                                    background: "transparent",
-                                    border: "none",
-                                    fontSize: "14px",
-                                    fontWeight: activeWallId === wall.id ? "bold" : "normal",
-                                    color: "#1e293b",
-                                    outline: "none"
-                                }}
-                            />
-                            {walls.length > 1 && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); removeWall(wall.id); }}
-                                    style={{
-                                        background: "transparent",
-                                        border: "none",
-                                        color: "#94a3b8",
-                                        cursor: "pointer",
-                                        fontSize: "14px",
-                                        padding: "2px"
-                                    }}
-                                >
-                                    🗑️
-                                </button>
-                            )}
+                            + New Wall
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {walls.map(wall => (
+                            <div
+                                key={wall.id}
+                                onClick={() => setActiveWall(wall.id)}
+                                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${activeWallId === wall.id
+                                        ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-100"
+                                        : "bg-transparent border-transparent hover:bg-slate-50"
+                                    }`}
+                            >
+                                <input
+                                    value={wall.name}
+                                    onChange={(e) => updateWallName(wall.id, e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 bg-transparent border-none text-sm font-semibold text-slate-700 focus:outline-none"
+                                />
+                                {walls.length > 1 && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); removeWall(wall.id); }}
+                                        className="p-1 text-slate-300 hover:text-rose-500 transition-colors"
+                                    >
+                                        🗑️
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Customer Information */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest">Customer info</h3>
+                    <div className="space-y-2">
+                        <input
+                            placeholder="Customer Name"
+                            value={customerInfo.name}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                        />
+                        <input
+                            placeholder="Phone Number"
+                            value={customerInfo.phone}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                        />
+                        <textarea
+                            placeholder="Address"
+                            value={customerInfo.address}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm min-h-[80px] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={reset}
+                        className="p-3 bg-white text-rose-600 border border-rose-100 rounded-xl font-bold text-sm shadow-sm hover:bg-rose-50 transition-colors"
+                    >
+                        🔄 Clear
+                    </button>
+                    <button
+                        onClick={() => useCanvasStore.getState().toggleWallLock()}
+                        disabled={!isClosed}
+                        className={`p-3 rounded-xl font-bold text-sm shadow-sm transition-all border ${isWallLocked
+                                ? "bg-slate-700 border-slate-700 text-white"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                        {isWallLocked ? "🔒 Unlock" : "🔓 Lock"}
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={undo}
+                        disabled={past.length === 0}
+                        className="p-2.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 text-sm shadow-sm hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                    >
+                        ↩️ Undo
+                    </button>
+                    <button
+                        onClick={redo}
+                        disabled={future.length === 0}
+                        className="p-2.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 text-sm shadow-sm hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                    >
+                        ↪️ Redo
+                    </button>
+                </div>
+
+                {/* Modes */}
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Tool Mode</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => setInteractionMode('place')}
+                                className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'place'
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                ➕ Place
+                            </button>
+                            <button
+                                onClick={() => setInteractionMode('delete')}
+                                className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'delete'
+                                        ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
+                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                🗑️ Delete
+                            </button>
                         </div>
-                    ))}
+                    </div>
+
+                    <div className="space-y-2">
+                        <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Moulding Mode</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => setListDrawingType('line')}
+                                className={`p-3 rounded-xl font-bold text-sm transition-all border ${listDrawingType === 'line'
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                📏 Line
+                            </button>
+                            <button
+                                onClick={() => setListDrawingType('rectangle')}
+                                className={`p-3 rounded-xl font-bold text-sm transition-all border ${listDrawingType === 'rectangle'
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                ⬛ Square
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            {/* Customer Information */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#fff", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.05em", margin: 0 }}>
-                    Customer Information
-                </h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <input
-                        placeholder="Customer Name"
-                        value={customerInfo.name}
-                        onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                        style={{ padding: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px" }}
-                    />
-                    <input
-                        placeholder="Phone Number"
-                        value={customerInfo.phone}
-                        onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                        style={{ padding: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px" }}
-                    />
-                    <textarea
-                        placeholder="Address"
-                        value={customerInfo.address}
-                        onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
-                        style={{ padding: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px", minHeight: "60px", resize: "vertical" }}
-                    />
+                {/* Product Selection */}
+                <div className="space-y-2">
+                    <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Select Product</h3>
+                    <div className="grid grid-cols-1 gap-2">
+                        {PRODUCTS.map(product => (
+                            <button
+                                key={product.id}
+                                onClick={() => {
+                                    setSelectedProduct(product.id);
+                                    if (product.countType === 'length') setInteractionMode('list');
+                                    else setInteractionMode('place');
+                                }}
+                                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${selectedProductId === product.id
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-2 ring-indigo-100"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                                    }`}
+                            >
+                                <span className="font-bold text-sm">{product.name}</span>
+                                <div
+                                    className="w-5 h-5 rounded-md border border-white/20 shadow-inner"
+                                    style={{ background: product.color }}
+                                />
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                    onClick={reset}
-                    style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: "#ef4444",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        transition: "opacity 0.2s"
-                    }}
-                >
-                    🔄 Clear Wall
-                </button>
-                <button
-                    onClick={() => useCanvasStore.getState().toggleWallLock()}
-                    disabled={!isClosed}
-                    style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: isWallLocked ? "#4b5563" : "white",
-                        color: isWallLocked ? "white" : "#4b5563",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        cursor: isClosed ? "pointer" : "not-allowed",
-                        fontWeight: "600",
-                        opacity: isClosed ? 1 : 0.5,
-                        transition: "all 0.2s"
-                    }}
-                >
-                    {isWallLocked ? "🔒 Unlock Wall" : "🔓 Lock Wall"}
-                </button>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                    onClick={undo}
-                    disabled={past.length === 0}
-                    style={{
-                        flex: 1,
-                        padding: "8px",
-                        background: past.length === 0 ? "#e2e8f0" : "white",
-                        color: past.length === 0 ? "#94a3b8" : "#475569",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        cursor: past.length === 0 ? "not-allowed" : "pointer",
-                        fontWeight: "bold",
-                    }}
-                >
-                    ↩️ Undo
-                </button>
-                <button
-                    onClick={redo}
-                    disabled={future.length === 0}
-                    style={{
-                        flex: 1,
-                        padding: "8px",
-                        background: future.length === 0 ? "#e2e8f0" : "white",
-                        color: future.length === 0 ? "#94a3b8" : "#475569",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        cursor: future.length === 0 ? "not-allowed" : "pointer",
-                        fontWeight: "bold",
-                    }}
-                >
-                    ↪️ Redo
-                </button>
-            </div>
-
-            <hr style={{ border: "0", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Tool Mode
-                </h3>
-                <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                        onClick={() => setInteractionMode('place')}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: interactionMode === 'place' ? "#4f46e5" : "white",
-                            color: interactionMode === 'place' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        ➕ Place
-                    </button>
-                    <button
-                        onClick={() => setInteractionMode('delete')}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: interactionMode === 'delete' ? "#ef4444" : "white",
-                            color: interactionMode === 'delete' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        🗑️ Delete
-                    </button>
+                {/* Extras */}
+                <div className="space-y-2">
+                    <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Add Extras</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => setInteractionMode('window')}
+                            className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'window'
+                                    ? "bg-sky-600 border-sky-600 text-white shadow-md shadow-sky-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                        >
+                            🪟 Window
+                        </button>
+                        <button
+                            onClick={() => setInteractionMode('door')}
+                            className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'door'
+                                    ? "bg-amber-600 border-amber-600 text-white shadow-md shadow-amber-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                        >
+                            🚪 Door
+                        </button>
+                        <button
+                            onClick={() => { setSelectedProduct('list'); setInteractionMode('list'); }}
+                            className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'list' && selectedProductId === 'list'
+                                    ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                        >
+                            📏 List
+                        </button>
+                        <button
+                            onClick={() => { setSelectedProduct('moulding'); setInteractionMode('list'); }}
+                            className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'list' && selectedProductId === 'moulding'
+                                    ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                        >
+                            🪄 Moulding
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Moulding Mode
-                </h3>
-                <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                        onClick={() => setListDrawingType('line')}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: listDrawingType === 'line' ? "#4f46e5" : "white",
-                            color: listDrawingType === 'line' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        📏 Line
-                    </button>
-                    <button
-                        onClick={() => setListDrawingType('rectangle')}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: listDrawingType === 'rectangle' ? "#4f46e5" : "white",
-                            color: listDrawingType === 'rectangle' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        ⬛ Square
-                    </button>
+                {/* Settings */}
+                <div className="bg-slate-100/50 p-4 rounded-xl space-y-4 border border-slate-200/50">
+                    <div className="flex justify-between items-center gap-4">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Waste (%)</span>
+                        <input
+                            type="number"
+                            value={wastePercentage}
+                            onChange={(e) => setWastePercentage(Number(e.target.value))}
+                            className="w-20 p-2 bg-white border border-slate-200 rounded-lg text-center text-sm font-black text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Gap (cm)</span>
+                        <input
+                            type="number"
+                            value={useCanvasStore.getState().mouldingGap * 100}
+                            onChange={(e) => useCanvasStore.getState().setMouldingGap(Number(e.target.value) / 100)}
+                            className="w-20 p-2 bg-white border border-slate-200 rounded-lg text-center text-sm font-black text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                    </div>
                 </div>
-            </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Select Product
-                </h3>
-                {PRODUCTS.map(product => (
-                    <button
-                        key={product.id}
-                        onClick={() => {
-                            setSelectedProduct(product.id);
-                            // Automatically switch back to a drawing mode when selecting a product
-                            if (product.countType === 'length') {
-                                setInteractionMode('list');
-                            } else {
-                                setInteractionMode('place');
-                            }
-                        }}
-                        style={{
-                            padding: "12px",
-                            background: selectedProductId === product.id ? "#4f46e5" : "white",
-                            color: selectedProductId === product.id ? "white" : "#1e293b",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "10px",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontWeight: selectedProductId === product.id ? "bold" : "normal",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center"
-                        }}
-                    >
-                        <span>{product.name}</span>
-                        <div style={{
-                            width: "12px",
-                            height: "12px",
-                            borderRadius: "3px",
-                            background: product.color,
-                            border: "1px solid rgba(0,0,0,0.1)"
-                        }} />
-                    </button>
-                ))}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Add Extras
-                </h3>
-                <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                        onClick={() => setInteractionMode('window')}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: interactionMode === 'window' ? "#0ea5e9" : "white",
-                            color: interactionMode === 'window' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        🪟 Window
-                    </button>
-                    <button
-                        onClick={() => setInteractionMode('door')}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: interactionMode === 'door' ? "#d97706" : "white",
-                            color: interactionMode === 'door' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        🚪 Door
-                    </button>
-                    <button
-                        onClick={() => {
-                            setSelectedProduct('list');
-                            setInteractionMode('list');
-                        }}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: interactionMode === 'list' && selectedProductId === 'list' ? "#8b5cf6" : "white",
-                            color: interactionMode === 'list' && selectedProductId === 'list' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        📏 List
-                    </button>
-                    <button
-                        onClick={() => {
-                            setSelectedProduct('moulding');
-                            setInteractionMode('list');
-                        }}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: interactionMode === 'list' && selectedProductId === 'moulding' ? "#f43f5e" : "white",
-                            color: interactionMode === 'list' && selectedProductId === 'moulding' ? "white" : "#475569",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        🪄 Moulding
-                    </button>
-                </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Waste Percentage (%)
-                </h3>
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <input
-                        type="number"
-                        value={wastePercentage}
-                        onChange={(e) => setWastePercentage(Number(e.target.value))}
-                        style={{
-                            width: "80px",
-                            padding: "8px",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            textAlign: "center",
-                            fontSize: "14px",
-                            fontWeight: "bold",
-                            color: "#1e293b"
-                        }}
-                    />
-                    <span style={{ fontSize: "14px", color: "#64748b" }}>Default 10%</span>
-                </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h3 style={{ fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Moulding Gap (cm)
-                </h3>
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <input
-                        type="number"
-                        value={useCanvasStore.getState().mouldingGap * 100}
-                        onChange={(e) => useCanvasStore.getState().setMouldingGap(Number(e.target.value) / 100)}
-                        style={{
-                            width: "80px",
-                            padding: "8px",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            textAlign: "center",
-                            fontSize: "14px",
-                            fontWeight: "bold",
-                            color: "#1e293b"
-                        }}
-                    />
-                    <span style={{ fontSize: "14px", color: "#64748b" }}>Default 10cm</span>
-                </div>
-            </div>
-
-            {isClosed && (
-                <div style={{ display: "flex", gap: "10px" }}>
+                {isClosed && (
                     <button
                         onClick={() => useCanvasStore.getState().clearDesignAreas()}
-                        style={{
-                            flex: 1,
-                            padding: "10px",
-                            background: "white",
-                            color: "#ef4444",
-                            border: "1px solid #ef4444",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontWeight: "600",
-                        }}
+                        className="w-full p-3 bg-white text-rose-600 border border-rose-200 rounded-xl text-xs font-bold hover:bg-rose-50 transition-colors"
                     >
-                        🗑️ Hapus Semua Material
+                        🗑️ Reset All Materials
                     </button>
-                </div>
-            )}
+                )}
 
-            <hr style={{ border: "0", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
+                <hr className="border-slate-200" />
 
-            <div style={{ flex: 1 }}>
-                <h3 style={{ marginBottom: "16px", fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-                    Bill of Materials
-                </h3>
+                {/* Bill of Materials */}
+                <div className="space-y-4">
+                    <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">Bill of Materials</h3>
 
-                {!isClosed ? (
-                    <div style={{
-                        padding: "20px",
-                        background: "#fff",
-                        borderRadius: "12px",
-                        border: "1px dashed #cbd5e1",
-                        textAlign: "center",
-                        color: "#64748b"
-                    }}>
-                        <p style={{ margin: 0 }}>Klik area dinding untuk memulai</p>
-                    </div>
-                ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                        {/* Overall Totals */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <h4 style={{ fontSize: "12px", color: "#64748b", margin: "0 0 4px 0" }}>OVERALL SUMMARY</h4>
-                            <StatCard label="Total Area (All Walls)" value={`${Math.ceil(totalArea)} m²`} icon="📐" />
-                            <StatCard label="Total Design (All Walls)" value={`${Math.ceil(totalDesignArea)} m²`} icon="🎯" />
+                    {!isClosed ? (
+                        <div className="p-8 bg-white rounded-2xl border border-dashed border-slate-300 text-center space-y-2">
+                            <div className="text-2xl">📐</div>
+                            <p className="text-xs font-medium text-slate-400 leading-relaxed italic">Click the wall surface<br />to begin placing materials</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Overall Totals */}
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Overall Summary</h4>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <StatCard label="Total Area" value={`${Math.ceil(totalArea)} m²`} icon="📐" />
+                                    <StatCard label="Design Area" value={`${Math.ceil(totalDesignArea)} m²`} icon="🎯" />
+                                </div>
 
-                            <div style={{ marginTop: "8px", background: "#f8fafc", padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-                                <h5 style={{ fontSize: "11px", fontWeight: "bold", color: "#475569", marginBottom: "8px" }}>TOTAL MATERIALS</h5>
-                                {PRODUCTS.map(product => {
-                                    const count = totalProductCounts[product.id] || 0;
-                                    if (count === 0) return null;
-                                    const price = materialPrices[product.id] || 0;
+                                <div className="mt-4 bg-indigo-900 rounded-2xl p-5 border border-indigo-800 shadow-xl shadow-indigo-100">
+                                    <h5 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-4">Total Materials Needed</h5>
+                                    <div className="space-y-1">
+                                        {PRODUCTS.map(product => {
+                                            const count = totalProductCounts[product.id] || 0;
+                                            if (count === 0) return null;
+                                            const price = materialPrices[product.id] || 0;
+                                            return (
+                                                <div key={product.id} className="py-3 border-b border-indigo-800/50 last:border-0 group">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className="text-sm font-bold text-white group-hover:text-indigo-200 transition-colors">{product.name}</span>
+                                                        <span className="text-sm font-black text-indigo-400">{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 bg-indigo-950/50 p-2 rounded-lg border border-indigo-800/30">
+                                                        <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">Unit Price</span>
+                                                        <div className="flex items-center gap-1.5 flex-1">
+                                                            <span className="text-[10px] text-indigo-400">Rp</span>
+                                                            <input
+                                                                type="number"
+                                                                value={price}
+                                                                onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
+                                                                placeholder="0"
+                                                                className="flex-1 bg-transparent border-none text-xs font-mono font-bold text-indigo-200 focus:outline-none p-0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Per-Wall Breakdown */}
+                            <div className="space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Detailed Breakdown</h4>
+                                {walls.map((wall, wallIdx) => {
+                                    const calc = wallCalculations[wallIdx];
+                                    const wallHasContent = Object.values(calc.counts).some(c => c > 0);
+
                                     return (
-                                        <div key={product.id} style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#1e293b" }}>
-                                                <span>{product.name}</span>
-                                                <span style={{ fontWeight: "bold", color: "#4f46e5" }}>{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
+                                        <div key={wall.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                            <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                                                <h4 className="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-3">
+                                                    <span className="bg-indigo-600 text-white w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black">{wallIdx + 1}</span>
+                                                    {wall.name}
+                                                </h4>
+                                                {!wall.isClosed && <span className="text-[9px] font-bold text-rose-500 uppercase px-2 py-1 bg-rose-50 rounded-full border border-rose-100">Draft</span>}
                                             </div>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                                <span style={{ fontSize: "11px", color: "#64748b" }}>Rp</span>
-                                                <input
-                                                    type="number"
-                                                    value={price}
-                                                    onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
-                                                    placeholder="Input price"
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: "4px 8px",
-                                                        border: "1px solid #e2e8f0",
-                                                        borderRadius: "6px",
-                                                        fontSize: "12px",
-                                                        background: "#fff"
-                                                    }}
-                                                />
+
+                                            <div className="p-4">
+                                                {!wall.isClosed ? (
+                                                    <div className="text-[11px] text-slate-400 font-medium italic text-center py-4 px-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">Wall perimeter is not closed yet</div>
+                                                ) : !wallHasContent ? (
+                                                    <div className="text-[11px] text-slate-400 font-medium italic text-center py-4 px-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">No materials assigned to this wall</div>
+                                                ) : (
+                                                    <div className="space-y-4">
+                                                        {PRODUCTS.map(product => {
+                                                            const count = calc.counts[product.id] || 0;
+                                                            if (count === 0) return null;
+                                                            const mBreakdown = calc.mouldingBreakdown[product.id];
+                                                            const aBreakdown = calc.areaBreakdown[product.id];
+                                                            const totalValue = product.countType === 'length' ? (calc.productLengths[product.id] || 0) : (calc.productAreas[product.id] || 0);
+                                                            const unit = product.countType === 'length' ? "btg" : "pcs";
+
+                                                            return (
+                                                                <div key={product.id} className="space-y-2">
+                                                                    <MaterialItem
+                                                                        label={product.name}
+                                                                        sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
+                                                                        count={count}
+                                                                        unit={unit}
+                                                                    />
+                                                                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1.5 shadow-inner">
+                                                                        {product.countType === 'length' ? (
+                                                                            <>
+                                                                                <div className="text-[10px] text-slate-500 flex justify-between"><span>Total Length:</span> <span className="font-bold text-slate-800">{totalValue.toFixed(2)}m</span></div>
+                                                                                {mBreakdown && <div className="text-[10px] text-slate-500 flex justify-between"><span>Per Segment:</span> <span className="font-bold text-indigo-600 tracking-tighter">{mBreakdown.segmentLengths.map(l => Math.ceil(l / (product.unitLength || 2.9))).join(', ')}</span></div>}
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <div className="text-[10px] text-slate-500 flex justify-between"><span>Total Area:</span> <span className="font-bold text-slate-800">{totalValue.toFixed(2)}m²</span></div>
+                                                                                {aBreakdown && <div className="text-[10px] text-slate-500 flex justify-between"><span>Per Area:</span> <span className="font-bold text-indigo-600 tracking-tighter">{aBreakdown.areas.map(a => a.sticks).join(', ')}</span></div>}
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         </div>
+                    )}
+                </div>
 
-                        {/* Per-Wall Breakdown */}
-                        {walls.map((wall, wallIdx) => {
-                            const calc = wallCalculations[wallIdx];
-                            const wallHasContent = Object.values(calc.counts).some(c => c > 0);
-
-                            return (
-                                <div key={wall.id} style={{ borderTop: "2px solid #e2e8f0", paddingTop: "16px" }}>
-                                    <h4 style={{ fontWeight: "bold", color: "#1e293b", fontSize: "14px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span style={{ background: "#4f46e5", color: "white", width: "20px", height: "20px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px" }}>{wallIdx + 1}</span>
-                                        {wall.name}
-                                    </h4>
-
-                                    {!wall.isClosed ? (
-                                        <div style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>Wall not closed yet</div>
-                                    ) : !wallHasContent ? (
-                                        <div style={{ fontSize: "12px", color: "#94a3b8" }}>No materials placed</div>
-                                    ) : (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                            {PRODUCTS.map(product => {
-                                                const count = calc.counts[product.id] || 0;
-                                                if (count === 0) return null;
-                                                const mBreakdown = calc.mouldingBreakdown[product.id];
-                                                const aBreakdown = calc.areaBreakdown[product.id];
-                                                const totalValue = product.countType === 'length' ? (calc.productLengths[product.id] || 0) : (calc.productAreas[product.id] || 0);
-                                                const unit = product.countType === 'length' ? "btg" : "pcs";
-
-                                                return (
-                                                    <div key={product.id}>
-                                                        <MaterialItem
-                                                            label={product.name}
-                                                            sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
-                                                            count={count}
-                                                            unit={unit}
-                                                        />
-                                                        <div style={{
-                                                            fontSize: "10px",
-                                                            color: "#64748b",
-                                                            background: "#f1f5f9",
-                                                            padding: "6px",
-                                                            borderRadius: "6px",
-                                                            marginTop: "2px",
-                                                            display: "flex",
-                                                            flexDirection: "column",
-                                                            gap: "1px"
-                                                        }}>
-                                                            {product.countType === 'length' ? (
-                                                                <>
-                                                                    <div>📏 Panjang: <b>{totalValue.toFixed(2)}m</b></div>
-                                                                    {mBreakdown && <div>📦 Batang/sisi: {mBreakdown.segmentLengths.map(l => Math.ceil(l / 2.9)).join(', ')}</div>}
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <div>📐 Luas: <b>{totalValue.toFixed(2)}m²</b></div>
-                                                                    {aBreakdown && <div>📦 Batang/area: {aBreakdown.areas.map(a => a.sticks).join(', ')}</div>}
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-
-            <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                <button
-                    onClick={handleExport}
-                    disabled={!isClosed}
-                    style={{
-                        padding: "14px",
-                        background: isClosed ? "white" : "#e2e8f0",
-                        color: isClosed ? "#1e293b" : "#94a3b8",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        cursor: isClosed ? "pointer" : "not-allowed",
-                        fontWeight: "bold",
-                        fontSize: "16px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px"
-                    }}
-                >
-                    🖼️ Export Plan (PNG)
-                </button>
-                <button
-                    onClick={async () => {
-                        try {
-                            await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices);
-                        } catch (e) {
-                            alert("Gagal membuat RAB: " + e);
-                        }
-                    }}
-                    disabled={!isClosed}
-                    style={{
-                        padding: "14px",
-                        background: isClosed ? "#1e293b" : "#94a3b8",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: isClosed ? "pointer" : "not-allowed",
-                        fontWeight: "bold",
-                        fontSize: "16px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px"
-                    }}
-                >
-                    📑 Export RAB (PDF)
-                </button>
+                {/* Footer Buttons */}
+                <div className="grid grid-cols-1 gap-3 pt-4">
+                    <button
+                        onClick={handleExport}
+                        disabled={!isClosed}
+                        className="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-lg shadow-slate-200/50 flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <span className="text-xl">🖼️</span>
+                        <div className="text-left">
+                            <div className="text-xs font-black text-slate-800 uppercase tracking-widest">Export Plan</div>
+                            <div className="text-[9px] font-bold text-slate-400">Download high-res PNG image</div>
+                        </div>
+                    </button>
+                    <button
+                        onClick={async () => {
+                            try {
+                                await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices);
+                            } catch (e) {
+                                alert("Failed to generate PDF: " + e);
+                            }
+                        }}
+                        disabled={!isClosed}
+                        className="w-full p-4 bg-slate-900 border-none rounded-2xl shadow-lg shadow-slate-900/20 flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <span className="text-xl text-indigo-400">📑</span>
+                        <div className="text-left">
+                            <div className="text-xs font-black text-white uppercase tracking-widest">Generate PDF</div>
+                            <div className="text-[9px] font-bold text-slate-500">Professional Bill of Materials</div>
+                        </div>
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
 
-function StatCard({ label, value, icon }: { label: string, value: string, icon: string }) {
+function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
     return (
-        <div style={{
-            padding: "12px 16px",
-            background: "white",
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px"
-        }}>
-            <span style={{ fontSize: "20px" }}>{icon}</span>
+        <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm">
+            <span className="text-xl">{icon}</span>
             <div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>{label}</div>
-                <div style={{ fontSize: "18px", fontWeight: "bold", color: "#1e293b" }}>{value}</div>
+                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{label}</div>
+                <div className="text-lg font-extrabold text-slate-800 leading-tight">{value}</div>
             </div>
         </div>
     );
 }
 
-function MaterialItem({ label, sub, count, unit }: { label: string, sub: string, count: number, unit: string }) {
+function MaterialItem({ label, sub, count, unit }: { label: string; sub: string; count: number; unit: string }) {
     return (
-        <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "8px 0",
-            borderBottom: "1px solid #f1f5f9"
-        }}>
+        <div className="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0">
             <div>
-                <div style={{ fontSize: "14px", fontWeight: "600", color: "#334155" }}>{label}</div>
-                <div style={{ fontSize: "11px", color: "#94a3b8" }}>{sub}</div>
+                <div className="text-sm font-bold text-slate-700">{label}</div>
+                <div className="text-[10px] text-slate-400 font-medium">{sub}</div>
             </div>
-            <div style={{ textAlign: "right" }}>
-                <span style={{ fontSize: "16px", fontWeight: "bold", color: "#4f46e5" }}>{count}</span>
-                <span style={{ fontSize: "12px", color: "#64748b", marginLeft: "4px" }}>{unit}</span>
+            <div className="text-right">
+                <span className="text-base font-black text-indigo-600 font-mono">{count}</span>
+                <span className="text-[10px] text-slate-400 ml-1 font-bold uppercase">{unit}</span>
             </div>
         </div>
     );
