@@ -23,7 +23,7 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
 
 export const generateRAB = async (
     walls: Wall[],
-    customerInfo: { name: string; phone: string; address: string },
+    customerInfo: { name: string; phone: string; address: string; surveyorName: string },
     wastePercentage: number,
     calculateWallMaterials: (wall: Wall) => any, // Pass the calculation function from Toolbar
     materialPrices: Record<string, number>
@@ -188,7 +188,7 @@ export const generateRAB = async (
     doc.text("Pemberi Kerja", pageWidth - 40, sigY, { align: "center" });
 
     doc.setFont("helvetica", "bold");
-    doc.text("Muh. Agung", 40, sigY + 30, { align: "center" });
+    doc.text(customerInfo.surveyorName || "Muh. Agung", 40, sigY + 30, { align: "center" });
     doc.text("Surveyour", 40, sigY + 35, { align: "center" });
 
     doc.text(customerInfo.name || "Bapak Nirwan", pageWidth - 40, sigY + 30, { align: "center" });

@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useCanvasStore, PRODUCTS, SCALE, Wall } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
 import { subtractRect, Rect } from "../function/geometry";
 import { generateRAB } from "../utils/rabGenerator";
+import { saveProjectToDatabase, ProjectData } from "../utils/saveProject";
+import Link from "next/link";
 
 export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
+    const [isSaving, setIsSaving] = useState(false);
     const {
         walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName,
         getDimensions, reset,
@@ -15,7 +19,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         wastePercentage, setWastePercentage,
         listDrawingType, setListDrawingType,
         customerInfo, setCustomerInfo,
-        materialPrices, setMaterialPrice
+        materialPrices, setMaterialPrice,
+        projectId, setProjectId
     } = useCanvasStore();
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
@@ -225,6 +230,69 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const totalArea = wallCalculations.reduce((sum, calc) => sum + calc.wallArea, 0);
     const totalDesignArea = wallCalculations.reduce((sum, calc) => sum + calc.totalDesignArea, 0);
 
+    const handleSaveProject = async () => {
+        setIsSaving(true);
+        try {
+            const materialsList: ProjectData["rab"]["materials"] = [];
+            let grandTotal = 0;
+
+            PRODUCTS.forEach(product => {
+                const count = totalProductCounts[product.id] || 0;
+                if (count > 0) {
+                    const price = materialPrices[product.id] ?? product.price ?? 0;
+                    const subtotal = count * price;
+
+                    materialsList.push({
+                        id: product.id,
+                        name: product.name,
+                        quantity: count,
+                        unit: product.countType === 'length' ? 'Batang' : 'Lembar',
+                        unitPrice: price,
+                        totalPrice: subtotal
+                    });
+
+                    grandTotal += subtotal;
+                }
+            });
+
+            const stage = wallEditorRef.current?.getStage();
+            const previewImage = stage ? stage.toDataURL({ pixelRatio: 0.5 }) : undefined;
+
+            const projectData: ProjectData = {
+                projectInfo: {
+                    surveyor: customerInfo.surveyorName || "Muh. Agung",
+                    customerName: customerInfo.name || "Unknown Customer",
+                    phone: customerInfo.phone || "-",
+                    address: customerInfo.address || "-"
+                },
+                canvas: {
+                    walls: walls
+                },
+                rab: {
+                    materials: materialsList,
+                    grandTotal: grandTotal
+                },
+                previewImage: previewImage
+            };
+
+            const projectName = `Proyek ${customerInfo.name || "Baru"} - ${new Date().toLocaleDateString('id-ID')}`;
+
+            const savedData = await saveProjectToDatabase(projectName, projectData, projectId);
+
+            // Update local state so subsequent saves overwrite
+            if (savedData && savedData.length > 0) {
+                setProjectId(savedData[0].id);
+            }
+
+            alert("Project saved successfully to the database!");
+
+        } catch (error) {
+            alert("Failed to save project: " + error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleExport = () => {
         if (!wallEditorRef.current) return;
         const stage = wallEditorRef.current.getStage();
@@ -308,6 +376,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         <div className="flex flex-col h-full w-full md:w-[350px] bg-slate-50 border-l border-slate-200 shadow-xl overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0">
                 <h1 className="text-xl font-black text-slate-800 tracking-tight">Wall Planner</h1>
+                <Link href="/projects" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">Projects 📂</Link>
                 <div className="md:hidden">
                     <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase tracking-widest">Mobile</span>
                 </div>
@@ -331,8 +400,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 key={wall.id}
                                 onClick={() => setActiveWall(wall.id)}
                                 className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${activeWallId === wall.id
-                                        ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-100"
-                                        : "bg-transparent border-transparent hover:bg-slate-50"
+                                    ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-100"
+                                    : "bg-transparent border-transparent hover:bg-slate-50"
                                     }`}
                             >
                                 <input
@@ -365,6 +434,12 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                         />
                         <input
+                            placeholder="Surveyor Name"
+                            value={customerInfo.surveyorName}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, surveyorName: e.target.value })}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                        />
+                        <input
                             placeholder="Phone Number"
                             value={customerInfo.phone}
                             onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
@@ -391,8 +466,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         onClick={() => useCanvasStore.getState().toggleWallLock()}
                         disabled={!isClosed}
                         className={`p-3 rounded-xl font-bold text-sm shadow-sm transition-all border ${isWallLocked
-                                ? "bg-slate-700 border-slate-700 text-white"
-                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            ? "bg-slate-700 border-slate-700 text-white"
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                         {isWallLocked ? "🔒 Unlock" : "🔓 Lock"}
@@ -424,8 +499,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <button
                                 onClick={() => setInteractionMode('place')}
                                 className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'place'
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 ➕ Place
@@ -433,8 +508,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <button
                                 onClick={() => setInteractionMode('delete')}
                                 className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'delete'
-                                        ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 🗑️ Delete
@@ -448,8 +523,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <button
                                 onClick={() => setListDrawingType('line')}
                                 className={`p-3 rounded-xl font-bold text-sm transition-all border ${listDrawingType === 'line'
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 📏 Line
@@ -457,8 +532,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <button
                                 onClick={() => setListDrawingType('rectangle')}
                                 className={`p-3 rounded-xl font-bold text-sm transition-all border ${listDrawingType === 'rectangle'
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 ⬛ Square
@@ -480,8 +555,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     else setInteractionMode('place');
                                 }}
                                 className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${selectedProductId === product.id
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-2 ring-indigo-100"
-                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-2 ring-indigo-100"
+                                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
                                     }`}
                             >
                                 <span className="font-bold text-sm">{product.name}</span>
@@ -501,8 +576,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <button
                             onClick={() => setInteractionMode('window')}
                             className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'window'
-                                    ? "bg-sky-600 border-sky-600 text-white shadow-md shadow-sky-200"
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                ? "bg-sky-600 border-sky-600 text-white shadow-md shadow-sky-200"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                         >
                             🪟 Window
@@ -510,8 +585,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <button
                             onClick={() => setInteractionMode('door')}
                             className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'door'
-                                    ? "bg-amber-600 border-amber-600 text-white shadow-md shadow-amber-200"
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                ? "bg-amber-600 border-amber-600 text-white shadow-md shadow-amber-200"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                         >
                             🚪 Door
@@ -519,8 +594,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <button
                             onClick={() => { setSelectedProduct('list'); setInteractionMode('list'); }}
                             className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'list' && selectedProductId === 'list'
-                                    ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200"
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                         >
                             📏 List
@@ -528,8 +603,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <button
                             onClick={() => { setSelectedProduct('moulding'); setInteractionMode('list'); }}
                             className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'list' && selectedProductId === 'moulding'
-                                    ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                         >
                             🪄 Moulding
@@ -691,6 +766,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
                 {/* Footer Buttons */}
                 <div className="grid grid-cols-1 gap-3 pt-4">
+                    <button
+                        onClick={handleSaveProject}
+                        disabled={isSaving || !isClosed}
+                        className="w-full p-4 bg-emerald-600 border-none rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <span className="text-xl">💾</span>
+                        <div className="text-left">
+                            <div className="text-xs font-black text-white uppercase tracking-widest">{isSaving ? 'Saving...' : 'Save Database'}</div>
+                            <div className="text-[9px] font-bold text-emerald-200">Save project to cloud</div>
+                        </div>
+                    </button>
                     <button
                         onClick={handleExport}
                         disabled={!isClosed}

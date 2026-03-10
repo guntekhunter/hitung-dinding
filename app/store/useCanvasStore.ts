@@ -90,8 +90,9 @@ type CanvasState = {
         name: string;
         phone: string;
         address: string;
+        surveyorName: string;
     };
-    setCustomerInfo: (info: { name: string, phone: string, address: string }) => void;
+    setCustomerInfo: (info: { name: string, phone: string, address: string, surveyorName: string }) => void;
 
     // History
     past: HistoryEntry[];
@@ -164,6 +165,11 @@ type CanvasState = {
     listDrawingType: 'line' | 'rectangle';
     setListDrawingType: (type: 'line' | 'rectangle') => void;
 
+    // Database ID
+    projectId: string | null;
+    setProjectId: (id: string | null) => void;
+    loadProject: (id: string, data: any) => void;
+
     // Internal
     _saveHistory: () => void;
 };
@@ -204,7 +210,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     customerInfo: {
         name: "",
         phone: "",
-        address: ""
+        address: "",
+        surveyorName: ""
     },
     materialPrices: PRODUCTS.reduce((acc, p) => ({ ...acc, [p.id]: p.price }), {}),
     setMaterialPrice: (productId, price) => set((state) => ({
@@ -213,6 +220,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     listDrawingType: 'line',
     setListDrawingType: (type) => set({ listDrawingType: type }),
+
+    projectId: null,
+    setProjectId: (id) => set({ projectId: id }),
 
     setCustomerInfo: (info) => set({ customerInfo: info }),
 
@@ -367,6 +377,26 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         set({
             walls: [initialWall],
             activeWallId: initialWall.id,
+            interactionMode: 'draw',
+            currentDrawingArea: null,
+            currentDrawingList: null,
+            projectId: null
+        });
+    },
+
+    loadProject: (id: string, data: any) => {
+        get()._saveHistory();
+        const loadedWalls = data?.canvas?.walls || [initialWall];
+        set({
+            projectId: id,
+            customerInfo: {
+                name: data?.projectInfo?.customerName || "",
+                phone: data?.projectInfo?.phone || "",
+                address: data?.projectInfo?.address || "",
+                surveyorName: data?.projectInfo?.surveyor || ""
+            },
+            walls: loadedWalls,
+            activeWallId: loadedWalls[0]?.id || initialWall.id,
             interactionMode: 'draw',
             currentDrawingArea: null,
             currentDrawingList: null
