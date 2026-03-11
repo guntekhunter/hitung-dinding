@@ -28,6 +28,7 @@ export type ProjectData = {
 export const saveProjectToDatabase = async (
     projectName: string,
     projectData: ProjectData,
+    companyId: string,
     projectId?: string | null
 ) => {
     try {
@@ -39,6 +40,7 @@ export const saveProjectToDatabase = async (
                 .update({
                     name: projectName,
                     data: projectData,
+                    company_id: companyId
                 })
                 .eq("id", projectId)
                 .select();
@@ -49,6 +51,7 @@ export const saveProjectToDatabase = async (
                     {
                         name: projectName,
                         data: projectData,
+                        company_id: companyId,
                         created_at: new Date().toISOString(),
                     },
                 ])

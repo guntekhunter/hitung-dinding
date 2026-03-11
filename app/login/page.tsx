@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signInUser, getCurrentUser, getUserCompany } from "../utils/auth";
 import { useAuthStore } from "../store/useAuthStore";
@@ -13,6 +13,13 @@ export default function LoginPage() {
 
     const router = useRouter();
     const setSession = useAuthStore((state) => state.setSession);
+    const { user, company } = useAuthStore();
+
+    useEffect(() => {
+        if (user && company) {
+            router.push("/");
+        }
+    }, [user, company, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,7 +51,10 @@ export default function LoginPage() {
             // 5. Redirect to Dashboard
             router.push("/");
         } catch (err: any) {
-            setError(err.message || "An unexpected error occurred during login.");
+            console.error("Login process error:", err);
+            // If it's a Supabase error object, it might have a message property
+            const errorMessage = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }

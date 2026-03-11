@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCanvasStore } from "../store/useCanvasStore";
 
+import { useAuthStore } from "../store/useAuthStore";
+
 type ProjectRow = {
     id: string;
     name: string;
@@ -14,17 +16,26 @@ type ProjectRow = {
     created_at: string;
 };
 
+import ProtectedRoute from "../components/ProtectedRoute";
+
 export default function ProjectsPage() {
     const router = useRouter();
     const loadProject = useCanvasStore(state => state.loadProject);
+    const company = useAuthStore(state => state.company);
     const [projects, setProjects] = useState<ProjectRow[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchProjects() {
+            if (!company?.id) {
+                setLoading(false);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from("projects")
                 .select("*")
+                .eq("company_id", company.id)
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -36,41 +47,43 @@ export default function ProjectsPage() {
         }
 
         fetchProjects();
-    }, []);
+    }, [company?.id]);
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-            <div className="max-w-6xl mx-auto space-y-8">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Saved Projects</h1>
-                    <Link href="/" className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition active:scale-95 text-sm">
-                        + New Project
-                    </Link>
-                </div>
+        <ProtectedRoute>
+            <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+                <div className="max-w-6xl mx-auto space-y-8">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Saved Projects</h1>
+                        <Link href="/" className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition active:scale-95 text-sm">
+                            + New Project
+                        </Link>
+                    </div>
 
-                {loading ? (
-                    <div className="text-center text-slate-500 py-12">Loading projects...</div>
-                ) : projects.length === 0 ? (
-                    <div className="text-center text-slate-400 py-12 bg-white rounded-3xl border border-slate-200 border-dashed shadow-sm">
-                        <p className="text-lg font-bold text-slate-600">No projects found.</p>
-                        <p className="text-sm mt-1">Create your first wall plan and save it to see it here.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {projects.map((project) => (
-                            <ProjectCard
-                                key={project.id}
-                                project={project}
-                                onClick={() => {
-                                    loadProject(project.id, project.data);
-                                    router.push("/");
-                                }}
-                            />
-                        ))}
-                    </div>
-                )}
+                    {loading ? (
+                        <div className="text-center text-slate-500 py-12">Loading projects...</div>
+                    ) : projects.length === 0 ? (
+                        <div className="text-center text-slate-400 py-12 bg-white rounded-3xl border border-slate-200 border-dashed shadow-sm">
+                            <p className="text-lg font-bold text-slate-600">No projects found.</p>
+                            <p className="text-sm mt-1">Create your first wall plan and save it to see it here.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {projects.map((project) => (
+                                <ProjectCard
+                                    key={project.id}
+                                    project={project}
+                                    onClick={() => {
+                                        loadProject(project.id, project.data);
+                                        router.push("/");
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </ProtectedRoute>
     );
 }
 

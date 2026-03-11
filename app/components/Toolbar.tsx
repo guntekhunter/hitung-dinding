@@ -7,9 +7,14 @@ import { subtractRect, Rect } from "../function/geometry";
 import { generateRAB } from "../utils/rabGenerator";
 import { saveProjectToDatabase, ProjectData } from "../utils/saveProject";
 import Link from "next/link";
+import { useAuthStore } from "../store/useAuthStore";
+import { logoutUser } from "../utils/auth";
+import { useRouter } from "next/navigation";
 
 export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const [isSaving, setIsSaving] = useState(false);
+    const router = useRouter();
+    const { user, company, clearSession } = useAuthStore();
     const {
         walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName,
         getDimensions, reset,
@@ -22,6 +27,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         materialPrices, setMaterialPrice,
         projectId, setProjectId
     } = useCanvasStore();
+
+    const handleLogout = async () => {
+        try {
+            await logoutUser();
+            clearSession();
+            router.push("/login");
+        } catch (err) {
+            console.error("Logout failed:", err);
+            alert("Logout failed. Please try again.");
+        }
+    };
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
     const { isClosed, designAreas, openings, lists, isWallLocked } = activeWall;
@@ -277,7 +293,11 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
             const projectName = `Proyek ${customerInfo.name || "Baru"} - ${new Date().toLocaleDateString('id-ID')}`;
 
-            const savedData = await saveProjectToDatabase(projectName, projectData, projectId);
+            if (!company?.id) {
+                throw new Error("You must be logged in to a company to save projects.");
+            }
+
+            const savedData = await saveProjectToDatabase(projectName, projectData, company.id, projectId);
 
             // Update local state so subsequent saves overwrite
             if (savedData && savedData.length > 0) {
@@ -373,12 +393,31 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     };
 
     return (
-        <div className="flex flex-col h-full w-full md:w-[350px] bg-slate-50 border-l border-slate-200 shadow-xl overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0">
-                <h1 className="text-xl font-black text-slate-800 tracking-tight">Wall Planner</h1>
-                <Link href="/projects" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">Projects 📂</Link>
-                <div className="md:hidden">
-                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase tracking-widest">Mobile</span>
+        <div className="w-full md:w-[380px] bg-[#f8fafc] h-full flex flex-col border-l border-slate-200 shadow-[0_0_40px_rgba(0,0,0,0.05)] relative z-10 overflow-hidden font-sans">
+            {/* User Profile & Brand Header */}
+            <div className="bg-white border-b border-slate-100 flex flex-col shrink-0">
+                <div className="p-4 flex justify-between items-center border-b border-slate-50">
+                    <h1 className="text-xl font-black text-slate-800 tracking-tight">Wall Planner</h1>
+                    <Link href="/projects" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">Projects 📂</Link>
+                </div>
+                
+                <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-md border-2 border-white">
+                            {user?.name?.charAt(0).toUpperCase() || "U"}
+                        </div>
+                        <div>
+                            <div className="text-xs font-black text-slate-800 tracking-tight leading-none mb-1">{user?.name || "User"}</div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{company?.name || "Company"}</div>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={handleLogout}
+                        className="p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all active:scale-95 group border border-transparent hover:border-rose-100"
+                        title="Logout"
+                    >
+                        <span className="text-xl group-hover:rotate-12 transition-transform block">🚪</span>
+                    </button>
                 </div>
             </div>
 

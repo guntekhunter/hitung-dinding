@@ -14,28 +14,42 @@ export const signInUser = async (email: string, password: string) => {
 };
 
 export const getCurrentUser = async (userId: string) => {
+    console.log("Fetching profile for userId:", userId);
     const { data, error } = await supabase
         .from("users")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
     if (error) {
+        console.error("getCurrentUser error:", error);
         throw new Error("Failed to fetch user profile: " + error.message);
+    }
+
+    if (!data) {
+        throw new Error(
+            "No user profile found. Your account may not have completed registration. Please contact support or try re-registering."
+        );
     }
 
     return data;
 };
 
 export const getUserCompany = async (companyId: string) => {
+    console.log("Fetching company for companyId:", companyId);
     const { data, error } = await supabase
         .from("companies")
         .select("*")
         .eq("id", companyId)
-        .single();
+        .maybeSingle();
 
     if (error) {
+        console.error("getUserCompany error:", error);
         throw new Error("Failed to fetch company info: " + error.message);
+    }
+
+    if (!data) {
+        throw new Error("Company not found. Please contact support.");
     }
 
     return data;
@@ -52,8 +66,7 @@ export const registerCompanyAndAdminUser = async (
     companyData: { name: string },
     adminData: { name: string; email: string; password: string }
 ) => {
-    // 1. Sign up the user FIRST so the Supabase client gets an authenticated session.
-    // This resolves Row-Level Security (RLS) issues where anonymous users cannot insert companies.
+    // 1. Sign up the auth user via Supabase Auth (client-side, anon key is fine here)
     const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminData.email,
         password: adminData.password,
@@ -63,35 +76,26 @@ export const registerCompanyAndAdminUser = async (
         throw new Error("Authentication signup failed: " + (authError?.message || "Unknown error"));
     }
 
-    // 2. Create the company now that we are authenticated
-    const { data: newCompany, error: companyError } = await supabase
-        .from("companies")
-        .insert([{
-            name: companyData.name
-        }])
-        .select()
-        .single();
+    // 2. Call our server-side API route that uses the SERVICE ROLE KEY to bypass RLS.
+    // This is necessary because after signUp, if email confirmation is enabled,
+    // the session is null and the client is still "anon" (not "authenticated"),
+    // causing the INSERT RLS policy to reject the request.
+    const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            authUserId: authData.user.id,
+            companyName: companyData.name,
+            adminName: adminData.name,
+        }),
+    });
 
-    if (companyError || !newCompany) {
-        // Technically we have a dangling auth user now, but without a backend RPC this is the safest client-side approach.
-        throw new Error("Failed to create company: " + (companyError?.message || "Unknown error"));
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to complete registration on server.");
     }
 
-    // 3. Create user profile linked to the new company
-    const { data: newUserProfile, error: profileError } = await supabase
-        .from("users")
-        .insert([{
-            id: authData.user.id,
-            company_id: newCompany.id,
-            name: adminData.name,
-            role: "admin"
-        }])
-        .select()
-        .single();
-
-    if (profileError || !newUserProfile) {
-        throw new Error("Failed to link user profile: " + (profileError?.message || "Unknown error"));
-    }
+    const { company: newCompany, userProfile: newUserProfile } = await response.json();
 
     return { company: newCompany, userProfile: newUserProfile, authUser: authData.user };
 };
