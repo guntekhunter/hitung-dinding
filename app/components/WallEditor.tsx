@@ -1,7 +1,7 @@
 'use client';
 import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
-import { useCanvasStore, SCALE, PRODUCTS, DesignArea } from '../store/useCanvasStore';
+import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { getPolygonRectIntersectionArea } from '../function/geometry';
 
 const WallEditor = forwardRef((props, ref) => {
@@ -17,7 +17,8 @@ const WallEditor = forwardRef((props, ref) => {
         startOpening, updateOpening, finishOpening, removeOpening,
         startList, updateList, finishList, removeList,
         zoom, offset, setZoom, setOffset,
-        undo, redo, mouldingGap, listDrawingType, setListDrawingType
+        undo, redo, mouldingGap, listDrawingType, setListDrawingType,
+        products
     } = useCanvasStore();
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
@@ -211,11 +212,11 @@ const WallEditor = forwardRef((props, ref) => {
         // Guard: ensure it's a product area
         if (!('productId' in area)) return null;
 
-        const product = PRODUCTS.find(p => p.id === area.productId);
+        const product = products.find(p => p.id === area.productId);
         if (!product) return null;
 
-        const panelWidthPx = product.width * SCALE;
-        const panelHeightPx = product.height * SCALE;
+        const panelWidthPx = (product.width || 0) * SCALE;
+        const panelHeightPx = (product.height || 0) * SCALE;
 
         // Grid lines calculation (visual only)
         const horizontalCount = Math.ceil(Math.abs(area.width) / panelWidthPx);
@@ -224,9 +225,9 @@ const WallEditor = forwardRef((props, ref) => {
         // Area-based count for the label
         const intersectAreaPx2 = getPolygonRectIntersectionArea(points, area);
         const areaM2 = intersectAreaPx2 / (SCALE * SCALE);
-        const productAreaM2 = product.width * product.height;
+        const productAreaM2 = (product.width || 0) * (product.height || 0);
         const wastePercentage = useCanvasStore.getState().wastePercentage;
-        const baseCount = Math.ceil((areaM2 / productAreaM2) * (1 + wastePercentage / 100));
+        const baseCount = Math.ceil((areaM2 / (productAreaM2 || 1)) * (1 + wastePercentage / 100));
         const count = baseCount;
 
         const lines = [];
@@ -451,7 +452,7 @@ const WallEditor = forwardRef((props, ref) => {
     };
 
     const renderListContent = (list: any) => {
-        const product = PRODUCTS.find(p => p.id === list.productId);
+        const product = products.find(p => p.id === list.productId);
         const color = product?.color.replace('0.4', '1') || "#8b5cf6";
         const unitLength = product?.unitLength || 2.9;
         const dx = list.x2 - list.x1;
@@ -584,7 +585,8 @@ const WallEditor = forwardRef((props, ref) => {
             const snappedPos = snapToGap(pos, false);
             startOpening(snappedPos.x, snappedPos.y, interactionMode);
         } else if (interactionMode === 'list') {
-            const isMoulding = useCanvasStore.getState().selectedProductId.startsWith('moulding');
+            const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
+            const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
             const snappedPos = snapToGap(pos, isMoulding);
             startList(snappedPos.x, snappedPos.y);
         }
@@ -620,7 +622,8 @@ const WallEditor = forwardRef((props, ref) => {
                 newY = currentDrawingList.y1;
             }
 
-            const isMoulding = useCanvasStore.getState().selectedProductId.startsWith('moulding');
+            const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
+            const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
             const snappedPos = snapToGap({ x: newX, y: newY }, isMoulding);
             newX = snappedPos.x;
             newY = snappedPos.y;
