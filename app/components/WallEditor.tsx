@@ -584,7 +584,8 @@ const WallEditor = forwardRef((props, ref) => {
             const snappedPos = snapToGap(pos, false);
             startOpening(snappedPos.x, snappedPos.y, interactionMode);
         } else if (interactionMode === 'list') {
-            const snappedPos = snapToGap(pos, true);
+            const isMoulding = useCanvasStore.getState().selectedProductId.startsWith('moulding');
+            const snappedPos = snapToGap(pos, isMoulding);
             startList(snappedPos.x, snappedPos.y);
         }
     };
@@ -619,7 +620,8 @@ const WallEditor = forwardRef((props, ref) => {
                 newY = currentDrawingList.y1;
             }
 
-            const snappedPos = snapToGap({ x: newX, y: newY }, true);
+            const isMoulding = useCanvasStore.getState().selectedProductId.startsWith('moulding');
+            const snappedPos = snapToGap({ x: newX, y: newY }, isMoulding);
             newX = snappedPos.x;
             newY = snappedPos.y;
 
