@@ -1,15 +1,46 @@
 'use client';
-import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
+export const dynamic = 'force-static';
 import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { getPolygonRectIntersectionArea } from '../function/geometry';
 
+// Hook for Web Worker
+const useWorker = (workerScript: string) => {
+    const workerRef = useRef<Worker | null>(null);
+
+    useEffect(() => {
+        workerRef.current = new Worker(new URL('../utils/calcWorker.ts', import.meta.url));
+        return () => workerRef.current?.terminate();
+    }, []);
+
+    const postMessage = useCallback((message: any) => {
+        return new Promise((resolve) => {
+            if (!workerRef.current) return resolve(null);
+            const handler = (e: MessageEvent) => {
+                workerRef.current?.removeEventListener('message', handler);
+                resolve(e.data);
+            };
+            workerRef.current.addEventListener('message', handler);
+            workerRef.current.postMessage(message);
+        });
+    }, []);
+
+    return postMessage;
+};
+
 const WallEditor = forwardRef((props, ref) => {
     const stageRef = useRef<any>(null);
+    const lastPointerPos = useRef({ x: 0, y: 0 });
+    const isPanningRef = useRef(false); // Using ref for panning to avoid re-renders during mouse move
 
     useImperativeHandle(ref, () => ({
         getStage: () => stageRef.current
     }));
+
+    const lastDist = useRef<number>(0);
+    const lastCenter = useRef<{ x: number, y: number } | null>(null);
+
     const {
         walls, activeWallId, addPoint, updatePoint, updateEdgeLength,
         interactionMode, currentDrawingArea, currentDrawingList,
@@ -30,14 +61,21 @@ const WallEditor = forwardRef((props, ref) => {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [inputValue, setInputValue] = useState<string>("");
     const inputRef = useRef<HTMLInputElement>(null);
-    const [isPanning, setIsPanning] = useState(false);
-    const lastPointerPos = useRef({ x: 0, y: 0 });
+
     const [mounted, setMounted] = useState(false);
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Dynamic Text Scale: Text grows slightly as you zoom in
     const textScale = 1 / Math.pow(zoom, 0.7);
+
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         setMounted(true);
@@ -208,66 +246,68 @@ const WallEditor = forwardRef((props, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
-    const renderAreaContent = (area: DesignArea | any) => {
-        // Guard: ensure it's a product area
-        if (!('productId' in area)) return null;
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points }: any) => {
+        const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
+        const calculateArea = useWorker('../utils/calcWorker.ts');
 
-        const product = products.find(p => p.id === area.productId);
-        if (!product) return null;
+        useEffect(() => {
+            const runCalc = async () => {
+                const result: any = await calculateArea({
+                    type: 'CALCULATE_AREA_INTERSECTION',
+                    data: { polygon: points, rect: area }
+                });
+                if (result?.type === 'AREA_INTERSECTION_RESULT') {
+                    setAsyncAreaM2(result.area / (SCALE * SCALE));
+                }
+            };
+            runCalc();
+        }, [area, points, calculateArea]);
 
         const panelWidthPx = (product.width || 0) * SCALE;
         const panelHeightPx = (product.height || 0) * SCALE;
 
-        // Grid lines calculation (visual only)
         const horizontalCount = Math.ceil(Math.abs(area.width) / panelWidthPx);
         const verticalCount = Math.ceil(Math.abs(area.height) / panelHeightPx);
 
-        // Area-based count for the label
-        const intersectAreaPx2 = getPolygonRectIntersectionArea(points, area);
-        const areaM2 = intersectAreaPx2 / (SCALE * SCALE);
+        const areaM2 = asyncAreaM2 !== null ? asyncAreaM2 : 0;
         const productAreaM2 = (product.width || 0) * (product.height || 0);
         const wastePercentage = useCanvasStore.getState().wastePercentage;
-        const baseCount = Math.ceil((areaM2 / (productAreaM2 || 1)) * (1 + wastePercentage / 100));
-        const count = baseCount;
+        const count = Math.ceil((areaM2 / (productAreaM2 || 1)) * (1 + wastePercentage / 100));
 
-        const lines = [];
+        const lines = useMemo(() => {
+            const result = [];
+            const startX = Math.min(0, area.width);
+            for (let i = 1; i < horizontalCount; i++) {
+                const x = startX + i * panelWidthPx;
+                result.push(
+                    <Line
+                        key={`vline-${i}`}
+                        points={[x, 0, x, area.height]}
+                        stroke="rgba(255,255,255,0.5)"
+                        strokeWidth={1 / zoom}
+                        dash={[5 / zoom, 5 / zoom]}
+                    />
+                );
+            }
+            const startY = Math.max(0, area.height);
+            for (let i = 1; i < verticalCount; i++) {
+                const y = startY - i * panelHeightPx;
+                result.push(
+                    <Line
+                        key={`hline-${i}`}
+                        points={[0, y, area.width, y]}
+                        stroke="rgba(255,255,255,0.5)"
+                        strokeWidth={1 / zoom}
+                        dash={[5 / zoom, 5 / zoom]}
+                    />
+                );
+            }
+            return result;
+        }, [horizontalCount, verticalCount, area.width, area.height, panelWidthPx, panelHeightPx, zoom]);
 
-        // Vertical lines (columns)
-        const startX = Math.min(0, area.width);
-        for (let i = 1; i < horizontalCount; i++) {
-            const x = startX + i * panelWidthPx;
-            lines.push(
-                <Line
-                    key={`vline-${i}`}
-                    points={[x, 0, x, area.height]}
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth={1 / zoom}
-                    dash={[5 / zoom, 5 / zoom]}
-                />
-            );
-        }
-
-        // Horizontal lines (rows) - Starting from bottom to put seam at top
-        const startY = Math.max(0, area.height);
-        for (let i = 1; i < verticalCount; i++) {
-            const y = startY - i * panelHeightPx;
-            lines.push(
-                <Line
-                    key={`hline-${i}`}
-                    points={[0, y, area.width, y]}
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth={1 / zoom}
-                    dash={[5 / zoom, 5 / zoom]}
-                />
-            );
-        }
-
-        const isLengthBased = product.countType === 'length';
         const color = product.color.replace('0.4', '1');
         const absWidth = Math.abs(area.width);
         const absHeight = Math.abs(area.height);
-
-        // Dimensions for professional look
         const dimOffset = 20 / zoom;
         const tickLen = 4 / zoom;
 
@@ -277,18 +317,12 @@ const WallEditor = forwardRef((props, ref) => {
                     name="design-area"
                     width={area.width}
                     height={area.height}
-                    fill={isLengthBased ? "transparent" : product.color}
-                    stroke={isLengthBased ? color : "#1e293b"}
-                    strokeWidth={isLengthBased ? 2 / zoom : 1 / zoom}
-                    onClick={() => {
-                        if (interactionMode === 'delete') removeDesignArea(area.id);
-                    }}
-                    onTap={() => {
-                        if (interactionMode === 'delete') removeDesignArea(area.id);
-                    }}
+                    fill={product.countType === 'length' ? "transparent" : product.color}
+                    stroke={product.countType === 'length' ? color : "#1e293b"}
+                    strokeWidth={product.countType === 'length' ? 2 / zoom : 1 / zoom}
+                    onClick={onClick}
+                    onTap={onClick}
                 />
-
-                {/* Product Name */}
                 <Text
                     text={product.name}
                     fontSize={10}
@@ -300,11 +334,8 @@ const WallEditor = forwardRef((props, ref) => {
                     scaleX={textScale}
                     scaleY={textScale}
                 />
-
-                {/* Width Dimension Line (Bottom) */}
                 <Group y={area.height + dimOffset}>
                     <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    {/* Ticks */}
                     <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text
@@ -318,11 +349,8 @@ const WallEditor = forwardRef((props, ref) => {
                         scaleY={textScale}
                     />
                 </Group>
-
-                {/* Height Dimension Line (Right) */}
                 <Group x={area.width + dimOffset}>
                     <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    {/* Ticks */}
                     <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text
@@ -337,11 +365,8 @@ const WallEditor = forwardRef((props, ref) => {
                         scaleY={textScale}
                     />
                 </Group>
-
-                {!isLengthBased && (
-                    <Group clipFunc={(ctx) => {
-                        ctx.rect(0, 0, area.width, area.height);
-                    }}>
+                {product.countType !== 'length' && (
+                    <Group clipFunc={(ctx) => ctx.rect(0, 0, area.width, area.height)}>
                         {lines}
                         <Text
                             text={`${count} pcs`}
@@ -358,20 +383,14 @@ const WallEditor = forwardRef((props, ref) => {
                 )}
             </Group>
         );
-    };
+    });
 
-    const renderOpeningContent = (opening: any) => {
-        // Guard: ensure it's an opening
-        if (!('type' in opening)) return null;
-
+    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick }: any) => {
         const isWindow = opening.type === 'window';
         const color = isWindow ? "rgba(14, 165, 233, 0.6)" : "rgba(217, 119, 6, 0.6)";
         const label = isWindow ? "Window" : "Door";
-
         const absWidth = Math.abs(opening.width);
         const absHeight = Math.abs(opening.height);
-
-        // Dimensions for professional look
         const dimOffset = 20 / zoom;
         const tickLen = 4 / zoom;
 
@@ -383,76 +402,29 @@ const WallEditor = forwardRef((props, ref) => {
                     fill={color}
                     stroke="white"
                     strokeWidth={2 / zoom}
-                    onClick={() => {
-                        if (interactionMode === 'delete') removeOpening(opening.id);
-                    }}
-                    onTap={() => {
-                        if (interactionMode === 'delete') removeOpening(opening.id);
-                    }}
+                    onClick={onClick}
+                    onTap={onClick}
                 />
-                {/* Cross lines to indicate opening */}
-                <Line
-                    points={[0, 0, opening.width, opening.height]}
-                    stroke="white"
-                    strokeWidth={2 / zoom}
-                />
-                <Line
-                    points={[0, opening.height, opening.width, 0]}
-                    stroke="white"
-                    strokeWidth={2 / zoom}
-                />
-                <Text
-                    text={label}
-                    fontSize={12}
-                    fill="white"
-                    fontStyle="bold"
-                    align="center"
-                    width={opening.width}
-                    y={opening.height / 2 - 12 / zoom}
-                    scaleX={textScale}
-                    scaleY={textScale}
-                />
-
-                {/* Width Dimension Line (Bottom) */}
+                <Line points={[0, 0, opening.width, opening.height]} stroke="white" strokeWidth={2 / zoom} />
+                <Line points={[0, opening.height, opening.width, 0]} stroke="white" strokeWidth={2 / zoom} />
+                <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} />
                 <Group y={opening.height + dimOffset}>
                     <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text
-                        text={`${(absWidth / SCALE).toFixed(2)}m`}
-                        fontSize={9}
-                        fill="#475569"
-                        x={opening.width / 2}
-                        y={-12 / zoom}
-                        offsetX={15}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
+                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
-
-                {/* Height Dimension Line (Right) */}
                 <Group x={opening.width + dimOffset}>
                     <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text
-                        text={`${(absHeight / SCALE).toFixed(2)}m`}
-                        fontSize={9}
-                        fill="#475569"
-                        x={4 / zoom}
-                        y={opening.height / 2}
-                        rotation={90}
-                        offsetX={15}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
+                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={opening.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
             </Group>
         );
-    };
+    });
 
-    const renderListContent = (list: any) => {
-        const product = products.find(p => p.id === list.productId);
+    const MemoizedListContent = React.memo(({ list, product, zoom, textScale, onClick }: any) => {
         const color = product?.color.replace('0.4', '1') || "#8b5cf6";
         const unitLength = product?.unitLength || 2.9;
         const dx = list.x2 - list.x1;
@@ -461,29 +433,18 @@ const WallEditor = forwardRef((props, ref) => {
         const lengthM = (lengthPx / SCALE).toFixed(2);
         const midX = (list.x1 + list.x2) / 2;
         const midY = (list.y1 + list.y2) / 2;
-        const baseCount = Math.ceil((lengthPx / SCALE) / unitLength);
-        const count = baseCount;
+        const count = Math.ceil((lengthPx / SCALE) / unitLength);
         const angle = Math.atan2(dy, dx);
-        const tickLen = 6 / zoom;
 
         return (
             <Group>
-                {/* Main segment */}
                 <Line
                     points={[list.x1, list.y1, list.x2, list.y2]}
                     stroke={color}
                     strokeWidth={2 / zoom}
-                    onClick={() => {
-                        if (interactionMode === 'delete') removeList(list.id);
-                    }}
-                    onTap={() => {
-                        if (interactionMode === 'delete') removeList(list.id);
-                    }}
+                    onClick={onClick}
+                    onTap={onClick}
                 />
-
-                {/* Architectural Ticks */}
-
-                {/* Label */}
                 <Text
                     x={midX}
                     y={midY}
@@ -499,6 +460,23 @@ const WallEditor = forwardRef((props, ref) => {
                 />
             </Group>
         );
+    });
+
+    const renderAreaContent = (area: DesignArea | any) => {
+        if (!('productId' in area)) return null;
+        const product = products.find(p => p.id === area.productId);
+        if (!product) return null;
+        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
+    };
+
+    const renderOpeningContent = (opening: any) => {
+        if (!('type' in opening)) return null;
+        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
+    };
+
+    const renderListContent = (list: any) => {
+        const product = products.find(p => p.id === list.productId);
+        return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
     };
 
     const renderedAreas = useMemo(() => {
@@ -555,13 +533,18 @@ const WallEditor = forwardRef((props, ref) => {
     const handleMouseDown = (e: any) => {
         const stage = stageRef.current;
         if (!stage) return;
+
+        // Block interaction start if multi-touch (pinch-zoom handling)
+        if (e.evt?.touches?.length > 1) return;
+
         const pointerPos = stage.getPointerPosition();
         if (!pointerPos) return;
 
-        // Ctrl + Drag for panning
-        if (e.evt.ctrlKey) {
-            setIsPanning(true);
+        // Ctrl + Drag for panning or Pan Mode
+        if (e.evt?.ctrlKey || interactionMode === 'pan') {
+            isPanningRef.current = true;
             lastPointerPos.current = pointerPos;
+            e.evt?.preventDefault?.();
             return;
         }
 
@@ -570,7 +553,7 @@ const WallEditor = forwardRef((props, ref) => {
 
         // Middle Click or Space + Drag for panning (alternative)
         if (e.evt.button === 1 || e.evt.buttons === 4) {
-            setIsPanning(true);
+            isPanningRef.current = true;
             lastPointerPos.current = pointerPos;
             return;
         }
@@ -596,7 +579,59 @@ const WallEditor = forwardRef((props, ref) => {
         const stage = stageRef.current;
         if (!stage) return;
 
-        if (isPanning) {
+        const touch1 = e.evt?.touches?.[0];
+        const touch2 = e.evt?.touches?.[1];
+
+        // Multi-touch Zoom and Pan
+        if (touch1 && touch2) {
+            e.evt.preventDefault();
+            const p1 = { x: touch1.clientX, y: touch1.clientY };
+            const p2 = { x: touch2.clientX, y: touch2.clientY };
+
+            const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+            const center = {
+                x: (p1.x + p2.x) / 2,
+                y: (p1.y + p2.y) / 2,
+            };
+
+            if (!lastDist.current) {
+                lastDist.current = dist;
+                lastCenter.current = center;
+                return;
+            }
+
+            const scaleBy = dist / lastDist.current;
+            const newScale = zoom * scaleBy;
+
+            if (newScale >= 0.1 && newScale <= 10) {
+                const stagePos = stage.container().getBoundingClientRect();
+                const centerOnStage = {
+                    x: (center.x - stagePos.left - offset.x) / zoom,
+                    y: (center.y - stagePos.top - offset.y) / zoom,
+                };
+
+                const newOffset = {
+                    x: center.x - stagePos.left - centerOnStage.x * newScale,
+                    y: center.y - stagePos.top - centerOnStage.y * newScale,
+                };
+
+                // Add panning displacement
+                if (lastCenter.current) {
+                    newOffset.x += center.x - lastCenter.current.x;
+                    newOffset.y += center.y - lastCenter.current.y;
+                }
+
+                setZoom(newScale);
+                setOffset(newOffset.x, newOffset.y);
+            }
+
+            lastDist.current = dist;
+            lastCenter.current = center;
+            return;
+        }
+
+        if (isPanningRef.current) {
+            e.evt?.preventDefault?.();
             const pointerPos = stage.getPointerPosition();
             if (pointerPos) {
                 const dx = pointerPos.x - lastPointerPos.current.x;
@@ -605,6 +640,11 @@ const WallEditor = forwardRef((props, ref) => {
                 lastPointerPos.current = pointerPos;
             }
             return;
+        }
+
+        // Prevent scrolling when drawing
+        if (currentDrawingList || currentDrawingArea) {
+            e.evt?.preventDefault();
         }
 
         const pos = getPointerPosition();
@@ -644,8 +684,10 @@ const WallEditor = forwardRef((props, ref) => {
     };
 
     const handleMouseUp = () => {
-        if (isPanning) {
-            setIsPanning(false);
+        lastDist.current = 0;
+        lastCenter.current = null;
+        if (isPanningRef.current) {
+            isPanningRef.current = false;
             return;
         }
 
@@ -720,7 +762,7 @@ const WallEditor = forwardRef((props, ref) => {
 
     if (!mounted) return <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center">Loading Editor...</div>;
 
-    const gridSize = 50;
+    const gridSize = isMobile ? 100 : 50;
 
     // Ensure we have a size, fallback to 900x600 if measurement fails initially
     const width = stageSize.width || 900;
@@ -738,23 +780,29 @@ const WallEditor = forwardRef((props, ref) => {
     const endY = visibleY + visibleHeight;
 
     const gridLines = [];
-    for (let x = startX; x < endX + gridSize; x += gridSize) {
-        gridLines.push(<Line key={`v-${x}`} points={[x, startY, x, endY + gridSize]} stroke="#e2e8f0" strokeWidth={1 / zoom} />);
-    }
+    if (!isMobile || zoom > 0.5) { // Hide grid on mobile when zoomed out too far
+        for (let x = startX; x < endX + gridSize; x += gridSize) {
+            gridLines.push(<Line key={`v-${x}`} points={[x, startY, x, endY + gridSize]} stroke="#e2e8f0" strokeWidth={1 / zoom} />);
+        }
 
-    for (let y = startY; y < endY + gridSize; y += gridSize) {
-        gridLines.push(<Line key={`h-${y}`} points={[startX, y, endX + gridSize, y]} stroke="#e2e8f0" strokeWidth={1 / zoom} />);
+        for (let y = startY; y < endY + gridSize; y += gridSize) {
+            gridLines.push(<Line key={`h-${y}`} points={[startX, y, endX + gridSize, y]} stroke="#e2e8f0" strokeWidth={1 / zoom} />);
+        }
     }
 
     return (
-        <div ref={containerRef} className="relative w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl">
+        <div ref={containerRef} className="relative w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl" style={{ touchAction: 'none' }}>
             <Stage
                 ref={stageRef}
                 width={width}
                 height={height}
+                pixelRatio={Math.min(window.devicePixelRatio || 1, 1.5)}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
+                onTouchStart={handleMouseDown}
+                onTouchMove={handleMouseMove}
+                onTouchEnd={handleMouseUp}
                 onWheel={handleWheel}
                 scaleX={zoom}
                 scaleY={zoom}
@@ -762,7 +810,8 @@ const WallEditor = forwardRef((props, ref) => {
                 y={offset.y}
                 draggable={false}
                 style={{
-                    cursor: isPanning ? 'grabbing' : (isClosed ? 'default' : 'crosshair')
+                    cursor: isPanningRef.current ? 'grabbing' : (isClosed ? 'default' : 'crosshair'),
+                    touchAction: 'none'
                 }}
             >
                 <Layer>

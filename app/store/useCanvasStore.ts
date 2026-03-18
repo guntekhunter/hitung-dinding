@@ -71,7 +71,7 @@ type CanvasState = {
     fetchProducts: () => Promise<void>;
 
     // Interaction mode
-    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list';
+    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan';
 
     // Product state
     selectedProductId: string;
@@ -105,7 +105,7 @@ type CanvasState = {
 
     // Product actions
     setSelectedProduct: (id: string) => void;
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list') => void;
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan') => void;
 
     // Area Actions
     startDesignArea: (x: number, y: number) => void;
@@ -437,7 +437,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
-    setInteractionMode: (mode) => set({ interactionMode: mode }),
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan') => set({ interactionMode: mode }),
 
     startDesignArea: (x, y) => {
         const { selectedProductId } = get();

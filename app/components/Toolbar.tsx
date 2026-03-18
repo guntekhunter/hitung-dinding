@@ -539,6 +539,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Tool Mode</h3>
+                        <div className="grid grid-cols-1 gap-2">
+                            <button
+                                onClick={() => setInteractionMode('pan')}
+                                className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'pan'
+                                    ? "bg-slate-800 border-slate-800 text-white shadow-md shadow-slate-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                🖐️ Pan Mode
+                            </button>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => setInteractionMode('place')}
