@@ -534,11 +534,18 @@ const WallEditor = forwardRef((props, ref) => {
         const stage = stageRef.current;
         if (!stage) return;
 
+        const pointerPos = stage.getPointerPosition();
+        if (!pointerPos) return;
+
         // Block interaction start if multi-touch (pinch-zoom handling)
         if (e.evt?.touches?.length > 1) return;
 
-        const pointerPos = stage.getPointerPosition();
-        if (!pointerPos) return;
+        // If it's a touch event, prevent default to stop simulated mouse events
+        if (e.evt && 'touches' in e.evt) {
+            if (e.evt.touches.length <= 1) {
+                e.evt.preventDefault();
+            }
+        }
 
         // Ctrl + Drag for panning or Pan Mode
         if (e.evt?.ctrlKey || interactionMode === 'pan') {
@@ -581,6 +588,14 @@ const WallEditor = forwardRef((props, ref) => {
 
         const touch1 = e.evt?.touches?.[0];
         const touch2 = e.evt?.touches?.[1];
+
+        // If it's a touch event, prevent default to stop simulated mouse events
+        // except for gestures handled elsewhere if needed
+        if (e.evt && 'touches' in e.evt) {
+            if (e.evt.touches.length <= 1) {
+                e.evt.preventDefault();
+            }
+        }
 
         // Multi-touch Zoom and Pan
         if (touch1 && touch2) {
@@ -683,7 +698,13 @@ const WallEditor = forwardRef((props, ref) => {
         }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: any) => {
+        // If it's a touch event, prevent default to stop simulated mouse events
+        if (e.evt && 'touches' in e.evt) {
+            if (e.evt.touches.length <= 1) {
+                e.evt.preventDefault();
+            }
+        }
         lastDist.current = 0;
         lastCenter.current = null;
         if (isPanningRef.current) {

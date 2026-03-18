@@ -277,7 +277,11 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             });
 
             const stage = wallEditorRef.current?.getStage();
-            const previewImage = stage ? stage.toDataURL({ pixelRatio: 0.5 }) : undefined;
+            const previewImage = stage ? stage.toDataURL({ 
+                pixelRatio: 0.2, 
+                mimeType: 'image/jpeg', 
+                quality: 0.5 
+            }) : undefined;
 
             const projectData: ProjectData = {
                 projectInfo: {
@@ -820,7 +824,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     >
                         <span className="text-xl">💾</span>
                         <div className="text-left">
-                            <div className="text-xs font-black text-white uppercase tracking-widest">{isSaving ? 'Saving...' : 'Save Database'}</div>
+                            <div className="text-xs font-black text-white uppercase tracking-widest">{isSaving ? 'Uploading...' : 'Save Database'}</div>
                             <div className="text-[9px] font-bold text-emerald-200">Save project to cloud</div>
                         </div>
                     </button>
