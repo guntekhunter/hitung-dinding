@@ -10,48 +10,60 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const hydrateSession = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
+        let isMounted = true;
 
-                if (session?.user) {
-                    const profile = await getCurrentUser(session.user.id);
-                    if (profile) {
-                        const company = await getUserCompany(profile.company_id);
-                        if (company) {
-                            setSession(profile, company);
-                        }
-                    }
-                } else {
-                    clearSession();
-                }
-            } catch (error) {
-                console.error("Session hydration error:", error);
+        const syncSession = async (sessionUser: any) => {
+            if (!sessionUser) {
                 clearSession();
-            } finally {
-                setIsLoading(false);
+                if (isMounted) setIsLoading(false);
+                return;
             }
-        };
 
-        hydrateSession();
-
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user) {
-                const profile = await getCurrentUser(session.user.id);
-                if (profile) {
+            try {
+                const profile = await getCurrentUser(sessionUser.id);
+                if (profile && isMounted) {
                     const company = await getUserCompany(profile.company_id);
-                    if (company) {
+                    if (company && isMounted) {
                         setSession(profile, company);
                     }
                 }
-            } else if (event === 'SIGNED_OUT') {
+            } catch (error) {
+                console.error("Session sync error:", error);
                 clearSession();
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+
+        // Initial hydration
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (isMounted) syncSession(session?.user);
+        });
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (isMounted) {
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                    syncSession(session?.user);
+                } else if (event === 'SIGNED_OUT') {
+                    clearSession();
+                    setIsLoading(false);
+                }
             }
         });
 
+        // Safety timeout to prevent hanging indefinitely
+        const timer = setTimeout(() => {
+            if (isMounted && isLoading) {
+                console.warn("Auth hydration safety timeout reached");
+                setIsLoading(false);
+            }
+        }, 5000);
+
         return () => {
+            isMounted = false;
             subscription.unsubscribe();
+            clearTimeout(timer);
         };
     }, [setSession, clearSession]);
 

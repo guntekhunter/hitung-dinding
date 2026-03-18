@@ -5,24 +5,28 @@ import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { getPolygonRectIntersectionArea } from '../function/geometry';
 
-// Hook for Web Worker
-const useWorker = (workerScript: string) => {
-    const workerRef = useRef<Worker | null>(null);
+// Create a singleton worker instance to be shared
+let workerInstance: Worker | null = null;
+if (typeof window !== 'undefined') {
+    workerInstance = new Worker(new URL('../utils/calcWorker.ts', import.meta.url));
+}
 
-    useEffect(() => {
-        workerRef.current = new Worker(new URL('../utils/calcWorker.ts', import.meta.url));
-        return () => workerRef.current?.terminate();
-    }, []);
-
+const useWorker = () => {
     const postMessage = useCallback((message: any) => {
         return new Promise((resolve) => {
-            if (!workerRef.current) return resolve(null);
+            if (!workerInstance) return resolve(null);
+            
+            const requestId = Math.random().toString(36).substring(7);
+            
             const handler = (e: MessageEvent) => {
-                workerRef.current?.removeEventListener('message', handler);
-                resolve(e.data);
+                if (e.data.requestId === requestId) {
+                    workerInstance?.removeEventListener('message', handler);
+                    resolve(e.data);
+                }
             };
-            workerRef.current.addEventListener('message', handler);
-            workerRef.current.postMessage(message);
+            
+            workerInstance.addEventListener('message', handler);
+            workerInstance.postMessage({ ...message, requestId });
         });
     }, []);
 
@@ -248,7 +252,7 @@ const WallEditor = forwardRef((props, ref) => {
     // 3. Generate the Panels Visual
     const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
-        const calculateArea = useWorker('../utils/calcWorker.ts');
+        const calculateArea = useWorker();
 
         useEffect(() => {
             const runCalc = async () => {

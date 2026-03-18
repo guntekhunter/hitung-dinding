@@ -10,8 +10,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
-        // Simple client-side check. 
-        // Real session hydration happens in AuthProvider.
         if (!user || !company) {
             router.push("/login");
         } else {
@@ -19,7 +17,15 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         }
     }, [user, company, router]);
 
-    if (isChecking && (!user || !company)) {
+    if (!user || !company) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 font-medium italic">
+                Redirecting to login...
+            </div>
+        );
+    }
+
+    if (isChecking) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <div className="flex flex-col items-center gap-4">
