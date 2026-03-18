@@ -7,27 +7,15 @@ export const PANEL_WIDTH_METERS = 0.2; // 20cm
 export type Product = {
     id: string;
     name: string;
-    width: number; // in meters
-    height: number; // in meters
+    category: string;
+    unit: string;
+    price: number;
+    unitLength: number | null; // unit_length in db
+    height: number | null;
+    width: number | null;
     color: string;
-    price: number; // in Rp
-    countType?: 'area' | 'length';
-    unitLength?: number; // meters per stick (for length-based)
+    countType: 'area' | 'length'; // count_type in db
 };
-
-export const PRODUCTS: Product[] = [
-    { id: "wallpanel", name: "Wallpanel 16", width: 0.15, height: 2.9, color: "rgba(14, 165, 233, 0.4)", price: 250000 },
-    { id: "wallpanel30", name: "Wallpanel (30cm)", width: 0.30, height: 2.9, color: "rgba(2, 132, 199, 0.4)", price: 500000 },
-    { id: "wallboard", name: "Wallboard (40cm)", width: 0.40, height: 2.9, color: "rgba(16, 185, 129, 0.4)", price: 350000 },
-    { id: "wallboard60", name: "Wallboard (60cm)", width: 0.60, height: 2.9, color: "rgba(20, 184, 166, 0.4)", price: 525000 },
-    { id: "uvboard", name: "UV Board (122cm)", width: 1.22, height: 2.9, color: "rgba(168, 85, 247, 0.4)", price: 1200000 },
-    { id: "moulding", name: "Moulding (2.9m)", width: 0.05, height: 2.9, color: "rgba(244, 63, 94, 0.4)", price: 100000, countType: 'length', unitLength: 2.9 },
-    { id: "moulding8", name: "Moulding 8cm", width: 0.08, height: 2.9, color: "rgba(245, 158, 11, 0.4)", price: 150000, countType: 'length', unitLength: 2.9 },
-    { id: "moulding6", name: "Moulding 6cm", width: 0.06, height: 2.9, color: "rgba(132, 204, 22, 0.4)", price: 120000, countType: 'length', unitLength: 2.9 },
-    { id: "moulding4", name: "Moulding 4cm", width: 0.04, height: 2.9, color: "rgba(6, 182, 212, 0.4)", price: 80000, countType: 'length', unitLength: 2.9 },
-    { id: "moulding2-5", name: "Moulding 2.5cm", width: 0.025, height: 2.9, color: "rgba(99, 102, 241, 0.4)", price: 50000, countType: 'length', unitLength: 2.9 },
-    { id: "list", name: "List (2.9m)", width: 0.02, height: 2.9, color: "rgba(139, 92, 246, 0.4)", price: 60000, countType: 'length', unitLength: 2.9 },
-];
 
 export type DesignArea = {
     id: string;
@@ -77,8 +65,13 @@ type CanvasState = {
     walls: Wall[];
     activeWallId: string | null;
 
+    // Products from database
+    products: Product[];
+    isLoadingProducts: boolean;
+    fetchProducts: () => Promise<void>;
+
     // Interaction mode
-    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list';
+    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan';
 
     // Product state
     selectedProductId: string;
@@ -112,7 +105,7 @@ type CanvasState = {
 
     // Product actions
     setSelectedProduct: (id: string) => void;
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list') => void;
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan') => void;
 
     // Area Actions
     startDesignArea: (x: number, y: number) => void;
@@ -188,8 +181,10 @@ const initialWall: Wall = {
 export const useCanvasStore = create<CanvasState>((set, get) => ({
     walls: [initialWall],
     activeWallId: 'wall-1',
+    products: [],
+    isLoadingProducts: false,
     interactionMode: 'draw',
-    selectedProductId: PRODUCTS[0].id,
+    selectedProductId: '',
     currentDrawingArea: null,
     currentDrawingList: null,
     past: [],
@@ -207,13 +202,51 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     mouldingGap: 0.1, // Default 10cm
     setMouldingGap: (gap: number) => set({ mouldingGap: gap }),
 
+    fetchProducts: async () => {
+        set({ isLoadingProducts: true });
+        try {
+            const res = await fetch("/api/materials");
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                // Map database fields to Product type
+                const mappedProducts: Product[] = data.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    category: item.category,
+                    unit: item.unit,
+                    price: item.price || 0,
+                    unitLength: item.unit_length,
+                    height: item.height,
+                    width: item.width,
+                    color: item.color,
+                    countType: item.count_type as 'area' | 'length'
+                }));
+                
+                set({ 
+                    products: mappedProducts,
+                    materialPrices: mappedProducts.reduce((acc, p) => ({ ...acc, [p.id]: p.price }), {})
+                });
+
+                // Auto-select first product if none selected
+                if (!get().selectedProductId && mappedProducts.length > 0) {
+                    set({ selectedProductId: mappedProducts[0].id });
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch products:", error);
+        } finally {
+            set({ isLoadingProducts: false });
+        }
+    },
+
     customerInfo: {
         name: "",
         phone: "",
         address: "",
         surveyorName: ""
     },
-    materialPrices: PRODUCTS.reduce((acc, p) => ({ ...acc, [p.id]: p.price }), {}),
+    materialPrices: {},
+
     setMaterialPrice: (productId, price) => set((state) => ({
         materialPrices: { ...state.materialPrices, [productId]: price }
     })),
@@ -404,7 +437,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
-    setInteractionMode: (mode) => set({ interactionMode: mode }),
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan') => set({ interactionMode: mode }),
 
     startDesignArea: (x, y) => {
         const { selectedProductId } = get();

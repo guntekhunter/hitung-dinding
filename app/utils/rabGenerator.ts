@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { PRODUCTS, Wall, SCALE } from "../store/useCanvasStore";
+import { Wall, SCALE, Product } from "../store/useCanvasStore";
 
 // Helper to format currency
 const formatIDR = (amount: number) => {
@@ -26,7 +26,8 @@ export const generateRAB = async (
     customerInfo: { name: string; phone: string; address: string; surveyorName: string },
     wastePercentage: number,
     calculateWallMaterials: (wall: Wall) => any, // Pass the calculation function from Toolbar
-    materialPrices: Record<string, number>
+    materialPrices: Record<string, number>,
+    products: Product[]
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -88,7 +89,7 @@ export const generateRAB = async (
 
     walls.forEach((wall, index) => {
         const calc = calculateWallMaterials(wall);
-        const wallMaterials = PRODUCTS.filter(p => calc.counts[p.id] > 0);
+        const wallMaterials = products.filter(p => (calc.counts[p.id] || 0) > 0);
 
         if (wallMaterials.length === 0) return;
 

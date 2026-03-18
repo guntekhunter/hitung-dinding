@@ -1,8 +1,17 @@
 "use client";
 import { useRef } from "react";
+import dynamic from "next/dynamic";
 import Toolbar from "./components/Toolbar";
-import WallEditor from "./components/WallEditor";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+const WallEditor = dynamic(() => import("./components/WallEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center">
+      <div className="animate-pulse text-slate-400">Loading Editor...</div>
+    </div>
+  ),
+});
 
 export default function Home() {
   const wallEditorRef = useRef<any>(null);

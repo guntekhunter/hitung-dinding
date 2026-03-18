@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useCanvasStore, PRODUCTS, SCALE, Wall } from "../store/useCanvasStore";
+import { useState, useEffect } from "react";
+import { useCanvasStore, SCALE, Wall, Product } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
 import { subtractRect, Rect } from "../function/geometry";
 import { generateRAB } from "../utils/rabGenerator";
@@ -25,8 +25,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         listDrawingType, setListDrawingType,
         customerInfo, setCustomerInfo,
         materialPrices, setMaterialPrice,
-        projectId, setProjectId
+        projectId, setProjectId,
+        products, isLoadingProducts, fetchProducts
     } = useCanvasStore();
+
+    useEffect(() => {
+        fetchProducts();
+    }, [fetchProducts]);
 
     const handleLogout = async () => {
         try {
@@ -54,7 +59,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         const wallLeftovers: Record<string, number[]> = {};
 
         wall.designAreas.forEach((da: any, index: number) => {
-            const product = PRODUCTS.find(p => p.id === da.productId);
+            const product = products.find(p => p.id === da.productId);
             const isLengthBased = product?.countType === 'length';
 
             const rect: Rect = {
@@ -74,7 +79,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
                 if (!wallLeftovers[da.productId]) wallLeftovers[da.productId] = [];
                 const pool = wallLeftovers[da.productId];
-                const unitLen = product.unitLength || 2.9;
+                const unitLen = product?.unitLength || 2.9;
 
                 segments.forEach(len => {
                     if (len > 0) {
@@ -187,7 +192,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             }
             if (!wallLeftovers[list.productId]) wallLeftovers[list.productId] = [];
             const pool = wallLeftovers[list.productId];
-            const product = PRODUCTS.find(p => p.id === list.productId);
+            const product = products.find(p => p.id === list.productId);
             const unitLen = product?.unitLength || 2.9;
 
             wallMouldingBreakdown[list.productId].segmentLengths.push(lengthM);
@@ -210,7 +215,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             }
         });
 
-        const counts = PRODUCTS.reduce((acc, product) => {
+        const counts = products.reduce((acc: Record<string, number>, product: Product) => {
             if (product.countType === 'length') {
                 const totalLength = wallProductLengths[product.id] || 0;
                 const totalWithWaste = totalLength * (1 + wastePercentage / 100);
@@ -238,7 +243,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const wallCalculations = walls.map(calculateWallMaterials);
 
     // Total counts across all walls
-    const totalProductCounts = PRODUCTS.reduce((acc, product) => {
+    const totalProductCounts = products.reduce((acc: Record<string, number>, product: Product) => {
         acc[product.id] = wallCalculations.reduce((sum, calc) => sum + (calc.counts[product.id] || 0), 0);
         return acc;
     }, {} as Record<string, number>);
@@ -252,7 +257,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             const materialsList: ProjectData["rab"]["materials"] = [];
             let grandTotal = 0;
 
-            PRODUCTS.forEach(product => {
+            products.forEach((product: Product) => {
                 const count = totalProductCounts[product.id] || 0;
                 if (count > 0) {
                     const price = materialPrices[product.id] ?? product.price ?? 0;
@@ -333,7 +338,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             const padding = 40;
             const rowHeight = 30;
             const headerHeight = 60;
-            const footerHeight = headerHeight + (PRODUCTS.length + 2) * rowHeight + padding * 2;
+            const footerHeight = headerHeight + (products.length + 2) * rowHeight + padding * 2;
 
             canvas.width = img.width;
             canvas.height = img.height + footerHeight;
@@ -368,7 +373,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             ctx.font = 'bold 16px Arial';
             ctx.fillStyle = '#334155';
 
-            PRODUCTS.forEach((product) => {
+            products.forEach((product: Product) => {
                 const count = totalProductCounts[product.id] || 0;
                 if (count > 0) {
                     ctx.fillStyle = '#334155';
@@ -534,6 +539,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Tool Mode</h3>
+                        <div className="grid grid-cols-1 gap-2">
+                            <button
+                                onClick={() => setInteractionMode('pan')}
+                                className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'pan'
+                                    ? "bg-slate-800 border-slate-800 text-white shadow-md shadow-slate-200"
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                🖐️ Pan Mode
+                            </button>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => setInteractionMode('place')}
@@ -585,26 +601,36 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 <div className="space-y-2">
                     <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Select Product</h3>
                     <div className="grid grid-cols-1 gap-2">
-                        {PRODUCTS.map(product => (
-                            <button
-                                key={product.id}
-                                onClick={() => {
-                                    setSelectedProduct(product.id);
-                                    if (product.countType === 'length') setInteractionMode('list');
-                                    else setInteractionMode('place');
-                                }}
-                                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${selectedProductId === product.id
-                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-2 ring-indigo-100"
-                                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
-                                    }`}
-                            >
-                                <span className="font-bold text-sm">{product.name}</span>
-                                <div
-                                    className="w-5 h-5 rounded-md border border-white/20 shadow-inner"
-                                    style={{ background: product.color }}
-                                />
-                            </button>
-                        ))}
+                        {isLoadingProducts ? (
+                            <div className="p-4 text-center text-xs text-slate-400 animate-pulse font-bold uppercase tracking-widest">
+                                🔄 Loading materials...
+                            </div>
+                        ) : products.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                ⚠️ No materials found
+                            </div>
+                        ) : (
+                            products.map((product: Product) => (
+                                <button
+                                    key={product.id}
+                                    onClick={() => {
+                                        setSelectedProduct(product.id);
+                                        if (product.countType === 'length') setInteractionMode('list');
+                                        else setInteractionMode('place');
+                                    }}
+                                    className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${selectedProductId === product.id
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-2 ring-indigo-100"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                                        }`}
+                                >
+                                    <span className="font-bold text-sm">{product.name}</span>
+                                    <div
+                                        className="w-5 h-5 rounded-md border border-white/20 shadow-inner"
+                                        style={{ background: product.color }}
+                                    />
+                                </button>
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -629,24 +655,6 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 }`}
                         >
                             🚪 Door
-                        </button>
-                        <button
-                            onClick={() => { setSelectedProduct('list'); setInteractionMode('list'); }}
-                            className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'list' && selectedProductId === 'list'
-                                ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200"
-                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
-                        >
-                            📏 List
-                        </button>
-                        <button
-                            onClick={() => { setSelectedProduct('moulding'); setInteractionMode('list'); }}
-                            className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'list' && selectedProductId === 'moulding'
-                                ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-200"
-                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
-                        >
-                            🪄 Moulding
                         </button>
                     </div>
                 </div>
@@ -706,7 +714,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 <div className="mt-4 bg-indigo-900 rounded-2xl p-5 border border-indigo-800 shadow-xl shadow-indigo-100">
                                     <h5 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-4">Total Materials Needed</h5>
                                     <div className="space-y-1">
-                                        {PRODUCTS.map(product => {
+                                        {products.map((product: Product) => {
                                             const count = totalProductCounts[product.id] || 0;
                                             if (count === 0) return null;
                                             const price = materialPrices[product.id] || 0;
@@ -760,7 +768,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                     <div className="text-[11px] text-slate-400 font-medium italic text-center py-4 px-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">No materials assigned to this wall</div>
                                                 ) : (
                                                     <div className="space-y-4">
-                                                        {PRODUCTS.map(product => {
+                                                        {products.map((product: Product) => {
                                                             const count = calc.counts[product.id] || 0;
                                                             if (count === 0) return null;
                                                             const mBreakdown = calc.mouldingBreakdown[product.id];
@@ -772,7 +780,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                                 <div key={product.id} className="space-y-2">
                                                                     <MaterialItem
                                                                         label={product.name}
-                                                                        sub={product.countType === 'length' ? `${product.unitLength}m length` : `${(product.width * 100).toFixed(0)}cm x ${product.height}m`}
+                                                                        sub={product.countType === 'length' ? `${product.unitLength}m length` : `${((product.width || 0) * 100).toFixed(0)}cm x ${product.height}m`}
                                                                         count={count}
                                                                         unit={unit}
                                                                     />
@@ -830,7 +838,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     <button
                         onClick={async () => {
                             try {
-                                await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices);
+                                await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices, products);
                             } catch (e) {
                                 alert("Failed to generate PDF: " + e);
                             }
