@@ -27,44 +27,23 @@ export const generateRAB = async (
     wastePercentage: number,
     calculateWallMaterials: (wall: Wall) => any, // Pass the calculation function from Toolbar
     materialPrices: Record<string, number>,
-    products: Product[]
+    products: Product[],
+    companyLogoUrl?: string
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
     // 1. Header
-    try {
-        const logoAslastri = await loadImage("/pt aslastri.png");
-        const logoPevesindo = await loadImage("/pevesindo.png");
-
-        // Scale logos
-        // pt aslastri.png is roughly 18KB, pevesindo.png is 7KB
-        // Let's aim for a certain height, say 15mm
-        const logoHeight = 10;
-
-        // PT Aslastri (Left)
-        const aslastriRatio = logoAslastri.width / logoAslastri.height;
-        const aslastriWidth = logoHeight * aslastriRatio;
-        doc.addImage(logoAslastri, 'PNG', 14, 10, aslastriWidth, logoHeight);
-
-        // Pevesindo (Right)
-        const pevesindoRatio = logoPevesindo.width / logoPevesindo.height;
-        const pevesindoWidth = logoHeight * pevesindoRatio;
-        doc.addImage(logoPevesindo, 'PNG', pageWidth - 14 - pevesindoWidth, 10, pevesindoWidth, logoHeight);
-
-    } catch (error) {
-        console.error("Error loading logos", error);
-        // Fallback to text if logos fail
-        doc.setFontSize(18);
-        doc.setTextColor(213, 163, 21);
-        doc.text("ASLASTRI TEGUH", 14, 20);
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text("INTERNASIONAL", 14, 25);
-
-        doc.setFontSize(18);
-        doc.setTextColor(0, 0, 0);
-        doc.text("PEVESINDO", pageWidth - 14, 20, { align: "right" });
+    if (companyLogoUrl) {
+        try {
+            const logoLeft = await loadImage(companyLogoUrl);
+            const logoHeight = 10;
+            const leftRatio = logoLeft.width / logoLeft.height;
+            const leftWidth = logoHeight * leftRatio;
+            doc.addImage(logoLeft, 'PNG', 14, 10, leftWidth, logoHeight);
+        } catch (error) {
+            console.error("Error loading custom company logo", error);
+        }
     }
 
     doc.setDrawColor(200, 200, 200);

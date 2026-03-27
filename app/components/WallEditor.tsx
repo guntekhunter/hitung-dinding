@@ -573,6 +573,8 @@ const WallEditor = forwardRef((props, ref) => {
             if (isWallLocked) return; // Prevent adding points when locked
             addPoint(pos.x, pos.y);
         } else if (interactionMode === 'place') {
+            const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
+            if (!selectedProduct) return;
             const snappedPos = snapToGap(pos, false);
             startDesignArea(snappedPos.x, snappedPos.y);
         } else if (interactionMode === 'window' || interactionMode === 'door') {
@@ -580,6 +582,7 @@ const WallEditor = forwardRef((props, ref) => {
             startOpening(snappedPos.x, snappedPos.y, interactionMode);
         } else if (interactionMode === 'list') {
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
+            if (!selectedProduct) return;
             const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
             const snappedPos = snapToGap(pos, isMoulding);
             startList(snappedPos.x, snappedPos.y);
@@ -785,7 +788,7 @@ const WallEditor = forwardRef((props, ref) => {
         }
     };
 
-    if (!mounted) return <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center">Loading Editor...</div>;
+    if (!mounted) return <div className="w-full h-full bg-white flex items-center justify-center">Loading Editor...</div>;
 
     const gridSize = isMobile ? 100 : 50;
 
@@ -816,7 +819,7 @@ const WallEditor = forwardRef((props, ref) => {
     }
 
     return (
-        <div ref={containerRef} className="relative w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-[#fdfbf7] shadow-xl" style={{ touchAction: 'none' }}>
+        <div ref={containerRef} className="relative w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-white shadow-xl" style={{ touchAction: 'none' }}>
             <Stage
                 ref={stageRef}
                 width={width}

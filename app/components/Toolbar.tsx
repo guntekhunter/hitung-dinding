@@ -407,7 +407,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             <div className="bg-white border-b border-slate-100 flex flex-col shrink-0">
                 <div className="p-4 flex justify-between items-center border-b border-slate-50">
                     <h1 className="text-xl font-black text-slate-800 tracking-tight">Wall Planner</h1>
-                    <Link href="/projects" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">Projects 📂</Link>
+                    <div className="flex gap-2">
+                        <Link href="/settings" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">⚙️ Settings</Link>
+                        <Link href="/projects" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">Projects 📂</Link>
+                    </div>
                 </div>
                 
                 <div className="p-4 flex items-center justify-between">
@@ -730,7 +733,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                     </div>
                                                     <div className="flex items-center gap-3 bg-indigo-950/50 p-2 rounded-lg border border-indigo-800/30">
                                                         <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">Unit Price</span>
-                                                        <div className="flex items-center gap-1.5 flex-1">
+                                                        <div className="flex items-center gap-1.5 flex-1 pr-2">
                                                             <span className="text-[10px] text-indigo-400">Rp</span>
                                                             <input
                                                                 type="number"
@@ -739,6 +742,25 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                                 placeholder="0"
                                                                 className="flex-1 bg-transparent border-none text-xs font-mono font-bold text-indigo-200 focus:outline-none p-0"
                                                             />
+                                                            <button
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const res = await fetch("/api/product/price", {
+                                                                            method: "POST",
+                                                                            headers: { "Content-Type": "application/json" },
+                                                                            body: JSON.stringify({ productId: product.id, newPrice: price })
+                                                                        });
+                                                                        if (!res.ok) throw new Error("API responded with an error");
+                                                                        alert(`Successfully updated global default price for ${product.name} to Rp ${price}`);
+                                                                    } catch(e) {
+                                                                        alert("Failed to save default price");
+                                                                    }
+                                                                }}
+                                                                title="Save as permanent default price"
+                                                                className="text-xs px-1.5 py-1 bg-indigo-900/50 hover:bg-emerald-500 hover:shadow-lg hover:shadow-emerald-500/20 text-indigo-300 hover:text-white rounded-md transition-all active:scale-90"
+                                                            >
+                                                                💾
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -842,7 +864,32 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     <button
                         onClick={async () => {
                             try {
-                                await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices, products);
+                                if (!company?.logo_url) {
+                                    alert("Please upload your company logo in the Settings page before generating a PDF.");
+                                    return;
+                                }
+                                if (!customerInfo.name || !customerInfo.phone || !customerInfo.address || !customerInfo.surveyorName) {
+                                    alert("Please fill in all Customer info fields (Customer Name, Surveyor Name, Phone, and Address) before generating a PDF.");
+                                    return;
+                                }
+                                
+                                const missingPrices: string[] = [];
+                                products.forEach((product: Product) => {
+                                    const count = totalProductCounts[product.id] || 0;
+                                    if (count > 0) {
+                                        const price = materialPrices[product.id] ?? product.price ?? 0;
+                                        if (price <= 0) {
+                                            missingPrices.push(product.name);
+                                        }
+                                    }
+                                });
+                                
+                                if (missingPrices.length > 0) {
+                                    alert(`Please input a valid price for the following materials before printing:\n- ${missingPrices.join("\n- ")}`);
+                                    return;
+                                }
+
+                                await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices, products, company?.logo_url);
                             } catch (e) {
                                 alert("Failed to generate PDF: " + e);
                             }

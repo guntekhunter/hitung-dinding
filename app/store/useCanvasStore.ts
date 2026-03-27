@@ -226,11 +226,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     products: mappedProducts,
                     materialPrices: mappedProducts.reduce((acc, p) => ({ ...acc, [p.id]: p.price }), {})
                 });
-
-                // Auto-select first product if none selected
-                if (!get().selectedProductId && mappedProducts.length > 0) {
-                    set({ selectedProductId: mappedProducts[0].id });
-                }
             }
         } catch (error) {
             console.error("Failed to fetch products:", error);
@@ -333,7 +328,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     walls: walls.map(w =>
                         w.id === activeWallId ? { ...w, isClosed: true } : w
                     ),
-                    interactionMode: 'place'
+                    interactionMode: 'pan'
                 });
                 return;
             }
@@ -420,6 +415,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     loadProject: (id: string, data: any) => {
         get()._saveHistory();
         const loadedWalls = data?.canvas?.walls || [initialWall];
+        
+        // Recover custom modified material prices from previously saved RAB
+        const currentPrices = { ...get().materialPrices };
+        if (data?.rab?.materials && Array.isArray(data.rab.materials)) {
+            data.rab.materials.forEach((m: any) => {
+                if (m.id && m.unitPrice) {
+                    currentPrices[m.id] = m.unitPrice;
+                }
+            });
+        }
+
         set({
             projectId: id,
             customerInfo: {
@@ -432,7 +438,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             activeWallId: loadedWalls[0]?.id || initialWall.id,
             interactionMode: 'draw',
             currentDrawingArea: null,
-            currentDrawingList: null
+            currentDrawingList: null,
+            materialPrices: currentPrices
         });
     },
 
