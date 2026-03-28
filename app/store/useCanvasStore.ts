@@ -222,9 +222,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     countType: item.count_type as 'area' | 'length'
                 }));
                 
+                const state = get();
+                const currentPrices = { ...state.materialPrices };
+
+                mappedProducts.forEach(p => {
+                    if (state.projectId) {
+                        // For loaded projects, preserve existing prices in the store, 
+                        // fallback to DB price if not in store
+                        if (currentPrices[p.id] === undefined) {
+                            currentPrices[p.id] = p.price;
+                        }
+                    } else {
+                        // For new projects, use the DB price
+                        currentPrices[p.id] = p.price;
+                    }
+                });
+
                 set({ 
                     products: mappedProducts,
-                    materialPrices: mappedProducts.reduce((acc, p) => ({ ...acc, [p.id]: p.price }), {})
+                    materialPrices: currentPrices
                 });
             }
         } catch (error) {
@@ -402,13 +418,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     reset: () => {
         get()._saveHistory();
+        
+        // Reset material prices to defaults securely from current products
+        const currentProducts = get().products;
+        const defaultPrices: Record<string, number> = {};
+        currentProducts.forEach(p => {
+            defaultPrices[p.id] = p.price;
+        });
+
         set({
             walls: [initialWall],
             activeWallId: initialWall.id,
             interactionMode: 'draw',
             currentDrawingArea: null,
             currentDrawingList: null,
-            projectId: null
+            projectId: null,
+            customerInfo: { name: "", phone: "", address: "", surveyorName: "" },
+            materialPrices: defaultPrices // Reset to default db prices
         });
     },
 
@@ -418,7 +444,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         
         // Recover custom modified material prices from previously saved RAB
         const currentPrices = { ...get().materialPrices };
-        if (data?.rab?.materials && Array.isArray(data.rab.materials)) {
+        if (data?.materialPrices) {
+            // New format: explicit materialPrices
+            Object.assign(currentPrices, data.materialPrices);
+        } else if (data?.rab?.materials && Array.isArray(data.rab.materials)) {
+            // Backward compatibility
             data.rab.materials.forEach((m: any) => {
                 if (m.id && m.unitPrice) {
                     currentPrices[m.id] = m.unitPrice;

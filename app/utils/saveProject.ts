@@ -22,6 +22,7 @@ export type ProjectData = {
         }>;
         grandTotal: number;
     };
+    materialPrices?: Record<string, number>;
     previewImage?: string;
 };
 

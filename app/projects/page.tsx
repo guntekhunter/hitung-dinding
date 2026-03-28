@@ -55,9 +55,14 @@ export default function ProjectsPage() {
                 <div className="max-w-6xl mx-auto space-y-8">
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Saved Projects</h1>
-                        <Link href="/" className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition active:scale-95 text-sm">
+                        <button 
+                            onClick={() => {
+                                useCanvasStore.getState().reset();
+                                router.push("/");
+                            }} 
+                            className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition active:scale-95 text-sm">
                             + New Project
-                        </Link>
+                        </button>
                     </div>
 
                     {loading ? (

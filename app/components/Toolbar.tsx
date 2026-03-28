@@ -297,6 +297,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     materials: materialsList,
                     grandTotal: grandTotal
                 },
+                materialPrices: materialPrices,
                 previewImage: previewImage
             };
 
