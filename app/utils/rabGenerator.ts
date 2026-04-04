@@ -25,7 +25,8 @@ export const generateRAB = async (
     walls: Wall[],
     customerInfo: { name: string; phone: string; address: string; surveyorName: string },
     wastePercentage: number,
-    calculateWallMaterials: (wall: Wall) => any, // Pass the calculation function from Toolbar
+    wallMetrics: any[],
+    totalProductCounts: Record<string, number>,
     materialPrices: Record<string, number>,
     products: Product[],
     companyLogoUrl?: string
@@ -62,61 +63,91 @@ export const generateRAB = async (
     doc.text(`Nomor Telepon  : ${customerInfo.phone || "-"}`, 14, startY + 6);
     doc.text(`Alamat               : ${customerInfo.address || "-"}`, 14, startY + 12);
 
-    // 4. Table Data Preparation
-    const tableRows: any[] = [];
-    let grandTotal = 0;
+    // 4. Wall Detail Table Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("1. Detail Penggunaan Ruangan", 14, 75);
 
+    const wallRows: any[] = [];
     walls.forEach((wall, index) => {
-        const calc = calculateWallMaterials(wall);
-        const wallMaterials = products.filter(p => (calc.counts[p.id] || 0) > 0);
+        const metrics = wallMetrics[index];
+        if (!metrics) return;
 
-        if (wallMaterials.length === 0) return;
-
-        // Calculate Wall Dimensions (Bounding box for "Ukuran")
         const xs = wall.points.map(p => p.x);
         const ys = wall.points.map(p => p.y);
-        const widthM = (Math.max(...xs) - Math.min(...xs)) / SCALE;
-        const heightM = (Math.max(...ys) - Math.min(...ys)) / SCALE;
+        const widthM = (xs.length > 0 ? (Math.max(...xs) - Math.min(...xs)) / SCALE : 0);
+        const heightM = (ys.length > 0 ? (Math.max(...ys) - Math.min(...ys)) / SCALE : 0);
         const ukuranText = `${widthM.toFixed(2)} x ${heightM.toFixed(2)}`;
 
-        wallMaterials.forEach((product, pIndex) => {
-            const qty = calc.counts[product.id];
-            const satuan = product.countType === 'length' ? 'Batang' : 'Lembar';
-            const price = materialPrices[product.id] ?? product.price ?? 0;
-            const subtotal = qty * price;
-            grandTotal += subtotal;
+        // List materials used in this room
+        const roomMaterials = products.filter(p => (metrics.productAreas[p.id] || 0) > 0 || (metrics.productLengths[p.id] || 0) > 0);
+        const materialText = roomMaterials.map(m => m.name).join(", ");
+        const areaText = `${metrics.totalDesignArea.toFixed(2)} m²`;
 
-            tableRows.push([
-                pIndex === 0 ? (index + 1).toString() : "", // No
-                pIndex === 0 ? wall.name : "", // Nama Ruangan
-                pIndex === 0 ? ukuranText : "", // Ukuran
-                product.name, // Material
-                qty.toString(), // Qty
-                satuan, // Satuan
-                formatIDR(price).replace("Rp ", ""), // Harga/Lembar
-                formatIDR(subtotal).replace("Rp ", "") // Total
-            ]);
-        });
+        wallRows.push([
+            (index + 1).toString(),
+            wall.name,
+            ukuranText,
+            materialText,
+            areaText
+        ]);
     });
 
-    // 5. Generate Table
     autoTable(doc, {
-        startY: 75,
-        head: [['No', 'Nama Ruangan', 'Ukuran', 'Material', 'Qty', 'Satuan', 'Harga/Lembar', 'Total']],
-        body: tableRows,
+        startY: 78,
+        head: [['No', 'Nama Ruangan', 'Ukuran', 'Material Terpasang', 'Luas Net']],
+        body: wallRows,
         theme: 'grid',
-        headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+        headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
             0: { halign: 'center', cellWidth: 10 },
-            4: { halign: 'center', cellWidth: 15 },
-            5: { halign: 'center', cellWidth: 20 },
-            6: { halign: 'right' },
-            7: { halign: 'right' }
+            4: { halign: 'right', cellWidth: 25 }
         },
-        styles: { fontSize: 8, font: 'helvetica' },
-        didParseCell: (data) => {
-            // Apply borders similar to the image if needed
-        }
+        styles: { fontSize: 8, font: 'helvetica' }
+    });
+
+    // 5. Material Requirements Table (The Quote)
+    const afterWallY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("2. Rincian Kebutuhan Material (Optimized)", 14, afterWallY);
+
+    const materialRows: any[] = [];
+    let grandTotalCount = 0;
+
+    products.forEach((product) => {
+        const qty = totalProductCounts[product.id] || 0;
+        if (qty === 0) return;
+
+        const price = materialPrices[product.id] ?? product.price ?? 0;
+        const subtotal = qty * price;
+        grandTotalCount += subtotal;
+        const unitLabel = product.countType === 'length' ? 'Batang' : 'Lembar';
+
+        materialRows.push([
+            (materialRows.length + 1).toString(),
+            product.name,
+            qty.toString(),
+            unitLabel,
+            formatIDR(price).replace("Rp ", ""),
+            formatIDR(subtotal).replace("Rp ", "")
+        ]);
+    });
+
+    autoTable(doc, {
+        startY: afterWallY + 3,
+        head: [['No', 'Daftar Material', 'Qty', 'Satuan', 'Harga Satuan', 'Total']],
+        body: materialRows,
+        theme: 'grid',
+        headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            2: { halign: 'center', cellWidth: 15 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'right', cellWidth: 35 },
+            5: { halign: 'right', cellWidth: 35 }
+        },
+        styles: { fontSize: 9, font: 'helvetica' }
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 0.1;
@@ -125,24 +156,24 @@ export const generateRAB = async (
     autoTable(doc, {
         startY: finalY,
         body: [
-            ['Grand Total', formatIDR(grandTotal).replace("Rp ", "")],
-            ['Grand Total Setelah Diskon', formatIDR(grandTotal).replace("Rp ", "")] // Placeholder for discount
+            ['Grand Total', formatIDR(grandTotalCount).replace("Rp ", "")],
+            ['Total Setelah Diskon', formatIDR(grandTotalCount).replace("Rp ", "")]
         ],
         theme: 'grid',
         columnStyles: {
-            0: { halign: 'right', fontStyle: 'bold', cellWidth: pageWidth - 14 - 14 - 40 },
-            1: { halign: 'right', fontStyle: 'bold', cellWidth: 40, fillColor: [220, 220, 220] }
+            0: { halign: 'right', fontStyle: 'bold', cellWidth: pageWidth - 14 - 14 - 35 },
+            1: { halign: 'right', fontStyle: 'bold', cellWidth: 35, fillColor: [220, 220, 220] }
         },
         styles: { fontSize: 9 }
     });
 
-    const summaryY = (doc as any).lastAutoTable.finalY + 10;
+    const summaryY = (doc as any).lastAutoTable.finalY + 15;
 
     // 7. Terms and Conditions
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text("Total Harga Disepakati = " + formatIDR(grandTotal), 14, summaryY);
-    doc.text("Dp 50% Dari Harga yang Disepakati = " + formatIDR(grandTotal / 2), 14, summaryY + 5);
+    doc.text("Total Harga Disepakati = " + formatIDR(grandTotalCount), 14, summaryY);
+    doc.text("Dp 50% Dari Harga yang Disepakati = " + formatIDR(grandTotalCount / 2), 14, summaryY + 5);
     doc.text("Biaya diatas tidak termasuk instalasi listrik dan lampu,apabila ada tambahan instalasi listrik di kenakan", 14, summaryY + 10);
     doc.text("biaya tambahan Rp.50.000/titik (diluar material listrik)", 14, summaryY + 15);
     doc.text("Catatan Lain Lain:", 14, summaryY + 20);

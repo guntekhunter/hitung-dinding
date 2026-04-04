@@ -69,7 +69,7 @@ export function subtractRect(subject: Rect, clip: Rect): Rect[] {
     return result;
 }
 
-function getIntersection(r1: Rect, r2: Rect): Rect | null {
+export function getIntersection(r1: Rect, r2: Rect): Rect | null {
     const x1 = Math.max(r1.x, r2.x);
     const y1 = Math.max(r1.y, r2.y);
     const x2 = Math.min(r1.x + r1.width, r2.x + r2.width);

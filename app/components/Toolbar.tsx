@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCanvasStore, SCALE, Wall, Product } from "../store/useCanvasStore";
 import { countPanels, countBoards } from "../function/materialEngine";
-import { subtractRect, Rect } from "../function/geometry";
+import { subtractRect, Rect, getPolygonRectIntersectionArea, getIntersection } from "../function/geometry";
 import { generateRAB } from "../utils/rabGenerator";
 import { saveProjectToDatabase, ProjectData } from "../utils/saveProject";
 import Link from "next/link";
@@ -48,208 +48,141 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const { isClosed, designAreas, openings, lists, isWallLocked } = activeWall;
     const { area, perimeter } = getDimensions(activeWallId || undefined);
 
-    // Helper to calculate materials for a single wall
-    const calculateWallMaterials = (wall: Wall) => {
-        const wallProductAreas: Record<string, number> = {};
-        const wallProductLengths: Record<string, number> = {};
-        const wallMouldingBreakdown: Record<string, { segmentLengths: number[], totalSticksNoWaste: number }> = {};
-        const wallAreaBreakdown: Record<string, { areas: { width: number, height: number, sticks: number }[], totalSticksNoWaste: number }> = {};
-        let wallDesignArea = 0;
+    const normalizeRect = (r: { x: number; y: number; width: number; height: number }) => ({
+        x: r.width > 0 ? r.x : r.x + r.width,
+        y: r.height > 0 ? r.y : r.y + r.height,
+        width: Math.abs(r.width),
+        height: Math.abs(r.height)
+    });
 
-        const wallLeftovers: Record<string, number[]> = {};
+    // Helper to calculate materials for a single wall (returns net metrics)
+    const calculateWallMetrics = (wall: Wall) => {
+        const productAreas: Record<string, number> = {};
+        const productLengths: Record<string, number> = {};
+        
+        // Use unique product IDs to calculate union area for each product
+        const uniqueAreaProductIds = Array.from(new Set(wall.designAreas.map(da => da.productId)));
+        
+        uniqueAreaProductIds.forEach(pid => {
+            const product = products.find(p => p.id === pid);
+            if (!product) return;
 
-        wall.designAreas.forEach((da: any, index: number) => {
-            const product = products.find(p => p.id === da.productId);
-            const isLengthBased = product?.countType === 'length';
-
-            const rect: Rect = {
-                x: da.width > 0 ? da.x : da.x + da.width,
-                y: da.height > 0 ? da.y : da.y + da.height,
-                width: Math.abs(da.width),
-                height: Math.abs(da.height)
-            };
-
-            if (isLengthBased) {
-                const segments = [rect.width / SCALE, rect.height / SCALE, rect.width / SCALE, rect.height / SCALE];
-                wallProductLengths[da.productId] = (wallProductLengths[da.productId] || 0) + (rect.width * 2 + rect.height * 2) / SCALE;
-
-                if (!wallMouldingBreakdown[da.productId]) {
-                    wallMouldingBreakdown[da.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
-                }
-
-                if (!wallLeftovers[da.productId]) wallLeftovers[da.productId] = [];
-                const pool = wallLeftovers[da.productId];
-                const unitLen = product?.unitLength || 2.9;
-
-                segments.forEach(len => {
-                    if (len > 0) {
-                        wallMouldingBreakdown[da.productId].segmentLengths.push(len);
-
-                        let needed = len;
-                        while (needed > 0.001) {
-                            pool.sort((a, b) => a - b);
-                            const foundIdx = pool.findIndex(l => l >= needed - 0.001);
-                            if (foundIdx !== -1) {
-                                pool[foundIdx] -= needed;
-                                if (pool[foundIdx] < 0.01) pool.splice(foundIdx, 1);
-                                needed = 0;
-                            } else {
-                                wallMouldingBreakdown[da.productId].totalSticksNoWaste++;
-                                const used = Math.min(needed, unitLen);
-                                const leftover = unitLen - used;
-                                if (leftover > 0.01) pool.push(leftover);
-                                needed -= used;
-                            }
-                        }
-                    }
+            if (product.countType === 'area') {
+                // 1. Union material rects (de-duplicate overlaps)
+                let materialRects = wall.designAreas
+                    .filter((da: any) => da.productId === pid)
+                    .map((da: any) => normalizeRect(da));
+                    
+                let nonOverlappingMaterialRects: Rect[] = [];
+                materialRects.forEach(rect => {
+                    let pieces = [rect];
+                    nonOverlappingMaterialRects.forEach(other => {
+                        let nextPieces: Rect[] = [];
+                        pieces.forEach(p => {
+                            nextPieces.push(...subtractRect(p, other));
+                        });
+                        pieces = nextPieces;
+                    });
+                    nonOverlappingMaterialRects.push(...pieces);
                 });
+
+                // 2. Subtract Openings
+                let finalRects = nonOverlappingMaterialRects;
+                wall.openings.map(op => normalizeRect(op)).forEach(opening => {
+                    let nextFinal: Rect[] = [];
+                    finalRects.forEach(r => {
+                        nextFinal.push(...subtractRect(r, opening));
+                    });
+                    finalRects = nextFinal;
+                });
+
+                // 3. Clip and Sum
+                let totalAreaM2 = 0;
+                finalRects.forEach(r => {
+                    totalAreaM2 += getPolygonRectIntersectionArea(wall.points, r);
+                });
+                productAreas[pid] = totalAreaM2 / (SCALE * SCALE);
             } else {
-                let currentRects: Rect[] = [rect];
-                wall.openings.forEach((op: any) => {
-                    const opRect: Rect = {
-                        x: op.width > 0 ? op.x : op.x + op.width,
-                        y: op.height > 0 ? op.y : op.y + op.height,
-                        width: Math.abs(op.width),
-                        height: Math.abs(op.height)
-                    };
-                    const nextRects: Rect[] = [];
-                    currentRects.forEach(r => nextRects.push(...subtractRect(r, opRect)));
-                    currentRects = nextRects;
-                });
-
-                for (let i = index + 1; i < wall.designAreas.length; i++) {
-                    const topDA = wall.designAreas[i];
-                    const topRect: Rect = {
-                        x: topDA.width > 0 ? topDA.x : topDA.x + topDA.width,
-                        y: topDA.height > 0 ? topDA.y : topDA.y + topDA.height,
-                        width: Math.abs(topDA.width),
-                        height: Math.abs(topDA.height)
-                    };
-                    const nextRects: Rect[] = [];
-                    currentRects.forEach(r => nextRects.push(...subtractRect(r, topRect)));
-                    currentRects = nextRects;
-                }
-
-                let areaPx = 0;
-                currentRects.forEach(r => areaPx += r.width * r.height);
-                const areaM2 = areaPx / (SCALE * SCALE);
-
-                if (da.productId && product) {
-                    wallProductAreas[da.productId] = (wallProductAreas[da.productId] || 0) + areaM2;
-                    wallDesignArea += areaM2;
-
-                    if (!wallAreaBreakdown[da.productId]) {
-                        wallAreaBreakdown[da.productId] = { areas: [], totalSticksNoWaste: 0 };
-                    }
-
-                    if (!wallLeftovers[da.productId]) wallLeftovers[da.productId] = [];
-
+                // Perimeter for length products (simple sum for now)
+                wall.designAreas.filter(da => da.productId === pid).forEach(da => {
                     const wM = Math.abs(da.width) / SCALE;
                     const hM = Math.abs(da.height) / SCALE;
-                    const boardH = product.height || 2.9;
-                    const boardW = product.width || 1;
-                    const columns = Math.ceil(wM / boardW - 0.001); // Use small epsilon for floating point errors
-
-                    let totalSticksUsedForThisArea = 0;
-                    const pool = wallLeftovers[da.productId];
-
-                    // Apply waste percentage to the required height for each column
-                    const heightWithWaste = hM * (1 + wastePercentage / 100);
-
-                    for (let c = 0; c < columns; c++) {
-                        let needed = heightWithWaste;
-                        while (needed > 0.001) {
-                            pool.sort((a, b) => a - b); // Smallest that fits
-                            const foundIdx = pool.findIndex(l => l >= needed - 0.001);
-
-                            if (foundIdx !== -1) {
-                                pool[foundIdx] -= needed;
-                                if (pool[foundIdx] < 0.01) pool.splice(foundIdx, 1);
-                                needed = 0;
-                            } else {
-                                // Use a new stick
-                                totalSticksUsedForThisArea++;
-                                const used = Math.min(needed, boardH);
-                                const leftover = boardH - used;
-                                if (leftover > 0.01) pool.push(leftover);
-                                needed -= used;
-                            }
-                        }
-                    }
-
-                    wallAreaBreakdown[da.productId].areas.push({ width: wM, height: hM, sticks: totalSticksUsedForThisArea });
-                    wallAreaBreakdown[da.productId].totalSticksNoWaste += totalSticksUsedForThisArea;
-                }
+                    productAreas[pid] = (productAreas[pid] || 0) + (wM * 2 + hM * 2);
+                });
             }
         });
 
         wall.lists.forEach((list: any) => {
             const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
-            wallProductLengths[list.productId] = (wallProductLengths[list.productId] || 0) + lengthM;
+            productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
+        });
 
-            if (!wallMouldingBreakdown[list.productId]) {
-                wallMouldingBreakdown[list.productId] = { segmentLengths: [], totalSticksNoWaste: 0 };
-            }
-            if (!wallLeftovers[list.productId]) wallLeftovers[list.productId] = [];
-            const pool = wallLeftovers[list.productId];
-            const product = products.find(p => p.id === list.productId);
-            const unitLen = product?.unitLength || 2.9;
+        const { area: wallArea } = getDimensions(wall.id);
+        const totalDesignArea = Object.values(productAreas).reduce((a, b) => a + b, 0);
 
-            wallMouldingBreakdown[list.productId].segmentLengths.push(lengthM);
+        return {
+            totalDesignArea,
+            wallArea,
+            productAreas,
+            productLengths
+        };
+    };
 
-            let needed = lengthM;
-            while (needed > 0.001) {
-                pool.sort((a, b) => a - b);
-                const foundIdx = pool.findIndex(l => l >= needed - 0.001);
-                if (foundIdx !== -1) {
-                    pool[foundIdx] -= needed;
-                    if (pool[foundIdx] < 0.01) pool.splice(foundIdx, 1);
-                    needed = 0;
-                } else {
-                    wallMouldingBreakdown[list.productId].totalSticksNoWaste++;
-                    const used = Math.min(needed, unitLen);
-                    const leftover = unitLen - used;
-                    if (leftover > 0.01) pool.push(leftover);
-                    needed -= used;
+    // Calculate project-wide optimized counts using Total Net Area and Total Length sums
+    const calculateProjectTotalCounts = (walls: Wall[]) => {
+        const productAreaSum: Record<string, number> = {};
+        const productLengthSum: Record<string, number> = {};
+        const productTotalCounts: Record<string, number> = {};
+
+        walls.forEach(wall => {
+            const metrics = calculateWallMetrics(wall);
+            // Transfer metrics to project totals
+            Object.entries(metrics.productAreas).forEach(([pid, area]) => {
+                const product = products.find(p => p.id === pid);
+                if (product?.countType === 'area') {
+                    productAreaSum[pid] = (productAreaSum[pid] || 0) + area;
+                } else if (product?.countType === 'length') {
+                    productLengthSum[pid] = (productLengthSum[pid] || 0) + area;
+                }
+            });
+            Object.entries(metrics.productLengths).forEach(([pid, len]) => {
+                productLengthSum[pid] = (productLengthSum[pid] || 0) + len;
+            });
+        });
+
+        // 3. Finalize Counts with Single Rounding and Epsilon
+        products.forEach(product => {
+            const wasteMult = (1 + wastePercentage / 100);
+            
+            if (product.countType === 'area') {
+                const totalAreaM2 = productAreaSum[product.id] || 0;
+                if (totalAreaM2 > 0) {
+                    const boardW = product.width || 0.15;
+                    const boardH = product.height || 2.9;
+                    const boardAreaM2 = boardW * boardH;
+                    
+                    // Final single ceil with 0.0001 epsilon to handle floating point junk
+                    productTotalCounts[product.id] = Math.ceil((totalAreaM2 / boardAreaM2) * wasteMult - 0.0001);
+                }
+            } else if (product.countType === 'length') {
+                const totalLengthM = productLengthSum[product.id] || 0;
+                if (totalLengthM > 0) {
+                    const unitLen = product.unitLength || 2.9;
+                    
+                    // Final single ceil with epsilon
+                    productTotalCounts[product.id] = Math.ceil((totalLengthM / unitLen) * wasteMult - 0.0001);
                 }
             }
         });
 
-        const counts = products.reduce((acc: Record<string, number>, product: Product) => {
-            if (product.countType === 'length') {
-                const totalLength = wallProductLengths[product.id] || 0;
-                const totalWithWaste = totalLength * (1 + wastePercentage / 100);
-                acc[product.id] = Math.ceil(totalWithWaste / (product.unitLength || 2.9));
-            } else {
-                const breakdown = wallAreaBreakdown[product.id];
-                acc[product.id] = breakdown ? breakdown.totalSticksNoWaste : 0;
-            }
-            return acc;
-        }, {} as Record<string, number>);
-
-        const { area: wallArea } = getDimensions(wall.id);
-
-        return {
-            counts,
-            totalDesignArea: wallDesignArea,
-            wallArea,
-            areaBreakdown: wallAreaBreakdown,
-            mouldingBreakdown: wallMouldingBreakdown,
-            productAreas: wallProductAreas,
-            productLengths: wallProductLengths
-        };
+        return productTotalCounts;
     };
 
-    const wallCalculations = walls.map(calculateWallMaterials);
+    const wallMetrics = walls.map(calculateWallMetrics);
+    const totalProductCounts = calculateProjectTotalCounts(walls);
 
-    // Total counts across all walls
-    const totalProductCounts = products.reduce((acc: Record<string, number>, product: Product) => {
-        acc[product.id] = wallCalculations.reduce((sum, calc) => sum + (calc.counts[product.id] || 0), 0);
-        return acc;
-    }, {} as Record<string, number>);
-
-    const totalArea = wallCalculations.reduce((sum, calc) => sum + calc.wallArea, 0);
-    const totalDesignArea = wallCalculations.reduce((sum, calc) => sum + calc.totalDesignArea, 0);
+    const totalArea = wallMetrics.reduce((sum, m) => sum + m.wallArea, 0);
+    const totalDesignArea = wallMetrics.reduce((sum, m) => sum + m.totalDesignArea, 0);
 
     const handleSaveProject = async () => {
         setIsSaving(true);
@@ -370,7 +303,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
             ctx.font = '16px Arial';
             ctx.fillStyle = '#64748b';
-            ctx.fillText(`Total Wall Area: ${Math.ceil(area)} m²`, padding, img.height + padding + 55);
+            ctx.fillText(`Total Wall Area: ${Math.ceil(totalArea)} m²`, padding, img.height + padding + 55);
             ctx.fillText(`Total Design Area: ${Math.ceil(totalDesignArea)} m²`, padding, img.height + padding + 80);
 
             // Draw Material Table
@@ -775,8 +708,9 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <div className="space-y-4">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Detailed Breakdown</h4>
                                 {walls.map((wall, wallIdx) => {
-                                    const calc = wallCalculations[wallIdx];
-                                    const wallHasContent = Object.values(calc.counts).some(c => c > 0);
+                                    const metrics = wallMetrics[wallIdx];
+                                    if (!metrics) return null;
+                                    const wallHasContent = Object.values(metrics.productAreas).some(a => a > 0) || Object.values(metrics.productLengths).some(l => l > 0);
 
                                     return (
                                         <div key={wall.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -796,33 +730,24 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                 ) : (
                                                     <div className="space-y-4">
                                                         {products.map((product: Product) => {
-                                                            const count = calc.counts[product.id] || 0;
-                                                            if (count === 0) return null;
-                                                            const mBreakdown = calc.mouldingBreakdown[product.id];
-                                                            const aBreakdown = calc.areaBreakdown[product.id];
-                                                            const totalValue = product.countType === 'length' ? (calc.productLengths[product.id] || 0) : (calc.productAreas[product.id] || 0);
-                                                            const unit = product.countType === 'length' ? "btg" : "pcs";
+                                                            const area = metrics.productAreas[product.id] || 0;
+                                                            const length = metrics.productLengths[product.id] || 0;
+                                                            if (area === 0 && length === 0) return null;
+
+                                                            const displayValue = product.countType === 'length' ? length : area;
+                                                            const displayUnit = product.countType === 'length' ? "m" : "m²";
 
                                                             return (
                                                                 <div key={product.id} className="space-y-2">
-                                                                    <MaterialItem
-                                                                        label={product.name}
-                                                                        sub={product.countType === 'length' ? `${product.unitLength}m length` : `${((product.width || 0) * 100).toFixed(0)}cm x ${product.height}m`}
-                                                                        count={count}
-                                                                        unit={unit}
-                                                                    />
-                                                                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1.5 shadow-inner">
-                                                                        {product.countType === 'length' ? (
-                                                                            <>
-                                                                                <div className="text-[10px] text-slate-500 flex justify-between"><span>Total Length:</span> <span className="font-bold text-slate-800">{totalValue.toFixed(2)}m</span></div>
-                                                                                {mBreakdown && <div className="text-[10px] text-slate-500 flex justify-between"><span>Per Segment:</span> <span className="font-bold text-indigo-600 tracking-tighter">{mBreakdown.segmentLengths.map(l => Math.ceil(l / (product.unitLength || 2.9))).join(', ')}</span></div>}
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                <div className="text-[10px] text-slate-500 flex justify-between"><span>Total Area:</span> <span className="font-bold text-slate-800">{totalValue.toFixed(2)}m²</span></div>
-                                                                                {aBreakdown && <div className="text-[10px] text-slate-500 flex justify-between"><span>Per Area:</span> <span className="font-bold text-indigo-600 tracking-tighter">{aBreakdown.areas.map(a => a.sticks).join(', ')}</span></div>}
-                                                                            </>
-                                                                        )}
+                                                                    <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                                                        <div>
+                                                                            <div className="text-xs font-bold text-slate-700">{product.name}</div>
+                                                                            <div className="text-[9px] text-slate-400 font-medium">{product.countType === 'length' ? `${product.unitLength}m unit` : `${((product.width || 0) * 100).toFixed(0)}cm x ${product.height}m`}</div>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className="text-sm font-black text-slate-700 font-mono">{displayValue.toFixed(2)}</span>
+                                                                            <span className="text-[10px] text-slate-400 ml-1 font-bold uppercase">{displayUnit}</span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             );
@@ -890,7 +815,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     return;
                                 }
 
-                                await generateRAB(walls, customerInfo, wastePercentage, calculateWallMaterials, materialPrices, products, company?.logo_url);
+                                await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url);
                             } catch (e) {
                                 alert("Failed to generate PDF: " + e);
                             }
