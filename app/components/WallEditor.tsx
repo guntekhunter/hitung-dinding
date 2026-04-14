@@ -911,7 +911,7 @@ const WallEditor = forwardRef((props, ref) => {
                         const angle = Math.atan2(dy, dx);
 
                         return (
-                            <Group key={`dim-${i}`} onClick={() => { if (!isWallLocked) handleLabelClick(i, lengthM); }}>
+                            <Group key={`dim-${i}`} onClick={() => { if (!isWallLocked) handleLabelClick(i, lengthM); }} onTap={() => { if (!isWallLocked) handleLabelClick(i, lengthM); }}>
                                 {/* Extension Lines */}
                                 <Line
                                     points={[point.x + nx * (5 / zoom), point.y + ny * (5 / zoom), point.x + nx * (offsetVal + 10 / zoom), point.y + ny * (offsetVal + 10 / zoom)]}
@@ -986,25 +986,87 @@ const WallEditor = forwardRef((props, ref) => {
                             <Group key={i}>
                                 {/* Point Handle (Hide when locked) */}
                                 {!isWallLocked && (
-                                    <Rect
-                                        x={p.x - 4 / zoom}
-                                        y={p.y - 4 / zoom}
-                                        width={8 / zoom}
-                                        height={8 / zoom}
-                                        fill="white"
-                                        stroke="#0f172a"
-                                        strokeWidth={1 / zoom}
-                                        draggable
-                                        onDragMove={(e) => handleDragMove(e, i)}
-                                        onMouseEnter={(e: any) => {
-                                            const container = e.target.getStage().container();
-                                            container.style.cursor = 'move';
-                                        }}
-                                        onMouseLeave={(e: any) => {
-                                            const container = e.target.getStage().container();
-                                            container.style.cursor = isClosed ? 'default' : 'crosshair';
-                                        }}
-                                    />
+                                    isMobile ? (
+                                        // Mobile: large, finger-friendly drag handle
+                                        <Group x={p.x} y={p.y}>
+                                            {/* Outer dashed ring – "draggable" indicator */}
+                                            <Circle
+                                                radius={21 / zoom}
+                                                fill="rgba(59, 130, 246, 0.12)"
+                                                stroke="#3b82f6"
+                                                strokeWidth={1.5 / zoom}
+                                                dash={[4 / zoom, 3 / zoom]}
+                                                listening={false}
+                                            />
+                                            {/* Main drag handle */}
+                                            <Circle
+                                                radius={13 / zoom}
+                                                fill="#3b82f6"
+                                                stroke="white"
+                                                strokeWidth={2 / zoom}
+                                                draggable
+                                                onDragMove={(e) => {
+                                                    if (isWallLocked) return;
+                                                    // Get absolute screen position → convert to canvas world coords
+                                                    const absPos = e.target.getAbsolutePosition();
+                                                    const stage = stageRef.current;
+                                                    const transform = stage.getAbsoluteTransform().copy();
+                                                    transform.invert();
+                                                    const world = transform.point(absPos);
+                                                    // Reset shape to group origin so it doesn't visually drift
+                                                    e.target.x(0);
+                                                    e.target.y(0);
+                                                    // Apply snapping (same as desktop)
+                                                    let newX = world.x;
+                                                    let newY = world.y;
+                                                    const neighbors: {x: number; y: number}[] = [];
+                                                    if (i > 0) neighbors.push(points[i - 1]);
+                                                    else if (isClosed) neighbors.push(points[points.length - 1]);
+                                                    if (i < points.length - 1) neighbors.push(points[i + 1]);
+                                                    else if (isClosed) neighbors.push(points[0]);
+                                                    neighbors.forEach(n => {
+                                                        if (Math.abs(newX - n.x) < SNAP_THRESHOLD) newX = n.x;
+                                                        if (Math.abs(newY - n.y) < SNAP_THRESHOLD) newY = n.y;
+                                                    });
+                                                    updatePoint(i, newX, newY);
+                                                }}
+                                            />
+                                            {/* Crosshair icon – universal "move" symbol */}
+                                            <Line
+                                                points={[-6 / zoom, 0, 6 / zoom, 0]}
+                                                stroke="white"
+                                                strokeWidth={2 / zoom}
+                                                listening={false}
+                                            />
+                                            <Line
+                                                points={[0, -6 / zoom, 0, 6 / zoom]}
+                                                stroke="white"
+                                                strokeWidth={2 / zoom}
+                                                listening={false}
+                                            />
+                                        </Group>
+                                    ) : (
+                                        // Desktop: original small square handle
+                                        <Rect
+                                            x={p.x - 4 / zoom}
+                                            y={p.y - 4 / zoom}
+                                            width={8 / zoom}
+                                            height={8 / zoom}
+                                            fill="white"
+                                            stroke="#0f172a"
+                                            strokeWidth={1 / zoom}
+                                            draggable
+                                            onDragMove={(e) => handleDragMove(e, i)}
+                                            onMouseEnter={(e: any) => {
+                                                const container = e.target.getStage().container();
+                                                container.style.cursor = 'move';
+                                            }}
+                                            onMouseLeave={(e: any) => {
+                                                const container = e.target.getStage().container();
+                                                container.style.cursor = isClosed ? 'default' : 'crosshair';
+                                            }}
+                                        />
+                                    )
                                 )}
                             </Group>
                         );
@@ -1024,6 +1086,97 @@ const WallEditor = forwardRef((props, ref) => {
                     const screenX = midX * zoom + offset.x;
                     const screenY = midY * zoom + offset.y;
 
+                    if (isMobile) {
+                        // Mobile: centered modal-style input overlay
+                        return (
+                            <>
+                                {/* Backdrop – tap outside to dismiss */}
+                                <div
+                                    onClick={() => setEditingIndex(null)}
+                                    style={{
+                                        position: 'absolute', inset: 0,
+                                        background: 'rgba(0,0,0,0.25)',
+                                        zIndex: 20
+                                    }}
+                                />
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '50%',
+                                        top: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        background: 'white',
+                                        borderRadius: 16,
+                                        boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                                        padding: '20px 24px',
+                                        zIndex: 21,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: 12,
+                                        minWidth: 220
+                                    }}
+                                >
+                                    <p style={{ margin: 0, fontSize: 13, color: '#64748b', fontWeight: 600 }}>Ubah Panjang Sisi</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <input
+                                            ref={inputRef}
+                                            type="number"
+                                            step="0.01"
+                                            inputMode="decimal"
+                                            value={inputValue}
+                                            onChange={(e) => setInputValue(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            style={{
+                                                width: 110,
+                                                fontSize: 22,
+                                                fontWeight: 700,
+                                                textAlign: 'center',
+                                                border: '2px solid #3b82f6',
+                                                borderRadius: 10,
+                                                padding: '8px 10px',
+                                                outline: 'none',
+                                                color: '#1e293b'
+                                            }}
+                                        />
+                                        <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>m</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+                                        <button
+                                            onClick={() => setEditingIndex(null)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px 0',
+                                                borderRadius: 10,
+                                                border: '1.5px solid #cbd5e1',
+                                                background: 'white',
+                                                color: '#64748b',
+                                                fontSize: 15,
+                                                fontWeight: 600,
+                                                cursor: 'pointer'
+                                            }}
+                                        >Batal</button>
+                                        <button
+                                            onClick={handleInputCommit}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px 0',
+                                                borderRadius: 10,
+                                                border: 'none',
+                                                background: '#3b82f6',
+                                                color: 'white',
+                                                fontSize: 15,
+                                                fontWeight: 700,
+                                                cursor: 'pointer'
+                                            }}
+                                        >✓ OK</button>
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    }
+
+                    // Desktop: inline floating input
                     return (
                         <input
                             ref={inputRef}

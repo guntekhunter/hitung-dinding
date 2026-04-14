@@ -22,8 +22,16 @@ export const getCurrentUser = async (userId: string) => {
         .maybeSingle();
 
     if (error) {
-        console.error("getCurrentUser error:", error);
-        throw new Error("Failed to fetch user profile: " + error.message);
+        console.error("getCurrentUser error:", {
+            message: error.message,
+            code:    (error as any).code,
+            details: (error as any).details,
+            hint:    (error as any).hint,
+        });
+        throw new Error(
+            "Gagal memuat profil pengguna: " +
+            (error.message || (error as any).code || JSON.stringify(error))
+        );
     }
 
     if (!data) {
@@ -44,8 +52,16 @@ export const getUserCompany = async (companyId: string) => {
         .maybeSingle();
 
     if (error) {
-        console.error("getUserCompany error:", error);
-        throw new Error("Failed to fetch company info: " + error.message);
+        console.error("getUserCompany error:", {
+            message: error.message,
+            code:    (error as any).code,
+            details: (error as any).details,
+            hint:    (error as any).hint,
+        });
+        throw new Error(
+            "Gagal memuat data perusahaan: " +
+            (error.message || (error as any).code || JSON.stringify(error))
+        );
     }
 
     if (!data) {
