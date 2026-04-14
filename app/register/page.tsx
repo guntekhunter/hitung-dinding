@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerCompanyAndAdminUser } from "../utils/auth";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function RegisterPage() {
     const router = useRouter();
+    const { user, company } = useAuthStore();
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (user && company) {
+            router.push("/");
+        }
+    }, [user, company, router]);
 
     const [companyName, setCompanyName] = useState("");
     const [adminName, setAdminName] = useState("");

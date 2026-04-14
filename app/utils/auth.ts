@@ -29,7 +29,7 @@ export const getCurrentUser = async (userId: string) => {
             hint:    (error as any).hint,
         });
         throw new Error(
-            "Gagal memuat profil pengguna: " +
+            "Failed to fetch user profile: " +
             (error.message || (error as any).code || JSON.stringify(error))
         );
     }
@@ -59,7 +59,7 @@ export const getUserCompany = async (companyId: string) => {
             hint:    (error as any).hint,
         });
         throw new Error(
-            "Gagal memuat data perusahaan: " +
+            "Failed to fetch company info: " +
             (error.message || (error as any).code || JSON.stringify(error))
         );
     }
