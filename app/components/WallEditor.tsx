@@ -5,29 +5,11 @@ import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { getPolygonRectIntersectionArea } from '../function/geometry';
 
-// Create a singleton worker instance to be shared
-let workerInstance: Worker | null = null;
-if (typeof window !== 'undefined') {
-    workerInstance = new Worker(new URL('../utils/calcWorker.ts', import.meta.url));
-}
+import { callWorker } from '../utils/workerManager';
 
 const useWorker = () => {
     const postMessage = useCallback((message: any) => {
-        return new Promise((resolve) => {
-            if (!workerInstance) return resolve(null);
-            
-            const requestId = Math.random().toString(36).substring(7);
-            
-            const handler = (e: MessageEvent) => {
-                if (e.data.requestId === requestId) {
-                    workerInstance?.removeEventListener('message', handler);
-                    resolve(e.data);
-                }
-            };
-            
-            workerInstance.addEventListener('message', handler);
-            workerInstance.postMessage({ ...message, requestId });
-        });
+        return callWorker(message.type, message.data);
     }, []);
 
     return postMessage;
@@ -837,12 +819,14 @@ const WallEditor = forwardRef((props, ref) => {
                 x={offset.x}
                 y={offset.y}
                 draggable={false}
+                perfectDrawEnabled={!isMobile}
+                shadowForStrokeEnabled={false}
                 style={{
                     cursor: isPanningRef.current ? 'grabbing' : (isClosed ? 'default' : 'crosshair'),
                     touchAction: 'none'
                 }}
             >
-                <Layer>
+                <Layer listening={false}>
                     {gridLines}
                     {!isClosed && (
                         <Text
