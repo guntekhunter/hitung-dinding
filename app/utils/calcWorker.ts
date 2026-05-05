@@ -84,7 +84,8 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
         productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
     });
 
-    return { productAreas, productLengths };
+    const totalDesignArea = Object.values(productAreas).reduce((a, b) => a + b, 0);
+    return { productAreas, productLengths, totalDesignArea };
 };
 
 self.onmessage = (e: MessageEvent) => {

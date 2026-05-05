@@ -77,12 +77,12 @@ export const generateRAB = async (
         const ys = wall.points.map(p => p.y);
         const widthM = (xs.length > 0 ? (Math.max(...xs) - Math.min(...xs)) / SCALE : 0);
         const heightM = (ys.length > 0 ? (Math.max(...ys) - Math.min(...ys)) / SCALE : 0);
-        const ukuranText = `${widthM.toFixed(2)} x ${heightM.toFixed(2)}`;
+        const ukuranText = `${(widthM || 0).toFixed(2)} x ${(heightM || 0).toFixed(2)}`;
 
         // List materials used in this room
         const roomMaterials = products.filter(p => (metrics.productAreas[p.id] || 0) > 0 || (metrics.productLengths[p.id] || 0) > 0);
         const materialText = roomMaterials.map(m => m.name).join(", ");
-        const areaText = `${metrics.totalDesignArea.toFixed(2)} m²`;
+        const areaText = `${(metrics.totalDesignArea || 0).toFixed(2)} m²`;
 
         wallRows.push([
             (index + 1).toString(),
