@@ -111,6 +111,7 @@ type CanvasState = {
     startDesignArea: (x: number, y: number) => void;
     updateDesignArea: (x: number, y: number) => void;
     finishDesignArea: () => void;
+    moveDesignArea: (id: string, x: number, y: number) => void;
     removeDesignArea: (id: string) => void;
     clearDesignAreas: () => void;
 
@@ -118,6 +119,7 @@ type CanvasState = {
     startOpening: (x: number, y: number, type: 'window' | 'door') => void;
     updateOpening: (x: number, y: number) => void;
     finishOpening: () => void;
+    moveOpening: (id: string, x: number, y: number) => void;
     removeOpening: (id: string) => void;
 
     // List Actions
@@ -673,6 +675,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         }));
     },
 
+    moveDesignArea: (id, x, y) => {
+        const { activeWallId } = get();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === activeWallId
+                    ? {
+                        ...w,
+                        designAreas: w.designAreas.map(a => a.id === id ? { ...a, x, y } : a)
+                    }
+                    : w
+            )
+        }));
+    },
     removeDesignArea: (id) => {
         set((state) => ({
             past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
@@ -685,6 +700,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         }));
     },
 
+    moveOpening: (id, x, y) => {
+        const { activeWallId } = get();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === activeWallId
+                    ? {
+                        ...w,
+                        openings: w.openings.map(o => o.id === id ? { ...o, x, y } : o)
+                    }
+                    : w
+            )
+        }));
+    },
     removeOpening: (id) => {
         set((state) => ({
             past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],

@@ -232,7 +232,7 @@ const WallEditor = forwardRef((props, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
-    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points }: any) => {
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
 
@@ -298,7 +298,36 @@ const WallEditor = forwardRef((props, ref) => {
         const tickLen = 4 / zoom;
 
         return (
-            <Group x={area.x} y={area.y}>
+            <Group 
+                x={area.x} 
+                y={area.y}
+                draggable
+                onDragStart={onDragStart}
+                onDragMove={(e) => {
+                    // When dragging a group, e.target.x() is the new position relative to the layer
+                    let newX = e.target.x();
+                    let newY = e.target.y();
+
+                    // Snap center of area to center of wall
+                    const areaCenterX = newX + area.width / 2;
+                    const areaCenterY = newY + area.height / 2;
+                    
+                    const SNAP_DIST = 20 / zoom;
+
+                    if (Math.abs(areaCenterX - wallCenter.x) < SNAP_DIST) {
+                        newX = wallCenter.x - area.width / 2;
+                    }
+                    if (Math.abs(areaCenterY - wallCenter.y) < SNAP_DIST) {
+                        newY = wallCenter.y - area.height / 2;
+                    }
+
+                    e.target.x(newX);
+                    e.target.y(newY);
+                }}
+                onDragEnd={(e) => {
+                    onMove(area.id, e.target.x(), e.target.y());
+                }}
+            >
                 <Rect
                     name="design-area"
                     width={area.width}
@@ -308,6 +337,14 @@ const WallEditor = forwardRef((props, ref) => {
                     strokeWidth={product.countType === 'length' ? 2 / zoom : 1 / zoom}
                     onClick={onClick}
                     onTap={onClick}
+                    onMouseEnter={(e: any) => {
+                        const container = e.target.getStage().container();
+                        container.style.cursor = 'move';
+                    }}
+                    onMouseLeave={(e: any) => {
+                        const container = e.target.getStage().container();
+                        container.style.cursor = isClosed ? 'default' : 'crosshair';
+                    }}
                 />
                 <Text
                     text={product.name}
@@ -371,7 +408,7 @@ const WallEditor = forwardRef((props, ref) => {
         );
     });
 
-    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick }: any) => {
+    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter }: any) => {
         const isWindow = opening.type === 'window';
         const color = isWindow ? "rgba(14, 165, 233, 0.6)" : "rgba(217, 119, 6, 0.6)";
         const label = isWindow ? "Window" : "Door";
@@ -381,7 +418,35 @@ const WallEditor = forwardRef((props, ref) => {
         const tickLen = 4 / zoom;
 
         return (
-            <Group x={opening.x} y={opening.y}>
+            <Group 
+                x={opening.x} 
+                y={opening.y}
+                draggable
+                onDragStart={onDragStart}
+                onDragMove={(e) => {
+                    let newX = e.target.x();
+                    let newY = e.target.y();
+
+                    // Snap center of area to center of wall
+                    const areaCenterX = newX + opening.width / 2;
+                    const areaCenterY = newY + opening.height / 2;
+                    
+                    const SNAP_DIST = 20 / zoom;
+
+                    if (Math.abs(areaCenterX - wallCenter.x) < SNAP_DIST) {
+                        newX = wallCenter.x - opening.width / 2;
+                    }
+                    if (Math.abs(areaCenterY - wallCenter.y) < SNAP_DIST) {
+                        newY = wallCenter.y - opening.height / 2;
+                    }
+
+                    e.target.x(newX);
+                    e.target.y(newY);
+                }}
+                onDragEnd={(e) => {
+                    onMove(opening.id, e.target.x(), e.target.y());
+                }}
+            >
                 <Rect
                     width={opening.width}
                     height={opening.height}
@@ -390,17 +455,25 @@ const WallEditor = forwardRef((props, ref) => {
                     strokeWidth={2 / zoom}
                     onClick={onClick}
                     onTap={onClick}
+                    onMouseEnter={(e: any) => {
+                        const container = e.target.getStage().container();
+                        container.style.cursor = 'move';
+                    }}
+                    onMouseLeave={(e: any) => {
+                        const container = e.target.getStage().container();
+                        container.style.cursor = isClosed ? 'default' : 'crosshair';
+                    }}
                 />
-                <Line points={[0, 0, opening.width, opening.height]} stroke="white" strokeWidth={2 / zoom} />
-                <Line points={[0, opening.height, opening.width, 0]} stroke="white" strokeWidth={2 / zoom} />
-                <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} />
-                <Group y={opening.height + dimOffset}>
+                <Line points={[0, 0, opening.width, opening.height]} stroke="white" strokeWidth={2 / zoom} listening={false} />
+                <Line points={[0, opening.height, opening.width, 0]} stroke="white" strokeWidth={2 / zoom} listening={false} />
+                <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
+                <Group y={opening.height + dimOffset} listening={false}>
                     <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
-                <Group x={opening.width + dimOffset}>
+                <Group x={opening.width + dimOffset} listening={false}>
                     <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
@@ -465,19 +538,58 @@ const WallEditor = forwardRef((props, ref) => {
         return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
     };
 
+    const wallCenter = useMemo(() => ({
+        x: bounds.minX + bounds.width / 2,
+        y: bounds.minY + bounds.height / 2
+    }), [bounds]);
+
     const renderedAreas = useMemo(() => {
+        const moveDesignArea = useCanvasStore.getState().moveDesignArea;
+        const moveOpening = useCanvasStore.getState().moveOpening;
+        const _saveHistory = useCanvasStore.getState()._saveHistory;
+
         return (
             <Group clipFunc={clipFunc}>
-                {designAreas.map(area => (
-                    <React.Fragment key={area.id}>
-                        {renderAreaContent(area)}
-                    </React.Fragment>
-                ))}
+                {designAreas.map(area => {
+                    const product = products.find(p => p.id === area.productId);
+                    if (!product) return null;
+                    return (
+                        <MemoizedAreaContent
+                            key={area.id}
+                            area={area}
+                            product={product}
+                            zoom={zoom}
+                            textScale={textScale}
+                            points={points}
+                            wallCenter={wallCenter}
+                            onMove={moveDesignArea}
+                            onDragStart={_saveHistory}
+                            onClick={() => {
+                                if (interactionMode === 'delete') {
+                                    useCanvasStore.getState().removeDesignArea(area.id);
+                                }
+                            }}
+                        />
+                    );
+                })}
+
                 {openings.map(op => (
-                    <React.Fragment key={op.id}>
-                        {renderOpeningContent(op)}
-                    </React.Fragment>
+                    <MemoizedOpeningContent
+                        key={op.id}
+                        opening={op}
+                        zoom={zoom}
+                        textScale={textScale}
+                        wallCenter={wallCenter}
+                        onMove={moveOpening}
+                        onDragStart={_saveHistory}
+                        onClick={() => {
+                            if (interactionMode === 'delete') {
+                                useCanvasStore.getState().removeOpening(op.id);
+                            }
+                        }}
+                    />
                 ))}
+
                 {lists.map(list => (
                     <React.Fragment key={list.id}>
                         {renderListContent(list)}
@@ -504,7 +616,7 @@ const WallEditor = forwardRef((props, ref) => {
                 )}
             </Group>
         );
-    }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode, zoom, points]);
+    }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode, zoom, points, wallCenter, products]);
 
     const getPointerPosition = () => {
         const stage = stageRef.current;

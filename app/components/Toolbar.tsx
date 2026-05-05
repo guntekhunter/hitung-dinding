@@ -592,9 +592,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                             <span className="text-[10px] text-indigo-400">Rp</span>
                                                             <input
                                                                 type="number"
-                                                                value={price}
+                                                                value={price === 0 ? '' : price}
                                                                 onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
                                                                 className="flex-1 bg-transparent border-none text-xs font-mono font-bold text-indigo-200 focus:outline-none p-0"
+                                                                placeholder="0"
                                                             />
                                                         </div>
                                                     </div>
