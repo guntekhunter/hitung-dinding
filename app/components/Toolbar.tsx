@@ -83,36 +83,130 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
     </div>
 ));
 
-const CustomerInfoSection = memo(({ customerInfo, setCustomerInfo }: any) => {
-    // Local state for fast typing, debounced to store would be better but let's at least keep it separated
+const SaveProjectModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo, onSave, isSaving }: any) => {
+    if (!isOpen) return null;
+
     return (
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest">Customer info</h3>
-            <div className="space-y-2">
-                <input
-                    placeholder="Customer Name"
-                    value={customerInfo.name}
-                    onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-                <input
-                    placeholder="Surveyor Name"
-                    value={customerInfo.surveyorName}
-                    onChange={(e) => setCustomerInfo({ ...customerInfo, surveyorName: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-                <input
-                    placeholder="Phone Number"
-                    value={customerInfo.phone}
-                    onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-                <textarea
-                    placeholder="Address"
-                    value={customerInfo.address}
-                    onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm min-h-[80px] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"
-                />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
+            <div
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 animate-[slideUp_0.3s_ease-out]"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                    <div>
+                        <h2 className="text-lg font-black text-slate-800 tracking-tight">Save Project</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Enter project details before saving</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div className="p-5 space-y-3">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Customer Name</label>
+                        <input
+                            placeholder="Enter customer name"
+                            value={customerInfo.name}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Surveyor Name</label>
+                        <input
+                            placeholder="Enter surveyor name"
+                            value={customerInfo.surveyorName}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, surveyorName: e.target.value })}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                        />
+                    </div>
+                </div>
+
+                <div className="p-5 border-t border-slate-100 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => { onSave(); onClose(); }}
+                        disabled={isSaving}
+                        className="flex-1 p-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                    >
+                        <span>💾</span> {isSaving ? 'Saving...' : 'Save Project'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+const CustomerInfoModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo, onGenerate }: any) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
+            <div
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 animate-[slideUp_0.3s_ease-out]"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                    <div>
+                        <h2 className="text-lg font-black text-slate-800 tracking-tight">Customer Details</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Fill in customer info before generating PDF</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div className="p-5 space-y-3">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Phone Number</label>
+                        <input
+                            placeholder="Enter phone number"
+                            value={customerInfo.phone}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Address</label>
+                        <textarea
+                            placeholder="Enter address"
+                            value={customerInfo.address}
+                            onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm min-h-[80px] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="p-5 border-t border-slate-100 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => { onGenerate(); onClose(); }}
+                        className="flex-1 p-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg"
+                    >
+                        <span>📑</span> Generate PDF
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -122,6 +216,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const [isSaving, setIsSaving] = useState(false);
     const [isCalculating, setIsCalculating] = useState(false);
     const [calcResults, setCalcResults] = useState<any>(null);
+    const [showPdfModal, setShowPdfModal] = useState(false);
+    const [showSaveModal, setShowSaveModal] = useState(false);
     
     const router = useRouter();
     const { user, company, clearSession } = useAuthStore();
@@ -200,14 +296,23 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const { isClosed, isWallLocked } = activeWall;
 
     // Derived results from worker calculation
-    const wallMetrics = calcResults?.wallMetrics || [];
-    const totalProductCounts = calcResults?.totalProductCounts || {};
+    const wallMetrics = (calcResults?.wallMetrics || []) as any[];
+    const totalProductCounts = (calcResults?.totalProductCounts || {}) as Record<string, number>;
     
     const totals = useMemo(() => {
-        if (!calcResults) return { totalArea: 0, totalDesignArea: 0 };
-        // Worker doesn't calculate wall area yet (simple polygon area), so we sum it up if needed or 
-        // rely on simple logic here since polygonArea is simple.
-        // For now, let's keep it simple.
+        if (!calcResults) return { totalArea: 0, totalDesignArea: 0, grandTotalPrice: 0 };
+        
+        const grandTotal = products.reduce((sum, product) => {
+            const count = totalProductCounts[product.id] || 0;
+            const price = materialPrices[product.id] ?? product.price ?? 0;
+            return sum + (count * price);
+        }, 0);
+
+        const totalDesignArea = wallMetrics.reduce((sum: number, m: any) => {
+            const areas = Object.values(m.productAreas || {}) as number[];
+            return sum + areas.reduce((a: number, b: number) => a + b, 0);
+        }, 0);
+
         return {
             totalArea: walls.reduce((sum, w) => {
                 let area = 0;
@@ -218,9 +323,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 }
                 return sum + (Math.abs(area / 2) / (SCALE * SCALE));
             }, 0),
-            totalDesignArea: wallMetrics.reduce((sum: number, m: any) => sum + Object.values(m.productAreas).reduce((a: any, b: any) => a + b, 0), 0)
+            totalDesignArea: totalDesignArea,
+            grandTotalPrice: grandTotal
         };
-    }, [calcResults, walls, wallMetrics]);
+    }, [calcResults, walls, wallMetrics, products, totalProductCounts, materialPrices]);
 
     const handleSaveProject = async () => {
         setIsSaving(true);
@@ -368,7 +474,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     updateWallName={updateWallName} 
                 />
 
-                <CustomerInfoSection customerInfo={customerInfo} setCustomerInfo={setCustomerInfo} />
+
 
                 {/* Actions & Modes */}
                 <div className="space-y-4">
@@ -479,22 +585,41 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                     <span className="text-sm font-bold text-white group-hover:text-indigo-200 transition-colors">{product.name}</span>
                                                     <span className="text-sm font-black text-indigo-400">{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
                                                 </div>
-                                                <div className="flex items-center gap-3 bg-indigo-950/50 p-2 rounded-lg border border-indigo-800/30">
-                                                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Unit Price</span>
-                                                    <div className="flex items-center gap-1.5 flex-1 pr-2">
-                                                        <span className="text-[10px] text-indigo-400">Rp</span>
-                                                        <input
-                                                            type="number"
-                                                            value={price}
-                                                            onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
-                                                            className="flex-1 bg-transparent border-none text-xs font-mono font-bold text-indigo-200 focus:outline-none p-0"
-                                                        />
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className="flex items-center gap-3 bg-indigo-950/50 p-2 rounded-lg border border-indigo-800/30">
+                                                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Unit Price</span>
+                                                        <div className="flex items-center gap-1.5 flex-1 pr-2">
+                                                            <span className="text-[10px] text-indigo-400">Rp</span>
+                                                            <input
+                                                                type="number"
+                                                                value={price}
+                                                                onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
+                                                                className="flex-1 bg-transparent border-none text-xs font-mono font-bold text-indigo-200 focus:outline-none p-0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-between items-center px-2">
+                                                        <span className="text-[9px] font-bold text-indigo-400/60 uppercase tracking-widest">Subtotal</span>
+                                                        <span className="text-[11px] font-black text-indigo-300 font-mono">Rp {(count * price).toLocaleString('id-ID')}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
+
+                                {totals.grandTotalPrice > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-indigo-800/50 flex justify-between items-center">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Grand Total</span>
+                                            <span className="text-[9px] text-indigo-500/80 font-bold uppercase tracking-tight italic">Inc. {wastePercentage}% waste</span>
+                                        </div>
+                                        <span className="text-xl font-black text-white font-mono shadow-sm">
+                                            <span className="text-xs text-indigo-400 mr-1.5 font-bold italic">Rp</span>
+                                            {totals.grandTotalPrice.toLocaleString('id-ID')}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-4">
@@ -548,7 +673,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 pt-4">
-                    <button onClick={handleSaveProject} disabled={isSaving || !isClosed} className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
+                    <button onClick={() => setShowSaveModal(true)} disabled={isSaving || !isClosed} className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
                         <span className="text-xl">💾</span>
                         <div className="text-left font-black uppercase tracking-widest text-[10px]">{isSaving ? 'Uploading...' : 'Save Database'}</div>
                     </button>
@@ -557,12 +682,9 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <div className="text-left font-black uppercase tracking-widest text-[10px]">Export Plan</div>
                     </button>
                     <button
-                        onClick={async () => {
-                            try {
-                                if (!company?.logo_url) { alert("Upload logo first!"); return; }
-                                if (!customerInfo.name || !customerInfo.phone) { alert("Fill customer info!"); return; }
-                                await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url);
-                            } catch (e) { alert("PDF Error: " + e); }
+                        onClick={() => {
+                            if (!company?.logo_url) { alert("Upload logo first!"); return; }
+                            setShowPdfModal(true);
                         }}
                         disabled={!isClosed}
                         className="w-full p-4 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
@@ -572,6 +694,29 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     </button>
                 </div>
             </div>
+
+            {/* Save Project Modal */}
+            <SaveProjectModal
+                isOpen={showSaveModal}
+                onClose={() => setShowSaveModal(false)}
+                customerInfo={customerInfo}
+                setCustomerInfo={setCustomerInfo}
+                onSave={handleSaveProject}
+                isSaving={isSaving}
+            />
+
+            {/* Customer Info Modal for PDF Generation */}
+            <CustomerInfoModal
+                isOpen={showPdfModal}
+                onClose={() => setShowPdfModal(false)}
+                customerInfo={customerInfo}
+                setCustomerInfo={setCustomerInfo}
+                onGenerate={async () => {
+                    try {
+                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url);
+                    } catch (e) { alert("PDF Error: " + e); }
+                }}
+            />
         </div>
     );
 }

@@ -533,13 +533,17 @@ const WallEditor = forwardRef((props, ref) => {
             }
         }
 
-        // Ctrl + Drag for panning or Pan Mode
-        if (e.evt?.ctrlKey || interactionMode === 'pan') {
+        // Ctrl + Drag for panning (anywhere) or Pan Mode (only if clicking background)
+        const isStage = e.target === stage;
+        if (e.evt?.ctrlKey || (interactionMode === 'pan' && isStage)) {
             isPanningRef.current = true;
             lastPointerPos.current = pointerPos;
             e.evt?.preventDefault?.();
             return;
         }
+
+        // If clicking on a shape (like a point handle), don't trigger stage actions
+        if (!isStage) return;
 
         const pos = getPointerPosition();
         if (!pos) return;
@@ -792,11 +796,11 @@ const WallEditor = forwardRef((props, ref) => {
     const gridLines = [];
     if (!isMobile || zoom > 0.5) { // Hide grid on mobile when zoomed out too far
         for (let x = startX; x < endX + gridSize; x += gridSize) {
-            gridLines.push(<Line key={`v-${x}`} points={[x, startY, x, endY + gridSize]} stroke="#e2e8f0" strokeWidth={1 / zoom} />);
+            gridLines.push(<Line key={`v-${x}`} points={[x, startY, x, endY + gridSize]} stroke="#e2e8f0" strokeWidth={1 / zoom} listening={false} />);
         }
 
         for (let y = startY; y < endY + gridSize; y += gridSize) {
-            gridLines.push(<Line key={`h-${y}`} points={[startX, y, endX + gridSize, y]} stroke="#e2e8f0" strokeWidth={1 / zoom} />);
+            gridLines.push(<Line key={`h-${y}`} points={[startX, y, endX + gridSize, y]} stroke="#e2e8f0" strokeWidth={1 / zoom} listening={false} />);
         }
     }
 
@@ -826,7 +830,7 @@ const WallEditor = forwardRef((props, ref) => {
                     touchAction: 'none'
                 }}
             >
-                <Layer listening={false}>
+                <Layer>
                     {gridLines}
                     {!isClosed && (
                         <Text
@@ -838,6 +842,7 @@ const WallEditor = forwardRef((props, ref) => {
                             fontSize={14}
                             scaleX={textScale}
                             scaleY={textScale}
+                            listening={false}
                         />
                     )}
 
