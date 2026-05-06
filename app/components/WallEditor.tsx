@@ -602,17 +602,56 @@ const WallEditor = forwardRef((props, ref) => {
                         : renderOpeningContent(currentDrawingArea)
                 )}
                 {currentDrawingList && (
-                    listDrawingType === 'line' ? renderListContent(currentDrawingList) : (
-                        <Rect
-                            x={Math.min(currentDrawingList.x1, currentDrawingList.x2)}
-                            y={Math.min(currentDrawingList.y1, currentDrawingList.y2)}
-                            width={Math.abs(currentDrawingList.x2 - currentDrawingList.x1)}
-                            height={Math.abs(currentDrawingList.y2 - currentDrawingList.y1)}
-                            stroke="rgba(244, 63, 94, 0.8)"
-                            strokeWidth={2 / zoom}
-                            dash={[5 / zoom, 5 / zoom]}
-                        />
-                    )
+                    listDrawingType === 'line' ? renderListContent(currentDrawingList) : (() => {
+                        const minX = Math.min(currentDrawingList.x1, currentDrawingList.x2);
+                        const minY = Math.min(currentDrawingList.y1, currentDrawingList.y2);
+                        const w = Math.abs(currentDrawingList.x2 - currentDrawingList.x1);
+                        const h = Math.abs(currentDrawingList.y2 - currentDrawingList.y1);
+                        const dimOffset = 20 / zoom;
+                        const tickLen = 4 / zoom;
+                        return (
+                            <Group x={minX} y={minY}>
+                                <Rect
+                                    width={w}
+                                    height={h}
+                                    stroke="rgba(244, 63, 94, 0.8)"
+                                    strokeWidth={2 / zoom}
+                                    dash={[5 / zoom, 5 / zoom]}
+                                />
+                                <Group y={h + dimOffset}>
+                                    <Line points={[0, 0, w, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                    <Line points={[w - tickLen, tickLen, w + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                    <Text
+                                        text={`${(w / SCALE).toFixed(2)}m`}
+                                        fontSize={9}
+                                        fill="#475569"
+                                        x={w / 2}
+                                        y={-12 / zoom}
+                                        offsetX={15}
+                                        scaleX={textScale}
+                                        scaleY={textScale}
+                                    />
+                                </Group>
+                                <Group x={w + dimOffset}>
+                                    <Line points={[0, 0, 0, h]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                    <Line points={[-tickLen, h - tickLen, tickLen, h + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                    <Text
+                                        text={`${(h / SCALE).toFixed(2)}m`}
+                                        fontSize={9}
+                                        fill="#475569"
+                                        x={4 / zoom}
+                                        y={h / 2}
+                                        rotation={90}
+                                        offsetX={15}
+                                        scaleX={textScale}
+                                        scaleY={textScale}
+                                    />
+                                </Group>
+                            </Group>
+                        );
+                    })()
                 )}
             </Group>
         );
