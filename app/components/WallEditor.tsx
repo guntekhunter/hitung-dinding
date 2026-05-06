@@ -823,6 +823,48 @@ const WallEditor = forwardRef((props, ref) => {
 
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
             const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
+
+            // --- Dimension Snapping for Rectangles ---
+            if (listDrawingType === 'rectangle') {
+                const currentWidth = Math.abs(newX - currentDrawingList.x1);
+                const currentHeight = Math.abs(newY - currentDrawingList.y1);
+
+                const potentialWidths: number[] = [];
+                const potentialHeights: number[] = [];
+
+                // Collect dimensions from existing lists (moulding segments)
+                lists.forEach(l => {
+                    const dx = Math.abs(l.x2 - l.x1);
+                    const dy = Math.abs(l.y2 - l.y1);
+                    // If it's a straight segment, it's likely part of a rectangle or a line
+                    if (dx > 5 && dy < 1) potentialWidths.push(dx);
+                    if (dy > 5 && dx < 1) potentialHeights.push(dy);
+                });
+
+                // Collect dimensions from design areas
+                designAreas.forEach(da => {
+                    potentialWidths.push(Math.abs(da.width));
+                    potentialHeights.push(Math.abs(da.height));
+                });
+
+                // Snap Width
+                for (const targetW of potentialWidths) {
+                    if (Math.abs(currentWidth - targetW) < SNAP_THRESHOLD) {
+                        const direction = newX >= currentDrawingList.x1 ? 1 : -1;
+                        newX = currentDrawingList.x1 + direction * targetW;
+                        break;
+                    }
+                }
+
+                // Snap Height
+                for (const targetH of potentialHeights) {
+                    if (Math.abs(currentHeight - targetH) < SNAP_THRESHOLD) {
+                        const direction = newY >= currentDrawingList.y1 ? 1 : -1;
+                        newY = currentDrawingList.y1 + direction * targetH;
+                        break;
+                    }
+                }
+            }
             const snappedPos = snapToGap({ x: newX, y: newY }, isMoulding);
             newX = snappedPos.x;
             newY = snappedPos.y;
