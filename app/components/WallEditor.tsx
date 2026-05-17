@@ -298,8 +298,8 @@ const WallEditor = forwardRef((props, ref) => {
         const tickLen = 4 / zoom;
 
         return (
-            <Group 
-                x={area.x} 
+            <Group
+                x={area.x}
                 y={area.y}
                 draggable
                 onDragStart={onDragStart}
@@ -311,7 +311,7 @@ const WallEditor = forwardRef((props, ref) => {
                     // Snap center of area to center of wall
                     const areaCenterX = newX + area.width / 2;
                     const areaCenterY = newY + area.height / 2;
-                    
+
                     const SNAP_DIST = 20 / zoom;
 
                     if (Math.abs(areaCenterX - wallCenter.x) < SNAP_DIST) {
@@ -418,8 +418,8 @@ const WallEditor = forwardRef((props, ref) => {
         const tickLen = 4 / zoom;
 
         return (
-            <Group 
-                x={opening.x} 
+            <Group
+                x={opening.x}
                 y={opening.y}
                 draggable
                 onDragStart={onDragStart}
@@ -430,7 +430,7 @@ const WallEditor = forwardRef((props, ref) => {
                     // Snap center of area to center of wall
                     const areaCenterX = newX + opening.width / 2;
                     const areaCenterY = newY + opening.height / 2;
-                    
+
                     const SNAP_DIST = 20 / zoom;
 
                     if (Math.abs(areaCenterX - wallCenter.x) < SNAP_DIST) {
@@ -986,19 +986,10 @@ const WallEditor = forwardRef((props, ref) => {
     const endX = visibleX + visibleWidth;
     const endY = visibleY + visibleHeight;
 
-    const gridLines = [];
-    if (!isMobile || zoom > 0.5) { // Hide grid on mobile when zoomed out too far
-        for (let x = startX; x < endX + gridSize; x += gridSize) {
-            gridLines.push(<Line key={`v-${x}`} points={[x, startY, x, endY + gridSize]} stroke="#e2e8f0" strokeWidth={1 / zoom} listening={false} />);
-        }
 
-        for (let y = startY; y < endY + gridSize; y += gridSize) {
-            gridLines.push(<Line key={`h-${y}`} points={[startX, y, endX + gridSize, y]} stroke="#e2e8f0" strokeWidth={1 / zoom} listening={false} />);
-        }
-    }
 
     return (
-        <div ref={containerRef} className="relative w-full h-full border-2 border-slate-300 rounded-lg overflow-hidden bg-white shadow-xl" style={{ touchAction: 'none' }}>
+        <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#F5F5F5]" style={{ touchAction: 'none' }}>
             <Stage
                 ref={stageRef}
                 width={width}
@@ -1024,7 +1015,6 @@ const WallEditor = forwardRef((props, ref) => {
                 }}
             >
                 <Layer>
-                    {gridLines}
                     {!isClosed && (
                         <Text
                             text="Click to place corners. Click start point to close. Ctrl+Drag to Pan. Scroll to Zoom."
@@ -1042,7 +1032,7 @@ const WallEditor = forwardRef((props, ref) => {
                     {/* Wall Surface (Background) */}
                     <Line
                         points={points.flatMap(p => [p.x, p.y])}
-                        fill="#f1f5f9"
+                        fill="#ffffff"
                         stroke="#64748b"
                         strokeWidth={2 / zoom}
                         closed={isClosed}
@@ -1201,7 +1191,7 @@ const WallEditor = forwardRef((props, ref) => {
                                                     // Apply snapping (same as desktop)
                                                     let newX = world.x;
                                                     let newY = world.y;
-                                                    const neighbors: {x: number; y: number}[] = [];
+                                                    const neighbors: { x: number; y: number }[] = [];
                                                     if (i > 0) neighbors.push(points[i - 1]);
                                                     else if (isClosed) neighbors.push(points[points.length - 1]);
                                                     if (i < points.length - 1) neighbors.push(points[i + 1]);
