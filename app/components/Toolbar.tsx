@@ -13,75 +13,105 @@ import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, Rotate
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
-const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset }: any) => (
-    <div className="bg-white border-b border-slate-100 flex flex-col shrink-0 border-b border-slate-100">
-        <div className="p-4 flex justify-between items-center border-b border-slate-50">
-            <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black bg-[#7B6DED]">
-                    {user?.name?.charAt(0).toUpperCase() || "U"}
+const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset }: any) => {
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    return (
+        <div className="bg-white border-b border-slate-100 flex flex-col shrink-0 border-b border-slate-100">
+            <div className="p-4 flex justify-between items-center border-b border-slate-50 relative">
+                {/* User Dropdown Trigger */}
+                <div
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black bg-[#7B6DED]">
+                        {user?.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                    <ChevronDown className="w-4 h-4" />
                 </div>
-                <ChevronDown className="w-4 h-4" />
+
+                {/* Dropdown Modal */}
+                {isProfileOpen && (
+                    <div className="absolute top-[70px] left-4 bg-[#232323] p-4 rounded-xl w-[260px] shadow-2xl z-50 flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full flex shrink-0 items-center justify-center text-white font-black bg-[#7B6DED] text-xl">
+                                {user?.name?.charAt(0).toUpperCase() || "U"}
+                            </div>
+                            <div className="flex flex-col truncate">
+                                <span className="text-white font-medium text-sm truncate">{user?.name || "User"}</span>
+                                <span className="text-gray-400 text-xs truncate">{company?.name || "Company"}</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onLogout}
+                            className="w-full bg-[#EA726B] hover:bg-[#D9615A] text-white py-2 rounded-lg font-medium transition-colors"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                )}
+
+                {/* Overlay to close modal when clicking outside */}
+                {isProfileOpen && (
+                    <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsProfileOpen(false)}
+                    />
+                )}
+
+                <div className="flex gap-2 text-[.8rem]">
+                    <button
+                        onClick={onSaveClick}
+                        disabled={isSaving || !isClosed}
+                        className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Save className="w-[1rem]" />
+                        {isSaving ? 'Saving...' : 'Save'}
+                    </button>
+
+                    <Link href="/projects" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300"><Folder className="w-[1rem]" />
+                        Proyek</Link>
+                    <Link href="/settings" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300">
+                        <Settings className="w-[1rem]" />
+                    </Link>
+                </div>
             </div>
-            <div className="flex gap-2 text-[.8rem]">
-                <button
-                    onClick={onSaveClick}
-                    disabled={isSaving || !isClosed}
-                    className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Save className="w-[1rem]" />
-                    {isSaving ? 'Saving...' : 'Save'}
-                </button>
-
-
-                <Link href="/projects" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300"><Folder className="w-[1rem]" />
-                    Proyek</Link>
-                <Link href="/settings" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300">
-                    <Settings className="w-[1rem]" />
-                </Link>
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex space-x-[1rem]">
+                    <button
+                        onClick={reset}
+                        className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-rose-100 text-rose-600"
+                        title="Clear All"
+                    >
+                        <RotateCcw className="w-[1rem]" />
+                    </button>
+                    <button
+                        onClick={() => toggleWallLock()}
+                        disabled={!isClosed}
+                        className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 ${isWallLocked ? 'bg-slate-700 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
+                        title={isWallLocked ? "Unlock" : "Lock"}
+                    >
+                        {isWallLocked ? <Lock className="w-[1rem]" /> : <Unlock className="w-[1rem]" />}
+                    </button>
+                    <button
+                        onClick={() => setInteractionMode('pan')}
+                        className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === 'pan' ? 'bg-slate-800 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
+                        title="Pan Mode"
+                    >
+                        <Move className="w-[1rem]" />
+                    </button>
+                    <button
+                        onClick={() => setInteractionMode('delete')}
+                        className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === 'delete' ? 'bg-rose-600 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
+                        title="Delete"
+                    >
+                        <Trash2 className="w-[1rem]" />
+                    </button>
+                </div>
             </div>
         </div>
-        <div className="p-4 flex items-center justify-between">
-            <div className="flex space-x-[1rem]">
-                <button
-                    onClick={reset}
-                    className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-rose-100 text-rose-600"
-                    title="Clear All"
-                >
-                    <RotateCcw className="w-[1rem]" />
-                </button>
-                <button
-                    onClick={() => toggleWallLock()}
-                    disabled={!isClosed}
-                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 ${isWallLocked ? 'bg-slate-700 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
-                    title={isWallLocked ? "Unlock" : "Lock"}
-                >
-                    {isWallLocked ? <Lock className="w-[1rem]" /> : <Unlock className="w-[1rem]" />}
-                </button>
-                <button
-                    onClick={() => setInteractionMode('pan')}
-                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === 'pan' ? 'bg-slate-800 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
-                    title="Pan Mode"
-                >
-                    <Move className="w-[1rem]" />
-                </button>
-                <button
-                    onClick={() => setInteractionMode('delete')}
-                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === 'delete' ? 'bg-rose-600 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
-                    title="Delete"
-                >
-                    <Trash2 className="w-[1rem]" />
-                </button>
-            </div>
-            <button
-                onClick={onLogout}
-                className="p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all active:scale-95 group border border-transparent hover:border-rose-100"
-                title="Logout"
-            >
-                <span className="text-xl group-hover:rotate-12 transition-transform block">🚪</span>
-            </button>
-        </div>
-    </div>
-));
+    );
+});
 
 const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName }: any) => (
     <div className="space-y-[1rem]">
@@ -722,10 +752,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <FileText className="w-4 h-4 text-[#303030]" />
                             <span className="text-[.8rem] text-[#303030]">RAB</span>
                         </button>
-                        
-                        <button 
-                            onClick={handleExport} 
-                            disabled={!isClosed} 
+
+                        <button
+                            onClick={handleExport}
+                            disabled={!isClosed}
                             className="flex items-center gap-3 p-3 bg-white border border-[#E5E5E5] rounded-md active:scale-95 disabled:opacity-50 transition-transform hover:bg-gray-50"
                         >
                             <Grid className="w-4 h-4 text-[#303030]" />
