@@ -232,7 +232,7 @@ const WallEditor = forwardRef((props, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
-    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter }: any) => {
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
 
@@ -301,7 +301,7 @@ const WallEditor = forwardRef((props, ref) => {
             <Group
                 x={area.x}
                 y={area.y}
-                draggable
+                draggable={interactionMode !== 'list'}
                 onDragStart={onDragStart}
                 onDragMove={(e) => {
                     // When dragging a group, e.target.x() is the new position relative to the layer
@@ -408,7 +408,7 @@ const WallEditor = forwardRef((props, ref) => {
         );
     });
 
-    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter }: any) => {
+    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter, interactionMode }: any) => {
         const isWindow = opening.type === 'window';
         const color = isWindow ? "rgba(14, 165, 233, 0.6)" : "rgba(217, 119, 6, 0.6)";
         const label = isWindow ? "Window" : "Door";
@@ -421,7 +421,7 @@ const WallEditor = forwardRef((props, ref) => {
             <Group
                 x={opening.x}
                 y={opening.y}
-                draggable
+                draggable={interactionMode !== 'list'}
                 onDragStart={onDragStart}
                 onDragMove={(e) => {
                     let newX = e.target.x();
@@ -525,12 +525,12 @@ const WallEditor = forwardRef((props, ref) => {
         if (!('productId' in area)) return null;
         const product = products.find(p => p.id === area.productId);
         if (!product) return null;
-        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
+        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
     };
 
     const renderOpeningContent = (opening: any) => {
         if (!('type' in opening)) return null;
-        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
+        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} interactionMode={interactionMode} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
     };
 
     const renderListContent = (list: any) => {
@@ -564,6 +564,7 @@ const WallEditor = forwardRef((props, ref) => {
                             wallCenter={wallCenter}
                             onMove={moveDesignArea}
                             onDragStart={_saveHistory}
+                            interactionMode={interactionMode}
                             onClick={() => {
                                 if (interactionMode === 'delete') {
                                     useCanvasStore.getState().removeDesignArea(area.id);
@@ -582,6 +583,7 @@ const WallEditor = forwardRef((props, ref) => {
                         wallCenter={wallCenter}
                         onMove={moveOpening}
                         onDragStart={_saveHistory}
+                        interactionMode={interactionMode}
                         onClick={() => {
                             if (interactionMode === 'delete') {
                                 useCanvasStore.getState().removeOpening(op.id);
@@ -694,7 +696,9 @@ const WallEditor = forwardRef((props, ref) => {
         }
 
         // If clicking on a shape (like a point handle), don't trigger stage actions
-        if (!isStage) return;
+        // But allow clicking on design areas (panels) to draw lists or place items on them
+        const isDesignArea = e.target.name() === 'design-area';
+        if (!isStage && !isDesignArea) return;
 
         const pos = getPointerPosition();
         if (!pos) return;
