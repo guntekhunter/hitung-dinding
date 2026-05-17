@@ -989,7 +989,7 @@ const WallEditor = forwardRef((props, ref) => {
 
 
     return (
-        <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#F5F5F5]" style={{ touchAction: 'none' }}>
+        <div ref={containerRef} className="relative w-full h-full overflow-hidden" style={{ touchAction: 'none' }}>
             <Stage
                 ref={stageRef}
                 width={width}

@@ -9,29 +9,70 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
-const UserHeader = memo(({ user, company, onLogout }: any) => (
-    <div className="bg-white border-b border-slate-100 flex flex-col shrink-0">
+const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset }: any) => (
+    <div className="bg-white border-b border-slate-100 flex flex-col shrink-0 border-b border-slate-100">
         <div className="p-4 flex justify-between items-center border-b border-slate-50">
-            <h1 className="text-xl font-black text-slate-800 tracking-tight">Wall Planner</h1>
-            <div className="flex gap-2">
-                <Link href="/settings" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">⚙️ Settings</Link>
-                <Link href="/projects" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">Projects 📂</Link>
+            <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black bg-[#7B6DED]">
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <ChevronDown className="w-4 h-4" />
+            </div>
+            <div className="flex gap-2 text-[.8rem]">
+                <button
+                    onClick={onSaveClick}
+                    disabled={isSaving || !isClosed}
+                    className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Save className="w-[1rem]" />
+                    {isSaving ? 'Saving...' : 'Save'}
+                </button>
+
+
+                <Link href="/projects" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300"><Folder className="w-[1rem]" />
+                    Proyek</Link>
+                <Link href="/settings" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300">
+                    <Settings className="w-[1rem]" />
+                </Link>
             </div>
         </div>
         <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-md border-2 border-white">
-                    {user?.name?.charAt(0).toUpperCase() || "U"}
-                </div>
-                <div>
-                    <div className="text-xs font-black text-slate-800 tracking-tight leading-none mb-1">{user?.name || "User"}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{company?.name || "Company"}</div>
-                </div>
+            <div className="flex space-x-[1rem]">
+                <button
+                    onClick={reset}
+                    className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-rose-100 text-rose-600"
+                    title="Clear All"
+                >
+                    <RotateCcw className="w-[1rem]" />
+                </button>
+                <button
+                    onClick={() => toggleWallLock()}
+                    disabled={!isClosed}
+                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 ${isWallLocked ? 'bg-slate-700 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
+                    title={isWallLocked ? "Unlock" : "Lock"}
+                >
+                    {isWallLocked ? <Lock className="w-[1rem]" /> : <Unlock className="w-[1rem]" />}
+                </button>
+                <button
+                    onClick={() => setInteractionMode('pan')}
+                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === 'pan' ? 'bg-slate-800 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
+                    title="Pan Mode"
+                >
+                    <Move className="w-[1rem]" />
+                </button>
+                <button
+                    onClick={() => setInteractionMode('delete')}
+                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === 'delete' ? 'bg-rose-600 text-white' : 'bg-[#F5F5F5] hover:bg-[#E2E2E2]'}`}
+                    title="Delete"
+                >
+                    <Trash2 className="w-[1rem]" />
+                </button>
             </div>
-            <button 
+            <button
                 onClick={onLogout}
                 className="p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all active:scale-95 group border border-transparent hover:border-rose-100"
                 title="Logout"
@@ -43,14 +84,14 @@ const UserHeader = memo(({ user, company, onLogout }: any) => (
 ));
 
 const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName }: any) => (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <div className="flex justify-between items-center text-slate-500">
-            <h3 className="font-bold uppercase text-[10px] tracking-widest">Walls</h3>
+    <div className="space-y-[1rem]">
+        <div className="flex justify-between items-center space-x-[2rem]">
+            <h3 className="font-medium uppercase text-[10px] tracking-widest">Dinding</h3>
             <button
                 onClick={addWall}
-                className="px-2 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                className="px-2 py-1 rounded-md font-bold hover:bg-gray-200"
             >
-                + New Wall
+                <Plus className="w-[1rem]" />
             </button>
         </div>
         <div className="space-y-2">
@@ -58,23 +99,23 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
                 <div
                     key={wall.id}
                     onClick={() => setActiveWall(wall.id)}
-                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${activeWallId === wall.id
-                        ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-100"
-                        : "bg-transparent border-transparent hover:bg-slate-50"
+                    className={`flex items-center gap-2 p-2 text-[.5rem] text-[#303030] font-light rounded-[5px] cursor-pointer transition-all border ${activeWallId === wall.id
+                        ? "bg-white border-[#E5E5E5]"
+                        : "bg-transparent border-[#E5E5E5] hover:bg-slate-50"
                         }`}
                 >
                     <input
                         value={wall.name}
                         onChange={(e) => updateWallName(wall.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex-1 bg-transparent border-none text-sm font-semibold text-slate-700 focus:outline-none"
+                        className="flex-1 bg-transparent border-none text-[.8rem] focus:outline-none"
                     />
                     {walls.length > 1 && (
                         <button
                             onClick={(e) => { e.stopPropagation(); removeWall(wall.id); }}
                             className="p-1 text-slate-300 hover:text-rose-500 transition-colors"
                         >
-                            🗑️
+                            <Minus className="w-[1rem]" />
                         </button>
                     )}
                 </div>
@@ -218,10 +259,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const [calcResults, setCalcResults] = useState<any>(null);
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
-    
+
     const router = useRouter();
     const { user, company, clearSession } = useAuthStore();
-    
+
     const {
         walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName,
         reset, selectedProductId, setSelectedProduct,
@@ -298,10 +339,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     // Derived results from worker calculation
     const wallMetrics = (calcResults?.wallMetrics || []) as any[];
     const totalProductCounts = (calcResults?.totalProductCounts || {}) as Record<string, number>;
-    
+
     const totals = useMemo(() => {
         if (!calcResults) return { totalArea: 0, totalDesignArea: 0, grandTotalPrice: 0 };
-        
+
         const grandTotal = products.reduce((sum, product) => {
             const count = totalProductCounts[product.id] || 0;
             const price = materialPrices[product.id] ?? product.price ?? 0;
@@ -354,10 +395,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             });
 
             const stage = wallEditorRef.current?.getStage();
-            const previewImage = stage ? stage.toDataURL({ 
-                pixelRatio: 0.2, 
-                mimeType: 'image/jpeg', 
-                quality: 0.5 
+            const previewImage = stage ? stage.toDataURL({
+                pixelRatio: 0.2,
+                mimeType: 'image/jpeg',
+                quality: 0.5
             }) : undefined;
 
             const projectData: ProjectData = {
@@ -461,62 +502,46 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     };
 
     return (
-        <div className="w-full md:w-[380px] bg-[#f8fafc] h-full flex flex-col border-l border-slate-200 shadow-[0_0_40px_rgba(0,0,0,0.05)] relative z-10 overflow-hidden font-sans">
-            <UserHeader user={user} company={company} onLogout={handleLogout} />
+        <div className="w-full md:w-[380px] bg-white h-full flex flex-col border-l border-slate-200 relative z-10 overflow-hidden font-sans">
+            <UserHeader
+                user={user}
+                company={company}
+                onLogout={handleLogout}
+                onSaveClick={() => setShowSaveModal(true)}
+                isSaving={isSaving}
+                isClosed={isClosed}
+                toggleWallLock={toggleWallLock}
+                isWallLocked={isWallLocked}
+                interactionMode={interactionMode}
+                setInteractionMode={setInteractionMode}
+                reset={reset}
+            />
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 md:pb-8">
-                <WallManager 
-                    walls={walls} 
-                    activeWallId={activeWallId} 
-                    addWall={addWall} 
-                    removeWall={removeWall} 
-                    setActiveWall={setActiveWall} 
-                    updateWallName={updateWallName} 
+                <WallManager
+                    walls={walls}
+                    activeWallId={activeWallId}
+                    addWall={addWall}
+                    removeWall={removeWall}
+                    setActiveWall={setActiveWall}
+                    updateWallName={updateWallName}
                 />
-
-
-
+                <hr className="border-[#E8E8E8]" />
                 {/* Actions & Modes */}
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={reset} className="p-3 bg-white text-rose-600 border border-rose-100 rounded-xl font-bold text-sm shadow-sm hover:bg-rose-50 transition-colors">🔄 Clear</button>
-                        <button
-                            onClick={() => toggleWallLock()}
-                            disabled={!isClosed}
-                            className={`p-3 rounded-xl font-bold text-sm shadow-sm transition-all border ${isWallLocked ? "bg-slate-700 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"} disabled:opacity-50`}
-                        >
-                            {isWallLocked ? "🔒 Unlock" : "🔓 Lock"}
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={undo} disabled={past.length === 0} className="p-2.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 text-sm shadow-sm hover:bg-slate-50 disabled:opacity-40 transition-colors">↩️ Undo</button>
-                        <button onClick={redo} disabled={future.length === 0} className="p-2.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 text-sm shadow-sm hover:bg-slate-50 disabled:opacity-40 transition-colors">↪️ Redo</button>
-                    </div>
-
                     <div className="space-y-2">
-                        <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Tool Mode</h3>
-                        <div className="grid grid-cols-1 gap-2">
-                            <button onClick={() => setInteractionMode('pan')} className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'pan' ? "bg-slate-800 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-600"}`}>🖐️ Pan Mode</button>
-                        </div>
+                        <h3 className="font-medium uppercase text-[10px] tracking-widest">Moulding Mode</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => setInteractionMode('place')} className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'place' ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-600"}`}>➕ Place</button>
-                            <button onClick={() => setInteractionMode('delete')} className={`p-3 rounded-xl font-bold text-sm transition-all border ${interactionMode === 'delete' ? "bg-rose-600 border-rose-600 text-white" : "bg-white border-slate-200 text-slate-600"}`}>🗑️ Delete</button>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Moulding Mode</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => setListDrawingType('line')} className={`p-3 rounded-xl font-bold text-sm transition-all border ${listDrawingType === 'line' ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-600"}`}>📏 Line</button>
-                            <button onClick={() => setListDrawingType('rectangle')} className={`p-3 rounded-xl font-bold text-sm transition-all border ${listDrawingType === 'rectangle' ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-600"}`}>⬛ Square</button>
+                            <button onClick={() => setListDrawingType('line')} className={`flex py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 border-[#E5E5E5] border ${listDrawingType === 'line' ? "bg-[#E2E2E2] text-[#303030] rounded-[2px] flex text-[.8rem]" : "flex border-[#E5E5E5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 text-[.8rem]"}`}><PenLine className="w-[1rem]" /> Lurus</button>
+                            <button onClick={() => setListDrawingType('rectangle')} className={`flex py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 border-[#E5E5E5] border ${listDrawingType === 'line' ? "text-[#303030] rounded-[2px] flex text-[.8rem]" : "bg-[#E2E2E2] flex border-[#E5E5E5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 text-[.8rem]"}`}><Square className="w-[1rem]" /> Kotak</button>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Select Product</h3>
-                    <div className="grid grid-cols-1 gap-2">
+                    <hr className="border-[#E8E8E8]" />
+                    <h3 className="font-medium uppercase text-[10px] tracking-widest">Pilih Produk</h3>
+                    <div className="grid grid-cols-2 gap-2">
                         {isLoadingProducts ? (
                             <div className="p-4 text-center text-xs animate-pulse">🔄 Loading...</div>
                         ) : (
@@ -528,35 +553,37 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                         if (product.countType === 'length') setInteractionMode('list');
                                         else setInteractionMode('place');
                                     }}
-                                    className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${selectedProductId === product.id ? "bg-indigo-600 border-indigo-600 text-white shadow-md" : "bg-white border-slate-200 text-slate-700"}`}
+                                    className={`flex py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 border-[#E5E5E5] border flex items-center justify-between transition-all ${selectedProductId === product.id ? "bg-[#F5F5F5] border-[#F5F5F5] text-[#303030]" : "bg-white border-slate-200"}`}
                                 >
-                                    <span className="font-bold text-sm">{product.name}</span>
+                                    <span className="font-bold text-[10px] font-medium">{product.name}</span>
                                     <div className="w-5 h-5 rounded-md border border-white/20" style={{ background: product.color }} />
                                 </button>
                             ))
                         )}
                     </div>
                 </div>
+                <hr className="border-[#E8E8E8]" />
 
                 <div className="space-y-2">
-                    <h3 className="font-bold text-slate-500 uppercase text-[10px] tracking-widest px-1">Add Extras</h3>
+                    <h3 className="font-medium uppercase text-[10px] tracking-widest">Tambahan</h3>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setInteractionMode('window')} className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'window' ? "bg-sky-600 border-sky-600 text-white" : "bg-white border-slate-200 text-slate-600"}`}>🪟 Window</button>
-                        <button onClick={() => setInteractionMode('door')} className={`p-3 rounded-xl font-bold text-xs transition-all border ${interactionMode === 'door' ? "bg-amber-600 border-amber-600 text-white" : "bg-white border-slate-200 text-slate-600"}`}>🚪 Door</button>
+                        <button onClick={() => setInteractionMode('window')} className={`flex items-center gap-2 p-2 rounded-[5px] font-medium text-[.8rem] transition-all border ${interactionMode === 'window' ? "bg-[#E5E5E5] border-[#E5E5E5] text-[#303030] rounded-[2px] flex text-[.8rem] gap-2" : "bg-white border-[#E5E5E5] text-slate-600 flex text-[.8rem] gap-2"}`}><Grid2x2 className="w-[1rem]" /> Jendela</button>
+                        <button onClick={() => setInteractionMode('door')} className={`flex items-center gap-2 p-2 rounded-[5px] font-medium text-[.8rem] transition-all border ${interactionMode === 'door' ? "bg-[#E5E5E5] border-[#E5E5E5] text-[#303030] rounded-[2px] flex text-[.8rem] gap-2" : "bg-white border-[#E5E5E5] text-slate-600 flex text-[.8rem] gap-2"}`}><DoorClosed className="w-[1rem]" /> Pintu</button>
                     </div>
                 </div>
 
-                <div className="bg-slate-100/50 p-4 rounded-xl space-y-4 border border-slate-200/50">
-                    <div className="flex justify-between items-center gap-4">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Waste (%)</span>
-                        <input type="number" value={wastePercentage} onChange={(e) => setWastePercentage(Number(e.target.value))} className="w-20 p-2 bg-white border border-slate-200 rounded-lg text-center text-sm font-black outline-none" />
-                    </div>
+                <hr className="border-[#E8E8E8]" />
+                <div className="flex justify-between items-center gap-4">
+                    <h3 className="font-medium uppercase text-[10px] tracking-widest">Sisaan Bahan (%)</h3>
+                    <input type="number" value={wastePercentage} onChange={(e) => setWastePercentage(Number(e.target.value))} className="w-20 p-2 bg-white border border-slate-200 rounded-lg text-center text-sm font-medium outline-none text-[.8rem]" />
                 </div>
+
 
                 {/* Bill of Materials View */}
                 <div className="space-y-4">
+                    <hr className="border-[#E8E8E8]" />
                     <div className="flex items-center justify-between">
-                        <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">Bill of Materials</h3>
+                        <h3 className="font-medium uppercase text-[10px] tracking-widest">Hitungan Area</h3>
                         {isCalculating && <span className="text-[10px] text-indigo-500 font-bold animate-pulse italic">Calculating...</span>}
                     </div>
 
@@ -567,61 +594,68 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 gap-3">
-                                <StatCard label="Total Area" value={`${Math.ceil(totals.totalArea)} m²`} icon="📐" />
-                                <StatCard label="Design Area" value={`${Math.ceil(totals.totalDesignArea)} m²`} icon="🎯" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <StatCard
+                                    label="Total Area"
+                                    value={`${Math.ceil(totals.totalArea)} m²`}
+                                >
+                                    <Ruler className="w-[1rem]" />
+                                </StatCard>
+
+                                <StatCard
+                                    label="Design Area"
+                                    value={`${Math.ceil(totals.totalDesignArea)} m²`}
+                                >
+                                    <Scan className="w-[1rem]" />
+                                </StatCard>
                             </div>
 
-                            <div className="mt-4 bg-indigo-900 rounded-2xl p-5 border border-indigo-800 shadow-xl shadow-indigo-100">
-                                <h5 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-4">Total Materials Needed</h5>
-                                <div className="space-y-1">
-                                    {products.map((product: Product) => {
-                                        const count = totalProductCounts[product.id] || 0;
-                                        if (count === 0) return null;
-                                        const price = materialPrices[product.id] || 0;
-                                        return (
-                                            <div key={product.id} className="py-3 border-b border-indigo-800/50 last:border-0 group">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="text-sm font-bold text-white group-hover:text-indigo-200 transition-colors">{product.name}</span>
-                                                    <span className="text-sm font-black text-indigo-400">{count} {product.countType === 'length' ? 'btg' : 'pcs'}</span>
-                                                </div>
-                                                <div className="flex flex-col gap-1.5">
-                                                    <div className="flex items-center gap-3 bg-indigo-950/50 p-2 rounded-lg border border-indigo-800/30">
-                                                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Unit Price</span>
-                                                        <div className="flex items-center gap-1.5 flex-1 pr-2">
-                                                            <span className="text-[10px] text-indigo-400">Rp</span>
-                                                            <input
-                                                                type="number"
-                                                                value={price === 0 ? '' : price}
-                                                                onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
-                                                                className="flex-1 bg-transparent border-none text-xs font-mono font-bold text-indigo-200 focus:outline-none p-0"
-                                                                placeholder="0"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex justify-between items-center px-2">
-                                                        <span className="text-[9px] font-bold text-indigo-400/60 uppercase tracking-widest">Subtotal</span>
-                                                        <span className="text-[11px] font-black text-indigo-300 font-mono">Rp {(count * price).toLocaleString('id-ID')}</span>
-                                                    </div>
+                            <hr className="border-[#E8E8E8]" />
+                            <h3 className="text-[.8rem] text-[#303030] mb-2">Total Kebutuhan Material</h3>
+                            <div className="grid grid-cols-1 gap-x-2 gap-y-4">
+                                {products.map((product: Product) => {
+                                    const count = totalProductCounts[product.id] || 0;
+                                    if (count === 0) return null;
+                                    const price = materialPrices[product.id] || 0;
+                                    return (
+                                        <div key={product.id} className="flex flex-col gap-1.5">
+                                            <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                                <span>{product.name}</span>
+                                                <span className="font-bold">{count} {product.countType === 'length' ? 'Btg' : 'Pcs'}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                    <span>Rp</span>
+                                                    <input
+                                                        type="number"
+                                                        value={price === 0 ? '' : price}
+                                                        onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
+                                                        className="w-24 bg-transparent outline-none font-medium p-0"
+                                                        placeholder="0"
+                                                    />
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {totals.grandTotalPrice > 0 && (
-                                    <div className="mt-6 pt-4 border-t border-indigo-800/50 flex justify-between items-center">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Grand Total</span>
-                                            <span className="text-[9px] text-indigo-500/80 font-bold uppercase tracking-tight italic">Inc. {wastePercentage}% waste</span>
+                                            <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                <span>Subtotal</span>
+                                                <span className="font-bold">Rp {(count * price).toLocaleString('id-ID')}</span>
+                                            </div>
                                         </div>
-                                        <span className="text-xl font-black text-white font-mono shadow-sm">
-                                            <span className="text-xs text-indigo-400 mr-1.5 font-bold italic">Rp</span>
-                                            {totals.grandTotalPrice.toLocaleString('id-ID')}
-                                        </span>
-                                    </div>
-                                )}
+                                    );
+                                })}
                             </div>
+
+                            {totals.grandTotalPrice > 0 && (
+                                <div className="mt-4 flex items-center justify-between gap-4">
+                                    <div className="flex flex-col w-[120px]">
+                                        <span className="text-[.8rem] font-bold text-[#303030]">Total Harga</span>
+                                        <span className="text-[.8rem] text-[#707070]">Sisa Bahan {wastePercentage}%</span>
+                                    </div>
+                                    <div className="flex-1 flex items-center border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                        <span className="text-[.8rem] font-bold text-[#303030]">Rp {totals.grandTotalPrice.toLocaleString('id-ID')}</span>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-4">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Detailed Breakdown</h4>
@@ -634,7 +668,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                         <div key={wall.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                                             <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-800">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="bg-indigo-600 text-white w-5 h-5 rounded-lg flex items-center justify-center text-[9px]">{wallIdx + 1}</span>
+                                                    <span className="bg-[#F5F5F5] text-white w-5 h-5 rounded-lg flex items-center justify-center text-[9px]">{wallIdx + 1}</span>
                                                     {wall.name}
                                                 </div>
                                                 {!wall.isClosed && <span className="text-[9px] font-bold text-rose-500 uppercase px-2 py-1 bg-rose-50 rounded-full border border-rose-100">Draft</span>}
@@ -674,10 +708,6 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 pt-4">
-                    <button onClick={() => setShowSaveModal(true)} disabled={isSaving || !isClosed} className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
-                        <span className="text-xl">💾</span>
-                        <div className="text-left font-black uppercase tracking-widest text-[10px]">{isSaving ? 'Uploading...' : 'Save Database'}</div>
-                    </button>
                     <button onClick={handleExport} disabled={!isClosed} className="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
                         <span className="text-xl">🖼️</span>
                         <div className="text-left font-black uppercase tracking-widest text-[10px]">Export Plan</div>
@@ -718,17 +748,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     } catch (e) { alert("PDF Error: " + e); }
                 }}
             />
-        </div>
+        </div >
     );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+function StatCard({ label, value, children }: { label: string; value: string; children: React.ReactNode }) {
     return (
-        <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm">
-            <span className="text-xl">{icon}</span>
+        <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-3">
+            <span className="text-xl flex items-center justify-center">{children}</span>
             <div>
-                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{label}</div>
-                <div className="text-lg font-extrabold text-slate-800 leading-tight">{value}</div>
+                <div className="text-[.8rem] text-[#B0B0B0]">{label}</div>
+                <div className="text-[.8rem] text-[#303030] font-bold">{value}</div>
             </div>
         </div>
     );
