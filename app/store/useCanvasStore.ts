@@ -198,7 +198,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     setZoom: (zoom: number) => set({ zoom }),
     setOffset: (x: number, y: number) => set({ offset: { x, y } }),
 
-    wastePercentage: 10,
+    wastePercentage: 0,
     setWastePercentage: (waste: number) => set({ wastePercentage: waste }),
 
     mouldingGap: 0.1, // Default 10cm
