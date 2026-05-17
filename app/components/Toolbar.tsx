@@ -9,7 +9,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
-import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan } from 'lucide-react';
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
@@ -611,8 +611,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             </div>
 
                             <hr className="border-[#E8E8E8]" />
-                            <h3 className="text-[.8rem] text-[#303030] mb-2">Total Kebutuhan Material</h3>
-                            <div className="grid grid-cols-1 gap-x-2 gap-y-4">
+                            <h3 className="font-medium uppercase text-[10px] tracking-widest">Total Kebutuhan</h3>
+                            <div className="grid grid-cols-1 gap-x-4 gap-y-4">
                                 {products.map((product: Product) => {
                                     const count = totalProductCounts[product.id] || 0;
                                     if (count === 0) return null;
@@ -656,47 +656,47 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     </div>
                                 </div>
                             )}
+                            <hr className="border-[#E8E8E8]" />
 
                             <div className="space-y-4">
-                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Detailed Breakdown</h4>
+                                <h3 className="font-medium uppercase text-[10px] tracking-widest">Detail Kebutuhan</h3>
                                 {walls.map((wall, wallIdx) => {
                                     const metrics = wallMetrics[wallIdx];
                                     if (!metrics) return null;
                                     const wallHasContent = Object.values(metrics.productAreas).some((a: any) => a > 0) || Object.values(metrics.productLengths).some((l: any) => l > 0);
 
                                     return (
-                                        <div key={wall.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                            <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-800">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="bg-[#F5F5F5] text-white w-5 h-5 rounded-lg flex items-center justify-center text-[9px]">{wallIdx + 1}</span>
-                                                    {wall.name}
-                                                </div>
-                                                {!wall.isClosed && <span className="text-[9px] font-bold text-rose-500 uppercase px-2 py-1 bg-rose-50 rounded-full border border-rose-100">Draft</span>}
+                                        <div key={wall.id} className="bg-white rounded-xl border border-[#E5E5E5] flex">
+                                            <div className="w-16 flex justify-center pt-4">
+                                                <span className="text-4xl font-bold text-[#303030]">{wallIdx + 1}</span>
                                             </div>
-
-                                            <div className="p-4">
+                                            <div className="flex-1 pr-4">
                                                 {wallHasContent ? (
-                                                    <div className="space-y-4">
+                                                    <div className="flex flex-col">
                                                         {products.map((product: Product) => {
                                                             const area = metrics.productAreas[product.id] || 0;
                                                             const length = metrics.productLengths[product.id] || 0;
                                                             if (area === 0 && length === 0) return null;
+
+                                                            const val = product.countType === 'length' ? length : area;
+                                                            const unit = product.countType === 'length' ? 'm' : 'm²';
+                                                            const formattedVal = val.toFixed(2).replace(/\.00$/, ''); // Matches whole numbers like in the mockup
+
                                                             return (
-                                                                <div key={product.id} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
-                                                                    <div>
-                                                                        <div className="text-xs font-bold text-slate-700">{product.name}</div>
-                                                                        <div className="text-[9px] text-slate-400 font-medium">{product.countType === 'length' ? `${product.unitLength}m unit` : `${((product.width || 0) * 100).toFixed(0)}cm x ${product.height}m`}</div>
+                                                                <div key={product.id} className="flex justify-between items-center py-4 border-b border-[#E5E5E5] last:border-0">
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="text-[#A3A3A3] text-[.8rem]">{product.name}</span>
+                                                                        <span className="text-[#303030] text-[.8rem] font-bold">{formattedVal} {unit}</span>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <span className="text-sm font-black text-slate-700 font-mono">{(product.countType === 'length' ? length : area).toFixed(2)}</span>
-                                                                        <span className="text-[10px] text-slate-400 ml-1 font-bold uppercase">{product.countType === 'length' ? "m" : "m²"}</span>
+                                                                    <div className="text-[#303030] text-[.8rem] font-bold">
+                                                                        {formattedVal} {unit}
                                                                     </div>
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <div className="text-[11px] text-slate-400 font-medium italic text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">No materials assigned</div>
+                                                    <div className="py-4 text-[.8rem] text-[#A3A3A3]">Tidak ada material</div>
                                                 )}
                                             </div>
                                         </div>
@@ -707,22 +707,31 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 pt-4">
-                    <button onClick={handleExport} disabled={!isClosed} className="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
-                        <span className="text-xl">🖼️</span>
-                        <div className="text-left font-black uppercase tracking-widest text-[10px]">Export Plan</div>
-                    </button>
-                    <button
-                        onClick={() => {
-                            if (!company?.logo_url) { alert("Upload logo first!"); return; }
-                            setShowPdfModal(true);
-                        }}
-                        disabled={!isClosed}
-                        className="w-full p-4 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
-                    >
-                        <span className="text-xl text-indigo-400">📑</span>
-                        <div className="text-left font-black uppercase tracking-widest text-[10px]">Generate PDF</div>
-                    </button>
+                <div className="pt-4">
+                    <hr className="border-[#E8E8E8] mb-4" />
+                    <h3 className="font-medium uppercase text-[10px] tracking-widest mb-3">Export</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => {
+                                if (!company?.logo_url) { alert("Upload logo first!"); return; }
+                                setShowPdfModal(true);
+                            }}
+                            disabled={!isClosed}
+                            className="flex items-center gap-3 p-3 bg-white border border-[#E5E5E5] rounded-md active:scale-95 disabled:opacity-50 transition-transform hover:bg-gray-50"
+                        >
+                            <FileText className="w-4 h-4 text-[#303030]" />
+                            <span className="text-[.8rem] text-[#303030]">RAB</span>
+                        </button>
+                        
+                        <button 
+                            onClick={handleExport} 
+                            disabled={!isClosed} 
+                            className="flex items-center gap-3 p-3 bg-white border border-[#E5E5E5] rounded-md active:scale-95 disabled:opacity-50 transition-transform hover:bg-gray-50"
+                        >
+                            <Grid className="w-4 h-4 text-[#303030]" />
+                            <span className="text-[.8rem] text-[#303030]">Desain</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

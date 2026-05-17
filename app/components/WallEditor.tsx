@@ -919,8 +919,8 @@ const WallEditor = forwardRef((props, ref) => {
     const handleDragMove = (e: any, index: number) => {
         if (isWallLocked) return; // Prevent dragging points when locked
 
-        let newX = e.target.x();
-        let newY = e.target.y();
+        let newX = e.target.x() + 4 / zoom;
+        let newY = e.target.y() + 4 / zoom;
 
         // Snapping Logic
         const neighbors = [];
@@ -935,6 +935,10 @@ const WallEditor = forwardRef((props, ref) => {
             if (Math.abs(newX - n.x) < SNAP_THRESHOLD) newX = n.x;
             if (Math.abs(newY - n.y) < SNAP_THRESHOLD) newY = n.y;
         });
+
+        // Force target to snapped coordinates to prevent visual detachment
+        e.target.x(newX - 4 / zoom);
+        e.target.y(newY - 4 / zoom);
 
         updatePoint(index, newX, newY);
     };
