@@ -225,6 +225,181 @@ const WallEditor = forwardRef((props, ref) => {
         };
     }, [points]);
 
+    const snapKotakMode = (pos: { x: number; y: number }, gapPx: number) => {
+        let snappedX = pos.x;
+        let snappedY = pos.y;
+
+        const wallCenter = {
+            x: bounds.minX + bounds.width / 2,
+            y: bounds.minY + bounds.height / 2
+        };
+
+        // --- 1. EXISTING MOULDING ALIGNMENT & SNAPPING (Highest Snapping Priority) ---
+        let snappedToMouldingX = false;
+        let snappedToMouldingY = false;
+
+        lists.forEach((l: any) => {
+            // Vertical segment alignment
+            if (Math.abs(l.x1 - l.x2) < 0.1) {
+                const mouldingX = l.x1;
+                // Priority 1: Snap to exact same vertical line (in-line alignment)
+                if (Math.abs(pos.x - mouldingX) < SNAP_THRESHOLD) {
+                    snappedX = mouldingX;
+                    snappedToMouldingX = true;
+                }
+                // Priority 2: Snap to other side (gapPx gap)
+                else if (Math.abs(pos.x - (mouldingX - gapPx)) < SNAP_THRESHOLD) {
+                    snappedX = mouldingX - gapPx;
+                    snappedToMouldingX = true;
+                }
+                else if (Math.abs(pos.x - (mouldingX + gapPx)) < SNAP_THRESHOLD) {
+                    snappedX = mouldingX + gapPx;
+                    snappedToMouldingX = true;
+                }
+            }
+            // Horizontal segment alignment
+            if (Math.abs(l.y1 - l.y2) < 0.1) {
+                const mouldingY = l.y1;
+                // Priority 1: Snap to exact same horizontal line (in-line alignment)
+                if (Math.abs(pos.y - mouldingY) < SNAP_THRESHOLD) {
+                    snappedY = mouldingY;
+                    snappedToMouldingY = true;
+                }
+                // Priority 2: Snap to other side (gapPx gap)
+                else if (Math.abs(pos.y - (mouldingY - gapPx)) < SNAP_THRESHOLD) {
+                    snappedY = mouldingY - gapPx;
+                    snappedToMouldingY = true;
+                }
+                else if (Math.abs(pos.y - (mouldingY + gapPx)) < SNAP_THRESHOLD) {
+                    snappedY = mouldingY + gapPx;
+                    snappedToMouldingY = true;
+                }
+            }
+        });
+
+        // --- 2. EXISTING MOULDING NO-TOUCH CLAMPING (Enforce 10cm gap if X/Y ranges overlap) ---
+        const startX = currentDrawingList ? currentDrawingList.x1 : pos.x;
+        const startY = currentDrawingList ? currentDrawingList.y1 : pos.y;
+        const newXMin = Math.min(startX, pos.x);
+        const newXMax = Math.max(startX, pos.x);
+        const newYMin = Math.min(startY, pos.y);
+        const newYMax = Math.max(startY, pos.y);
+
+        lists.forEach((l: any) => {
+            // Vertical moulding segment (keeps horizontal gap)
+            if (Math.abs(l.x1 - l.x2) < 0.1) {
+                const mouldingX = l.x1;
+                const existYMin = Math.min(l.y1, l.y2);
+                const existYMax = Math.max(l.y1, l.y2);
+
+                // If Y ranges overlap, enforce the gapPx horizontal distance
+                if (newYMin - 5 <= existYMax && newYMax + 5 >= existYMin) {
+                    if (pos.x < mouldingX) {
+                        snappedX = Math.min(snappedX, mouldingX - gapPx);
+                    } else if (pos.x > mouldingX) {
+                        snappedX = Math.max(snappedX, mouldingX + gapPx);
+                    }
+                }
+            }
+
+            // Horizontal moulding segment (keeps vertical gap)
+            if (Math.abs(l.y1 - l.y2) < 0.1) {
+                const mouldingY = l.y1;
+                const existXMin = Math.min(l.x1, l.x2);
+                const existXMax = Math.max(l.x1, l.x2);
+
+                // If X ranges overlap, enforce the gapPx vertical distance
+                if (newXMin - 5 <= existXMax && newXMax + 5 >= existXMin) {
+                    if (pos.y < mouldingY) {
+                        snappedY = Math.min(snappedY, mouldingY - gapPx);
+                    } else if (pos.y > mouldingY) {
+                        snappedY = Math.max(snappedY, mouldingY + gapPx);
+                    }
+                }
+            }
+        });
+
+        // --- 3. WALL BOUNDARY CLAMPING & SNAPPING (Only snap to wall line if not already snapped to moulding) ---
+        const horizontalWallLines: number[] = [];
+        const verticalWallLines: number[] = [];
+        for (let i = 0; i < points.length; i++) {
+            const p1 = points[i];
+            const p2 = points[(i + 1) % points.length];
+            if (Math.abs(p1.x - p2.x) < 0.1) {
+                verticalWallLines.push(p1.x);
+            }
+            if (Math.abs(p1.y - p2.y) < 0.1) {
+                horizontalWallLines.push(p1.y);
+            }
+        }
+
+        if (verticalWallLines.length > 0) {
+            let closestVertWallX = verticalWallLines[0];
+            let minDistX = Infinity;
+            verticalWallLines.forEach(wallX => {
+                const dist = Math.abs(pos.x - wallX);
+                if (dist < minDistX) {
+                    minDistX = dist;
+                    closestVertWallX = wallX;
+                }
+            });
+
+            // Boundary snap (only if not already aligned to a moulding line)
+            if (!snappedToMouldingX) {
+                if (closestVertWallX < wallCenter.x) {
+                    if (pos.x < closestVertWallX + gapPx + SNAP_THRESHOLD) {
+                        snappedX = closestVertWallX + gapPx;
+                    }
+                } else {
+                    if (pos.x > closestVertWallX - gapPx - SNAP_THRESHOLD) {
+                        snappedX = closestVertWallX - gapPx;
+                    }
+                }
+            }
+
+            // Strict Safety Clamping (always active to prevent crossing outside the 10cm margin)
+            if (closestVertWallX < wallCenter.x) {
+                snappedX = Math.max(snappedX, closestVertWallX + gapPx);
+            } else {
+                snappedX = Math.min(snappedX, closestVertWallX - gapPx);
+            }
+        }
+
+        if (horizontalWallLines.length > 0) {
+            let closestHorizWallY = horizontalWallLines[0];
+            let minDistY = Infinity;
+            horizontalWallLines.forEach(wallY => {
+                const dist = Math.abs(pos.y - wallY);
+                if (dist < minDistY) {
+                    minDistY = dist;
+                    closestHorizWallY = wallY;
+                }
+            });
+
+            // Boundary snap (only if not already aligned to a moulding line)
+            if (!snappedToMouldingY) {
+                if (closestHorizWallY < wallCenter.y) {
+                    if (pos.y < closestHorizWallY + gapPx + SNAP_THRESHOLD) {
+                        snappedY = closestHorizWallY + gapPx;
+                    }
+                } else {
+                    if (pos.y > closestHorizWallY - gapPx - SNAP_THRESHOLD) {
+                        snappedY = closestHorizWallY - gapPx;
+                    }
+                }
+            }
+
+            // Strict Safety Clamping (always active to prevent crossing outside the 10cm margin)
+            if (closestHorizWallY < wallCenter.y) {
+                snappedY = Math.max(snappedY, closestHorizWallY + gapPx);
+            } else {
+                snappedY = Math.min(snappedY, closestHorizWallY - gapPx);
+            }
+        }
+
+        return { x: snappedX, y: snappedY };
+    };
+
     // 2. Define the Clipping Function based on the drawn polygon
     const clipFunc = React.useCallback((ctx: any) => {
         if (points.length < 3 || !isClosed) return;
@@ -730,7 +905,9 @@ const WallEditor = forwardRef((props, ref) => {
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
             if (!selectedProduct) return;
             const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
-            const snappedPos = snapToGap(pos, isMoulding);
+            const snappedPos = listDrawingType === 'rectangle'
+                ? snapKotakMode(pos, mouldingGap * SCALE)
+                : snapToGap(pos, isMoulding);
             startList(snappedPos.x, snappedPos.y);
         }
     };
@@ -874,7 +1051,9 @@ const WallEditor = forwardRef((props, ref) => {
                     }
                 }
             }
-            const snappedPos = snapToGap({ x: newX, y: newY }, isMoulding);
+            const snappedPos = listDrawingType === 'rectangle'
+                ? snapKotakMode({ x: newX, y: newY }, mouldingGap * SCALE)
+                : snapToGap({ x: newX, y: newY }, isMoulding);
             newX = snappedPos.x;
             newY = snappedPos.y;
 
