@@ -9,11 +9,11 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
-import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid } from 'lucide-react';
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
-const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset }: any) => {
+const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset, undo, past = [], isMobile }: any) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     return (
@@ -77,14 +77,25 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
                 </div>
             </div>
             <div className="p-4 flex items-center justify-between">
-                <div className="flex space-x-[1rem]">
+                <div className="flex space-x-[0.5rem] md:space-x-[0.75rem]">
                     <button
-                        onClick={reset}
-                        className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-rose-100 text-rose-600"
-                        title="Clear All"
+                        onClick={isMobile ? undo : reset}
+                        disabled={isMobile && past.length === 0}
+                        className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? 'bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700' : 'bg-[#F5F5F5] hover:bg-rose-100 text-rose-600'}`}
+                        title={isMobile ? "Undo" : "Clear All"}
                     >
-                        <RotateCcw className="w-[1rem]" />
+                        {isMobile ? <Undo className="w-[1rem]" /> : <RotateCcw className="w-[1rem]" />}
                     </button>
+                    {!isMobile && (
+                        <button
+                            onClick={undo}
+                            disabled={past.length === 0}
+                            className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Undo"
+                        >
+                            <Undo className="w-[1rem]" />
+                        </button>
+                    )}
                     <button
                         onClick={() => toggleWallLock()}
                         disabled={!isClosed}
@@ -289,6 +300,14 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const [calcResults, setCalcResults] = useState<any>(null);
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const router = useRouter();
     const { user, company, clearSession } = useAuthStore();
@@ -532,7 +551,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     };
 
     return (
-        <div className="w-full md:w-[380px] bg-white h-full flex flex-col border-l border-slate-200 relative z-10 overflow-hidden font-sans">
+        <div className="w-full md:w-[300px] lg:w-[380px] bg-white h-full flex flex-col border-l border-slate-200 relative z-10 overflow-hidden font-sans">
             <UserHeader
                 user={user}
                 company={company}
@@ -545,6 +564,9 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 interactionMode={interactionMode}
                 setInteractionMode={setInteractionMode}
                 reset={reset}
+                undo={undo}
+                past={past}
+                isMobile={isMobile}
             />
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 md:pb-8">

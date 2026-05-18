@@ -22,7 +22,7 @@ export default function Home() {
         <div className="flex-1 min-h-0 relative">
           <WallEditor ref={wallEditorRef} />
         </div>
-        <div className="h-[40vh] md:h-full border-t md:border-t-0 md:border-l border-[#E5E5E5]">
+        <div className="h-[60vh] md:h-full border-t md:border-t-0 md:border-l border-[#E5E5E5]">
           <Toolbar wallEditorRef={wallEditorRef} />
         </div>
       </main>

@@ -56,11 +56,16 @@ const WallEditor = forwardRef((props, ref) => {
     const textScale = 1 / Math.pow(zoom, 0.7);
 
     const [isMobile, setIsMobile] = useState(false);
+    const [isTablet, setIsTablet] = useState(false);
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        const checkLayout = () => {
+            const width = window.innerWidth;
+            setIsMobile(width < 768);
+            setIsTablet(width >= 768 && width < 1024);
+        };
+        checkLayout();
+        window.addEventListener('resize', checkLayout);
+        return () => window.removeEventListener('resize', checkLayout);
     }, []);
 
     useEffect(() => {
@@ -1015,7 +1020,7 @@ const WallEditor = forwardRef((props, ref) => {
                 x={offset.x}
                 y={offset.y}
                 draggable={false}
-                perfectDrawEnabled={!isMobile}
+                perfectDrawEnabled={!isMobile && !isTablet}
                 shadowForStrokeEnabled={false}
                 style={{
                     cursor: isPanningRef.current ? 'grabbing' : (isClosed ? 'default' : 'crosshair'),
@@ -1025,7 +1030,7 @@ const WallEditor = forwardRef((props, ref) => {
                 <Layer>
                     {!isClosed && (
                         <Text
-                            text="Click to place corners. Click start point to close. Ctrl+Drag to Pan. Scroll to Zoom."
+                            text="Klik untuk menempatkan sudut dinding. Tekan Ctrl+Drag untuk Pindah. Scroll untuk Zoom."
                             x={visibleX + 20 / zoom}
                             y={visibleY + 20 / zoom}
                             fill="#64748b"
@@ -1235,6 +1240,7 @@ const WallEditor = forwardRef((props, ref) => {
                                             fill="white"
                                             stroke="#0f172a"
                                             strokeWidth={1 / zoom}
+                                            hitStrokeWidth={20 / zoom}
                                             draggable
                                             onDragMove={(e) => handleDragMove(e, i)}
                                             onMouseEnter={(e: any) => {
