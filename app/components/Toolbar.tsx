@@ -172,13 +172,13 @@ const SaveProjectModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo,
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
             <div
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 animate-[slideUp_0.3s_ease-out]"
+                className="relative bg-white py-2 px-3 rounded-[5px] shadow-2xl w-full max-w-md border border-slate-200 animate-[slideUp_0.3s_ease-out]"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between p-5 border-b border-slate-100">
                     <div>
-                        <h2 className="text-lg font-black text-slate-800 tracking-tight">Save Project</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Enter project details before saving</p>
+                        <h3 className="font-bold uppercase text-[14px]">Simpan Proyek</h3>
+                        <p className="font-light text-[10px] mt-0.5">Silahkan Masukan Detail Proyek</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -190,22 +190,22 @@ const SaveProjectModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo,
 
                 <div className="p-5 space-y-3">
                     <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Customer Name</label>
+                        <label className="block text-[10px] font-medium mb-1.5">Customer Name</label>
                         <input
                             placeholder="Enter customer name"
                             value={customerInfo.name}
                             onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                            className="w-full p-3 border border-[#F5F5F5] rounded-xl text-[10px] focus:ring-[.01rem] focus:ring-[#E2E2E2] focus:border-[#E2E2E2] outline-none transition-all"
                             autoFocus
                         />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Surveyor Name</label>
+                        <label className="block text-[10px] font-medium mb-1.5">Surveyor Name</label>
                         <input
                             placeholder="Enter surveyor name"
                             value={customerInfo.surveyorName}
                             onChange={(e) => setCustomerInfo({ ...customerInfo, surveyorName: e.target.value })}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                            className="w-full p-3 border border-[#F5F5F5] rounded-xl text-[10px] focus:ring-[.01rem] focus:ring-[#E2E2E2] focus:border-[#E2E2E2] outline-none transition-all"
                         />
                     </div>
                 </div>
@@ -213,16 +213,18 @@ const SaveProjectModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo,
                 <div className="p-5 border-t border-slate-100 flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                        className="text-[12px] flex-1 py-2 px-3 rounded-[5px] items-center duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={() => { onSave(); onClose(); }}
                         disabled={isSaving}
-                        className="flex-1 p-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                        className="text-[12px] text-white w-[50%] gap-2 flex py-2 px-3 justify-center rounded-[5px] items-center duration-300 hover:bg-[#F5F5F5] hover:text-[#7B6DED] text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed bg-[#7B6DED]"
                     >
-                        <span>💾</span> {isSaving ? 'Saving...' : 'Save Project'}
+                        <span className="flex items-center gap-2">
+                            <Save className="w-[1rem]" /> {isSaving ? 'Menyimpan...' : 'Simpan Proyek'}
+                        </span>
                     </button>
                 </div>
             </div>

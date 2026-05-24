@@ -76,7 +76,7 @@ export default function SettingsPage() {
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setErrorMsg("");
         setSuccessMsg("");
-        
+
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -135,7 +135,7 @@ export default function SettingsPage() {
         <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
             <div className="w-full max-w-2xl">
                 <div className="mb-6 flex justify-between items-center">
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tight">Company Settings</h1>
+                    <h3 className="font-bold text-[2rem]">Pengaturan Perusahaan</h3>
                     <Link href="/" className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold hover:bg-indigo-200 transition-colors">
                         ← Back to Editor
                     </Link>
@@ -153,16 +153,16 @@ export default function SettingsPage() {
                             <label className="block text-sm font-bold text-slate-700 uppercase tracking-widest">
                                 Upload New Logo
                             </label>
-                            
-                            <input 
-                                type="file" 
+
+                            <input
+                                type="file"
                                 accept="image/png, image/jpeg, image/jpg"
                                 className="hidden"
                                 ref={fileInputRef}
                                 onChange={handleFileChange}
                             />
-                            
-                            <button 
+
+                            <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="w-full border-2 border-dashed border-indigo-200 bg-indigo-50 text-indigo-600 font-bold p-8 rounded-xl hover:bg-indigo-100 hover:border-indigo-300 transition-colors flex flex-col items-center justify-center gap-2"
                             >
@@ -190,7 +190,7 @@ export default function SettingsPage() {
                             <span>⚠️</span> {errorMsg}
                         </div>
                     )}
-                    
+
                     {successMsg && (
                         <div className="mb-4 p-4 rounded-xl bg-emerald-50 text-emerald-600 text-sm font-bold flex items-center gap-2">
                             <span>✅</span> {successMsg}
@@ -198,14 +198,13 @@ export default function SettingsPage() {
                     )}
 
                     <div className="border-t border-slate-100 pt-6 mt-6 flex justify-end">
-                        <button 
+                        <button
                             onClick={handleSave}
                             disabled={isSaving || !previewUrl}
-                            className={`px-8 py-3 rounded-xl font-bold text-white transition-all shadow-md ${
-                                isSaving || !previewUrl 
-                                    ? "bg-slate-300 cursor-not-allowed" 
-                                    : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg active:scale-95"
-                            }`}
+                            className={`px-8 py-3 rounded-xl font-bold text-white transition-all shadow-md ${isSaving || !previewUrl
+                                ? "bg-slate-300 cursor-not-allowed"
+                                : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg active:scale-95"
+                                }`}
                         >
                             {isSaving ? "Saving..." : "Save Changes"}
                         </button>
