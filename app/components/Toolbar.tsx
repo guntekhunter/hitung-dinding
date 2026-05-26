@@ -448,8 +448,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             const stage = wallEditorRef.current?.getStage();
             const previewImage = stage ? stage.toDataURL({
                 pixelRatio: 0.2,
-                mimeType: 'image/jpeg',
-                quality: 0.5
+                mimeType: 'image/png',
             }) : undefined;
 
             const projectData: ProjectData = {

@@ -51,16 +51,15 @@ export default function ProjectsPage() {
 
     return (
         <ProtectedRoute>
-            <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+            <div className="min-h-screen bg-[#ffffff] p-4 md:p-8">
                 <div className="max-w-6xl mx-auto space-y-8">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Saved Projects</h1>
-                        <button 
+                        <button
                             onClick={() => {
                                 useCanvasStore.getState().reset();
                                 router.push("/");
-                            }} 
-                            className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition active:scale-95 text-sm">
+                            }}
+                            className="px-4 py-2.5 bg-[#7B6DED] text-white rounded-xl font-bold hover:bg-[#A29AF7] transition active:scale-95 text-[14px]">
                             + New Project
                         </button>
                     </div>
@@ -92,16 +91,28 @@ export default function ProjectsPage() {
     );
 }
 
-function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () => void }) {
-    const info = project.data?.projectInfo;
-    const rab = project.data?.rab;
-    const image = project.data?.previewImage;
+function getRelativeTime(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    const formattedDate = new Date(project.created_at).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-    });
+    if (diffInSeconds < 60) return "Edited just now";
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `Edited ${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `Edited ${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 30) return `Edited ${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    const diffInMonths = Math.floor(diffInDays / 30);
+    if (diffInMonths < 12) return `Edited ${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+    const diffInYears = Math.floor(diffInDays / 365);
+    return `Edited ${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
+}
+
+function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () => void }) {
+    const image = project.data?.previewImage;
+    const rab = project.data?.rab;
+    const timeAgo = getRelativeTime(project.created_at);
 
     const formattedTotal = new Intl.NumberFormat("id-ID", {
         style: "currency",
@@ -110,42 +121,53 @@ function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () =>
     }).format(rab?.grandTotal || 0);
 
     return (
-        <div onClick={onClick} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group cursor-pointer hover:-translate-y-1">
-            <div className="aspect-[4/3] bg-slate-100/50 flex items-center justify-center relative overflow-hidden border-b border-slate-100">
+        <div onClick={onClick} className="bg-white rounded-[12px] border border-gray-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group cursor-pointer w-full">
+            <div className="aspect-[16/10] bg-[#f5f5f5] flex items-center justify-center relative overflow-hidden border-b border-gray-100">
                 {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt={project.name} className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500" />
+                    <img src={image} alt={project.name} className="w-full h-full object-contain p-2" />
                 ) : (
-                    <div className="text-center opacity-50">
+                    <div className="text-center opacity-40">
                         <div className="text-4xl mb-2">🖼️</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No Preview</div>
+                        <div className="text-[10px] font-medium text-gray-500">No Preview</div>
                     </div>
                 )}
             </div>
-            <div className="p-6 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-3 gap-2">
-                    <h3 className="font-black text-slate-800 line-clamp-2 leading-tight flex-1">{project.name}</h3>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest shrink-0 bg-slate-100 px-2 py-1 rounded-md">{formattedDate}</span>
-                </div>
 
-                <div className="space-y-2 mb-6 flex-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div className="text-xs text-slate-600 flex items-center gap-3">
-                        <span className="w-4 text-center">👤</span>
-                        <span className="font-semibold truncate">{info?.customerName || "Unknown Customer"}</span>
-                    </div>
-                    <div className="text-xs text-slate-600 flex items-center gap-3">
-                        <span className="w-4 text-center">📐</span>
-                        <span className="truncate">{info?.surveyor || "Unknown Surveyor"}</span>
-                    </div>
-                    <div className="text-xs text-slate-600 flex items-center gap-3">
-                        <span className="w-4 text-center">📍</span>
-                        <span className="truncate">{info?.address || "-"}</span>
+            <div className="p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col overflow-hidden flex-1">
+                        <h3 className="font-medium text-gray-900 text-[14px] truncate leading-tight">
+                            {project.name || "Untitled"}
+                        </h3>
+                        <span className="text-[10px] text-gray-500 truncate mt-0.5">
+                            {timeAgo}
+                        </span>
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Est. Total</div>
-                    <div className="text-lg font-black text-emerald-600">{formattedTotal}</div>
+                {rab?.materials && rab.materials.length > 0 && (
+                    <div className="flex flex-col gap-1.5 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                        {rab.materials.map((m: any) => (
+                            <div key={m.id} className="flex justify-between items-center text-[10px]">
+                                <span className="text-gray-600 truncate mr-2 flex-1">{m.name} ({m.quantity})</span>
+                                <span className="text-gray-800 font-medium">
+                                    {new Intl.NumberFormat("id-ID", {
+                                        style: "currency",
+                                        currency: "IDR",
+                                        minimumFractionDigits: 0,
+                                    }).format(m.totalPrice || 0)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                <div className="pt-1 border-t border-gray-100 flex justify-between items-center mt-1">
+                    <span className="text-[11px] font-medium text-gray-500">Grand Total</span>
+                    <span className="text-[13px] font-bold text-[#7B6DED]">
+                        {formattedTotal}
+                    </span>
                 </div>
             </div>
         </div>
