@@ -15,6 +15,20 @@ const useWorker = () => {
     return postMessage;
 };
 
+const useCustomImage = (url: string) => {
+    const [image, setImage] = useState<HTMLImageElement | null>(null);
+    useEffect(() => {
+        if (!url || (!url.startsWith('data:image') && !url.startsWith('http'))) {
+            setImage(null);
+            return;
+        }
+        const img = new Image();
+        img.src = url;
+        img.onload = () => setImage(img);
+    }, [url]);
+    return image;
+};
+
 const WallEditor = forwardRef((props, ref) => {
     const stageRef = useRef<any>(null);
     const lastPointerPos = useRef({ x: 0, y: 0 });
@@ -477,6 +491,9 @@ const WallEditor = forwardRef((props, ref) => {
         const dimOffset = 20 / zoom;
         const tickLen = 4 / zoom;
 
+        const patternImage = useCustomImage(product.color);
+        const isPattern = !!patternImage;
+
         return (
             <Group
                 x={area.x}
@@ -512,7 +529,11 @@ const WallEditor = forwardRef((props, ref) => {
                     name="design-area"
                     width={area.width}
                     height={area.height}
-                    fill={product.countType === 'length' ? "transparent" : product.color}
+                    fill={isPattern ? undefined : (product.countType === 'length' ? "transparent" : product.color)}
+                    fillPatternImage={isPattern ? patternImage : undefined}
+                    fillPatternRepeat="repeat"
+                    fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
+                    fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
                     stroke={product.countType === 'length' ? color : "#1e293b"}
                     strokeWidth={product.countType === 'length' ? 2 / zoom : 1 / zoom}
                     onClick={onClick}

@@ -13,6 +13,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     const { walls, products, setProductColor, customerInfo, materialPrices, projectId } = useCanvasStore();
     const company = useAuthStore(state => state.company);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
 
     // Get all products used in the current design
     const usedProducts = useMemo(() => {
@@ -25,6 +26,27 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
 
         return products.filter(p => productIds.has(p.id));
     }, [walls, products]);
+
+    React.useEffect(() => {
+        const fetchMaterialColors = async () => {
+            if (usedProducts.length === 0) return;
+            const productIds = usedProducts.map(p => p.id);
+            const { data, error } = await supabase
+                .from("material_colors")
+                .select("*")
+                .in("material_id", productIds);
+            
+            if (data && !error) {
+                const grouped: Record<string, any[]> = {};
+                data.forEach(item => {
+                    if (!grouped[item.material_id]) grouped[item.material_id] = [];
+                    grouped[item.material_id].push(item);
+                });
+                setMaterialColorsData(grouped);
+            }
+        };
+        fetchMaterialColors();
+    }, [usedProducts]);
 
     const handleSave = async () => {
         if (!company?.id || !projectId) return;
@@ -92,16 +114,34 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                 ) : (
                     <div className="flex flex-col gap-4">
                         {usedProducts.map((product) => (
-                            <div key={product.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg shadow-sm">
-                                <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
-                                    {product.name}
-                                </span>
-                                <input 
-                                    type="color" 
-                                    value={product.color || "#cccccc"} 
-                                    onChange={(e) => setProductColor(product.id, e.target.value)}
-                                    className="w-8 h-8 rounded cursor-pointer border-0 p-0"
-                                />
+                            <div key={product.id} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
+                                        {product.name}
+                                    </span>
+                                    <input 
+                                        type="color" 
+                                        value={product.color && !product.color.startsWith('data:') && !product.color.startsWith('http') ? product.color : "#cccccc"} 
+                                        onChange={(e) => setProductColor(product.id, e.target.value)}
+                                        className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                                        title="Pick solid color"
+                                    />
+                                </div>
+                                {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                    <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                        {materialColorsData[product.id].map(mc => (
+                                            <button 
+                                                key={mc.id}
+                                                onClick={() => setProductColor(product.id, mc.image)}
+                                                className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden ${product.color === mc.image ? 'border-[#7B6DED]' : 'border-transparent hover:border-gray-300'}`}
+                                                title="Apply Texture"
+                                            >
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
