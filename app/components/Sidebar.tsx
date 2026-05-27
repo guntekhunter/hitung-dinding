@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronDown, Menu, X, LucideIcon, Folder, Palette } from "lucide-react";
+import { Bell, ChevronDown, Menu, X, LucideIcon, Folder, Palette, Upload } from "lucide-react";
 
 type MenuItem = {
     label: string;
@@ -15,6 +15,7 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
     { label: "Projects", icon: Folder, href: "/projects" },
+    { label: "Upload Material", icon: Upload, href: "/upload-material" },
 ];
 
 export default function Sidebar() {
