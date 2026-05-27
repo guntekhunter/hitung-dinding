@@ -6,8 +6,8 @@ import { ProjectData } from "../utils/saveProject";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCanvasStore } from "../store/useCanvasStore";
-
 import { useAuthStore } from "../store/useAuthStore";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 type ProjectRow = {
     id: string;
@@ -15,8 +15,6 @@ type ProjectRow = {
     data: ProjectData;
     created_at: string;
 };
-
-import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function ProjectsPage() {
     const router = useRouter();
@@ -51,28 +49,29 @@ export default function ProjectsPage() {
 
     return (
         <ProtectedRoute>
-            <div className="min-h-screen bg-[#ffffff] p-4 md:p-8">
-                <div className="max-w-6xl mx-auto space-y-8">
-                    <div className="flex items-center justify-between">
+            <div className="p-6 md:p-10">
+                <div className="max-w-6xl space-y-6">
+                    <div className="flex items-center justify-between pb-4">
+                        <h1 className="text-[20px] font-medium text-gray-900">Drafts</h1>
                         <button
                             onClick={() => {
                                 useCanvasStore.getState().reset();
                                 router.push("/");
                             }}
-                            className="px-4 py-2.5 bg-[#7B6DED] text-white rounded-xl font-bold hover:bg-[#A29AF7] transition active:scale-95 text-[14px]">
+                            className="px-4 py-2 bg-[#7B6DED] text-white rounded-md font-medium hover:bg-[#A29AF7] transition active:scale-95 text-[14px]">
                             + New Project
                         </button>
                     </div>
 
                     {loading ? (
-                        <div className="text-center text-slate-500 py-12">Loading projects...</div>
+                        <div className="text-center text-gray-500 py-12">Loading projects...</div>
                     ) : projects.length === 0 ? (
-                        <div className="text-center text-slate-400 py-12 bg-white rounded-3xl border border-slate-200 border-dashed shadow-sm">
-                            <p className="text-lg font-bold text-slate-600">No projects found.</p>
+                        <div className="text-center text-gray-400 py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed shadow-sm">
+                            <p className="text-base font-medium text-gray-600">No projects found.</p>
                             <p className="text-sm mt-1">Create your first wall plan and save it to see it here.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {projects.map((project) => (
                                 <ProjectCard
                                     key={project.id}
@@ -110,6 +109,7 @@ function getRelativeTime(dateString: string) {
 }
 
 function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () => void }) {
+    const router = useRouter();
     const image = project.data?.previewImage;
     const rab = project.data?.rab;
     const timeAgo = getRelativeTime(project.created_at);
@@ -162,13 +162,22 @@ function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () =>
                         ))}
                     </div>
                 )}
-                
+
                 <div className="pt-1 border-t border-gray-100 flex justify-between items-center mt-1">
                     <span className="text-[11px] font-medium text-gray-500">Grand Total</span>
                     <span className="text-[13px] font-bold text-[#7B6DED]">
                         {formattedTotal}
                     </span>
                 </div>
+                <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/coloring?id=${project.id}`);
+                    }} 
+                    className="px-4 py-2 bg-[#7B6DED] text-white rounded-md font-medium hover:bg-[#A29AF7] transition active:scale-95 text-[14px]"
+                >
+                    Coloring
+                </button>
             </div>
         </div>
     );

@@ -69,6 +69,7 @@ type CanvasState = {
     products: Product[];
     isLoadingProducts: boolean;
     fetchProducts: () => Promise<void>;
+    setProductColor: (productId: string, color: string) => void;
 
     // Interaction mode
     interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan';
@@ -250,6 +251,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         } finally {
             set({ isLoadingProducts: false });
         }
+    },
+
+    setProductColor: (productId: string, color: string) => {
+        set((state) => ({
+            products: state.products.map(p => p.id === productId ? { ...p, color } : p)
+        }));
     },
 
     customerInfo: {
@@ -456,6 +463,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     currentPrices[m.id] = m.unitPrice;
                 }
             });
+        }
+
+        // Apply custom material colors to products if available
+        if (data?.materialColors) {
+            set((state) => ({
+                products: state.products.map(p => 
+                    data.materialColors[p.id] ? { ...p, color: data.materialColors[p.id] } : p
+                )
+            }));
         }
 
         set({
