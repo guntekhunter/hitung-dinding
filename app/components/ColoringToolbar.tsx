@@ -176,13 +176,30 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                                     <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
                                         {product.name}
                                     </span>
-                                    {/* <input
+                                    <input
                                         type="color"
-                                        value={product.color && !product.color.startsWith('data:') && !product.color.startsWith('http') ? product.color : "#cccccc"}
+                                        value={
+                                            product.color &&
+                                                !product.color.startsWith("data:") &&
+                                                !product.color.startsWith("http")
+                                                ? product.color
+                                                : "#cccccc"
+                                        }
                                         onChange={(e) => setProductColor(product.id, e.target.value)}
-                                        className="w-8 h-8 rounded-md cursor-pointer border-0 p-0"
-                                        title="Pick solid color"
-                                    /> */}
+                                        className="
+    w-10 h-10
+    cursor-pointer
+    p-0
+    border-none
+    bg-transparent
+    appearance-none
+    [&::-webkit-color-swatch-wrapper]:p-0
+    [&::-webkit-color-swatch]:border-none
+    [&::-webkit-color-swatch]:rounded-full
+    [&::-moz-color-swatch]:border-none
+    [&::-moz-color-swatch]:rounded-full
+  "
+                                    />
                                 </div>
                                 {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
                                     <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
