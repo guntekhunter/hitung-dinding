@@ -22,6 +22,9 @@ export default function ProjectsPage() {
     const company = useAuthStore(state => state.company);
     const [projects, setProjects] = useState<ProjectRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const itemsPerPage = 6;
 
     useEffect(() => {
         async function fetchProjects() {
@@ -30,22 +33,29 @@ export default function ProjectsPage() {
                 return;
             }
 
-            const { data, error } = await supabase
+            setLoading(true);
+
+            const from = (page - 1) * itemsPerPage;
+            const to = from + itemsPerPage - 1;
+
+            const { data, error, count } = await supabase
                 .from("projects")
-                .select("*")
+                .select("*", { count: "exact" })
                 .eq("company_id", company.id)
-                .order("created_at", { ascending: false });
+                .order("created_at", { ascending: false })
+                .range(from, to);
 
             if (error) {
                 console.error("Error fetching projects:", error);
             } else {
                 setProjects(data || []);
+                setTotalPages(Math.ceil((count || 0) / itemsPerPage));
             }
             setLoading(false);
         }
 
         fetchProjects();
-    }, [company?.id]);
+    }, [company?.id, page]);
 
     return (
         <ProtectedRoute>
@@ -71,18 +81,42 @@ export default function ProjectsPage() {
                             <p className="text-sm mt-1">Create your first wall plan and save it to see it here.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {projects.map((project) => (
-                                <ProjectCard
-                                    key={project.id}
-                                    project={project}
-                                    onClick={() => {
-                                        loadProject(project.id, project.data);
-                                        router.push("/");
-                                    }}
-                                />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {projects.map((project) => (
+                                    <ProjectCard
+                                        key={project.id}
+                                        project={project}
+                                        onClick={() => {
+                                            loadProject(project.id, project.data);
+                                            router.push("/");
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                            
+                            {totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-4 pt-6 mt-6">
+                                    <button
+                                        disabled={page === 1}
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        className="px-4 py-2 text-[14px] bg-white border border-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-[14px] text-gray-600 font-medium">
+                                        Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                        disabled={page === totalPages}
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        className="px-4 py-2 text-[14px] bg-white border border-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

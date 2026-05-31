@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, Suspense } from "react";
+import { useEffect, useRef, Suspense, useState } from "react";
 import dynamic from "next/dynamic";
 import ColoringToolbar from "../components/ColoringToolbar";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -22,6 +22,7 @@ function ColoringPageContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const { loadProject, fetchProducts } = useCanvasStore();
+  const [loadingProject, setLoadingProject] = useState(!!id);
 
   useEffect(() => {
     async function init() {
@@ -37,17 +38,29 @@ function ColoringPageContent() {
         if (data && !error) {
             loadProject(id, data.data);
         }
+        setLoadingProject(false);
       }
     }
     init();
   }, [id, loadProject, fetchProducts]);
+
+  if (loadingProject) {
+    return (
+      <div className="w-full h-[calc(100vh-60px)] md:h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-[#7B6DED] border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-gray-500 font-medium">Loading project materials...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="flex flex-col md:flex-row h-[calc(100vh-60px)] md:h-screen overflow-hidden bg-slate-50">
       <div className="flex-1 min-h-0 relative">
         <WallEditor ref={wallEditorRef} />
       </div>
-      <div className="h-[30vh] md:h-full border-t md:border-t-0 md:border-l border-[#E5E5E5] flex-shrink-0">
+      <div className="h-[30vh] md:h-full flex-shrink-0">
         <ColoringToolbar wallEditorRef={wallEditorRef} />
       </div>
     </main>

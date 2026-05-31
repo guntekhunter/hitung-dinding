@@ -14,11 +14,12 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     const company = useAuthStore(state => state.company);
     const [isSaving, setIsSaving] = React.useState(false);
     const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
+    const [isLoadingMaterials, setIsLoadingMaterials] = React.useState(false);
 
     // Get all products used in the current design
     const usedProducts = useMemo(() => {
         const productIds = new Set<string>();
-        
+
         walls.forEach(wall => {
             wall.designAreas.forEach(area => productIds.add(area.productId));
             wall.lists.forEach(list => productIds.add(list.productId));
@@ -30,12 +31,13 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     React.useEffect(() => {
         const fetchMaterialColors = async () => {
             if (usedProducts.length === 0) return;
+            setIsLoadingMaterials(true);
             const productIds = usedProducts.map(p => p.id);
             const { data, error } = await supabase
                 .from("material_colors")
                 .select("*")
                 .in("material_id", productIds);
-            
+
             if (data && !error) {
                 const grouped: Record<string, any[]> = {};
                 data.forEach(item => {
@@ -44,6 +46,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                 });
                 setMaterialColorsData(grouped);
             }
+            setIsLoadingMaterials(false);
         };
         fetchMaterialColors();
     }, [usedProducts]);
@@ -51,7 +54,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     const handleSave = async () => {
         if (!company?.id || !projectId) return;
         setIsSaving(true);
-        
+
         try {
             const { data: existingProject, error } = await supabase
                 .from("projects")
@@ -71,7 +74,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                 canvas: { walls },
                 materialColors: customColors
             };
-            
+
             await saveProjectToDatabase(
                 existingProject.name,
                 projectData,
@@ -90,7 +93,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     return (
         <div className="flex flex-col h-full bg-white relative w-full md:w-[320px]">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <button 
+                <button
                     onClick={() => router.push('/projects')}
                     className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
                 >
@@ -109,7 +112,23 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
 
             <div className="p-4 flex-1 overflow-y-auto">
                 <h2 className="text-lg font-bold mb-4 text-gray-800">Material Colors</h2>
-                {usedProducts.length === 0 ? (
+                {isLoadingMaterials ? (
+                    <div className="flex flex-col gap-4">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md shadow-sm animate-pulse">
+                                <div className="flex items-center justify-between">
+                                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                    <div className="w-8 h-8 rounded bg-gray-200"></div>
+                                </div>
+                                <div className="flex gap-2 mt-1">
+                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : usedProducts.length === 0 ? (
                     <p className="text-sm text-gray-500">No materials used in this project yet.</p>
                 ) : (
                     <div className="flex flex-col gap-4">
@@ -119,18 +138,18 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                                     <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
                                         {product.name}
                                     </span>
-                                    <input 
-                                        type="color" 
-                                        value={product.color && !product.color.startsWith('data:') && !product.color.startsWith('http') ? product.color : "#cccccc"} 
+                                    {/* <input
+                                        type="color"
+                                        value={product.color && !product.color.startsWith('data:') && !product.color.startsWith('http') ? product.color : "#cccccc"}
                                         onChange={(e) => setProductColor(product.id, e.target.value)}
-                                        className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                                        className="w-8 h-8 rounded-md cursor-pointer border-0 p-0"
                                         title="Pick solid color"
-                                    />
+                                    /> */}
                                 </div>
                                 {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
                                     <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
                                         {materialColorsData[product.id].map(mc => (
-                                            <button 
+                                            <button
                                                 key={mc.id}
                                                 onClick={() => setProductColor(product.id, mc.image)}
                                                 className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden ${product.color === mc.image ? 'border-[#7B6DED]' : 'border-transparent hover:border-gray-300'}`}
