@@ -15,6 +15,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     const [isSaving, setIsSaving] = React.useState(false);
     const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
     const [isLoadingMaterials, setIsLoadingMaterials] = React.useState(false);
+    const fetchedProductIds = React.useRef<Set<string>>(new Set());
 
     // Get all products used in the current design
     const usedProducts = useMemo(() => {
@@ -31,21 +32,29 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     React.useEffect(() => {
         const fetchMaterialColors = async () => {
             if (usedProducts.length === 0) return;
-            setIsLoadingMaterials(true);
-            const productIds = usedProducts.map(p => p.id);
-            const { data, error } = await supabase
-                .from("material_colors")
-                .select("*")
-                .in("material_id", productIds);
+            
+            const newProducts = usedProducts.filter(p => !fetchedProductIds.current.has(p.id));
+            if (newProducts.length === 0) return;
 
-            if (data && !error) {
-                const grouped: Record<string, any[]> = {};
-                data.forEach(item => {
-                    if (!grouped[item.material_id]) grouped[item.material_id] = [];
-                    grouped[item.material_id].push(item);
-                });
-                setMaterialColorsData(grouped);
+            setIsLoadingMaterials(true);
+            
+            for (const product of newProducts) {
+                // Mark as fetched so we don't fetch again
+                fetchedProductIds.current.add(product.id);
+                
+                const { data, error } = await supabase
+                    .from("material_colors")
+                    .select("id, material_id, image")
+                    .eq("material_id", product.id);
+                
+                if (data && !error) {
+                    setMaterialColorsData(prev => ({
+                        ...prev,
+                        [product.id]: data
+                    }));
+                }
             }
+            
             setIsLoadingMaterials(false);
         };
         fetchMaterialColors();
