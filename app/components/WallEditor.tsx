@@ -49,7 +49,7 @@ const WallEditor = forwardRef((props, ref) => {
         startList, updateList, finishList, removeList,
         zoom, offset, setZoom, setOffset,
         undo, redo, mouldingGap, listDrawingType, setListDrawingType,
-        products
+        products, isExporting
     } = useCanvasStore();
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
@@ -426,7 +426,7 @@ const WallEditor = forwardRef((props, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
-    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode }: any) => {
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
 
@@ -591,7 +591,7 @@ const WallEditor = forwardRef((props, ref) => {
                 </Group>
                 {product.countType !== 'length' && (
                     <Group clipFunc={(ctx) => ctx.rect(0, 0, area.width, area.height)}>
-                        {lines}
+                        {!isExporting && lines}
                         <Text
                             text={`${count} pcs`}
                             fontSize={11}
@@ -726,7 +726,7 @@ const WallEditor = forwardRef((props, ref) => {
         if (!('productId' in area)) return null;
         const product = products.find(p => p.id === area.productId);
         if (!product) return null;
-        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
+        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} isExporting={isExporting} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
     };
 
     const renderOpeningContent = (opening: any) => {
@@ -766,6 +766,7 @@ const WallEditor = forwardRef((props, ref) => {
                             onMove={moveDesignArea}
                             onDragStart={_saveHistory}
                             interactionMode={interactionMode}
+                            isExporting={isExporting}
                             onClick={() => {
                                 if (interactionMode === 'delete') {
                                     useCanvasStore.getState().removeDesignArea(area.id);

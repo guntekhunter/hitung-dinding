@@ -142,6 +142,10 @@ type CanvasState = {
     setZoom: (zoom: number) => void;
     setOffset: (x: number, y: number) => void;
 
+    // Export State
+    isExporting: boolean;
+    setIsExporting: (isExporting: boolean) => void;
+
     // Wall Lock state
     toggleWallLock: () => void;
 
@@ -198,6 +202,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     offset: { x: 0, y: 0 },
     setZoom: (zoom: number) => set({ zoom }),
     setOffset: (x: number, y: number) => set({ offset: { x, y } }),
+
+    isExporting: false,
+    setIsExporting: (isExporting: boolean) => set({ isExporting }),
 
     wastePercentage: 0,
     setWastePercentage: (waste: number) => set({ wastePercentage: waste }),

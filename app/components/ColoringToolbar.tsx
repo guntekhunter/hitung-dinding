@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Save } from "lucide-react";
+import { ChevronLeft, Save, Download } from "lucide-react";
 import { saveProjectToDatabase } from "../utils/saveProject";
 import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../../lib/supabase";
@@ -32,21 +32,21 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
     React.useEffect(() => {
         const fetchMaterialColors = async () => {
             if (usedProducts.length === 0) return;
-            
+
             const newProducts = usedProducts.filter(p => !fetchedProductIds.current.has(p.id));
             if (newProducts.length === 0) return;
 
             setIsLoadingMaterials(true);
-            
+
             for (const product of newProducts) {
                 // Mark as fetched so we don't fetch again
                 fetchedProductIds.current.add(product.id);
-                
+
                 const { data, error } = await supabase
                     .from("material_colors")
                     .select("id, material_id, image")
                     .eq("material_id", product.id);
-                
+
                 if (data && !error) {
                     setMaterialColorsData(prev => ({
                         ...prev,
@@ -54,7 +54,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                     }));
                 }
             }
-            
+
             setIsLoadingMaterials(false);
         };
         fetchMaterialColors();
@@ -99,6 +99,24 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
         }
     };
 
+    const handleDownload = () => {
+        useCanvasStore.getState().setIsExporting(true);
+        // Wait for React to re-render and hide the dashed lines
+        setTimeout(() => {
+            const stage = wallEditorRef.current?.getStage();
+            if (stage) {
+                const dataURL = stage.toDataURL({ pixelRatio: 2 });
+                const link = document.createElement("a");
+                link.download = "wall-design.png";
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            useCanvasStore.getState().setIsExporting(false);
+        }, 150);
+    };
+
     return (
         <div className="flex flex-col h-full bg-white relative w-full md:w-[320px]">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -109,14 +127,25 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                     <ChevronLeft className="w-4 h-4" />
                     Back to Projects
                 </button>
-                <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex bg-[#7B6DED] text-white py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-[#6859d9] duration-300 disabled:opacity-50 text-sm font-medium"
-                >
-                    <Save className="w-[1rem]" />
-                    {isSaving ? "Saving..." : "Save"}
-                </button>
+            </div>
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleDownload}
+                        className="flex bg-white border border-gray-200 text-gray-700 py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-gray-50 duration-300 text-sm font-medium"
+                    >
+                        <Download className="w-[1rem]" />
+                        Download
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex bg-[#7B6DED] text-white py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-[#6859d9] duration-300 disabled:opacity-50 text-sm font-medium"
+                    >
+                        <Save className="w-[1rem]" />
+                        {isSaving ? "Saving..." : "Save"}
+                    </button>
+                </div>
             </div>
 
             <div className="p-4 flex-1 overflow-y-auto">
