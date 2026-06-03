@@ -558,37 +558,41 @@ const WallEditor = forwardRef((props, ref) => {
                     scaleX={textScale}
                     scaleY={textScale}
                 />
-                <Group y={area.height + dimOffset}>
-                    <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text
-                        text={`${(absWidth / SCALE).toFixed(2)}m`}
-                        fontSize={9}
-                        fill="#475569"
-                        x={area.width / 2}
-                        y={-12 / zoom}
-                        offsetX={15}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
-                </Group>
-                <Group x={area.width + dimOffset}>
-                    <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text
-                        text={`${(absHeight / SCALE).toFixed(2)}m`}
-                        fontSize={9}
-                        fill="#475569"
-                        x={4 / zoom}
-                        y={area.height / 2}
-                        rotation={90}
-                        offsetX={15}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
-                </Group>
+                {!isExporting && (
+                    <>
+                        <Group y={area.height + dimOffset}>
+                            <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                            <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Text
+                                text={`${(absWidth / SCALE).toFixed(2)}m`}
+                                fontSize={9}
+                                fill="#475569"
+                                x={area.width / 2}
+                                y={-12 / zoom}
+                                offsetX={15}
+                                scaleX={textScale}
+                                scaleY={textScale}
+                            />
+                        </Group>
+                        <Group x={area.width + dimOffset}>
+                            <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                            <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Text
+                                text={`${(absHeight / SCALE).toFixed(2)}m`}
+                                fontSize={9}
+                                fill="#475569"
+                                x={4 / zoom}
+                                y={area.height / 2}
+                                rotation={90}
+                                offsetX={15}
+                                scaleX={textScale}
+                                scaleY={textScale}
+                            />
+                        </Group>
+                    </>
+                )}
                 {product.countType !== 'length' && (
                     <Group clipFunc={(ctx) => ctx.rect(0, 0, area.width, area.height)}>
                         {!isExporting && lines}
@@ -609,7 +613,7 @@ const WallEditor = forwardRef((props, ref) => {
         );
     });
 
-    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter, interactionMode }: any) => {
+    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter, interactionMode, isExporting }: any) => {
         const isWindow = opening.type === 'window';
         const color = isWindow ? "rgba(14, 165, 233, 0.6)" : "rgba(217, 119, 6, 0.6)";
         const label = isWindow ? "Window" : "Door";
@@ -668,23 +672,27 @@ const WallEditor = forwardRef((props, ref) => {
                 <Line points={[0, 0, opening.width, opening.height]} stroke="white" strokeWidth={2 / zoom} listening={false} />
                 <Line points={[0, opening.height, opening.width, 0]} stroke="white" strokeWidth={2 / zoom} listening={false} />
                 <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
-                <Group y={opening.height + dimOffset} listening={false}>
-                    <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
-                </Group>
-                <Group x={opening.width + dimOffset} listening={false}>
-                    <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={opening.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
-                </Group>
+                {!isExporting && (
+                    <>
+                        <Group y={opening.height + dimOffset} listening={false}>
+                            <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                            <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                        </Group>
+                        <Group x={opening.width + dimOffset} listening={false}>
+                            <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                            <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                            <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={opening.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                        </Group>
+                    </>
+                )}
             </Group>
         );
     });
 
-    const MemoizedListContent = React.memo(({ list, product, zoom, textScale, onClick }: any) => {
+    const MemoizedListContent = React.memo(({ list, product, zoom, textScale, onClick, isExporting }: any) => {
         const color = product?.color.replace('0.4', '1') || "#8b5cf6";
         const unitLength = product?.unitLength || 2.9;
         const dx = list.x2 - list.x1;
@@ -705,19 +713,21 @@ const WallEditor = forwardRef((props, ref) => {
                     onClick={onClick}
                     onTap={onClick}
                 />
-                <Text
-                    x={midX}
-                    y={midY}
-                    text={`${lengthM}m (${count}btg)`}
-                    fontSize={10}
-                    fill={color}
-                    fontStyle="bold"
-                    offsetX={30}
-                    offsetY={12}
-                    rotation={(angle * 180) / Math.PI}
-                    scaleX={textScale}
-                    scaleY={textScale}
-                />
+                {!isExporting && (
+                    <Text
+                        x={midX}
+                        y={midY}
+                        text={`${lengthM}m (${count}btg)`}
+                        fontSize={10}
+                        fill={color}
+                        fontStyle="bold"
+                        offsetX={30}
+                        offsetY={12}
+                        rotation={(angle * 180) / Math.PI}
+                        scaleX={textScale}
+                        scaleY={textScale}
+                    />
+                )}
             </Group>
         );
     });
@@ -731,12 +741,12 @@ const WallEditor = forwardRef((props, ref) => {
 
     const renderOpeningContent = (opening: any) => {
         if (!('type' in opening)) return null;
-        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} interactionMode={interactionMode} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
+        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} interactionMode={interactionMode} isExporting={isExporting} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
     };
 
     const renderListContent = (list: any) => {
         const product = products.find(p => p.id === list.productId);
-        return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
+        return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} isExporting={isExporting} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
     };
 
     const wallCenter = useMemo(() => ({
@@ -749,56 +759,71 @@ const WallEditor = forwardRef((props, ref) => {
         const moveOpening = useCanvasStore.getState().moveOpening;
         const _saveHistory = useCanvasStore.getState()._saveHistory;
 
+        const allElements = [
+            ...designAreas.map(area => ({ ...area, renderType: 'area' })),
+            ...openings.map(op => ({ ...op, renderType: 'opening' })),
+            ...lists.map(list => ({ ...list, renderType: 'list' }))
+        ];
+
+        allElements.sort((a, b) => ((a as any).createdAt || 0) - ((b as any).createdAt || 0));
+
         return (
             <Group clipFunc={clipFunc}>
-                {designAreas.map(area => {
-                    const product = products.find(p => p.id === area.productId);
-                    if (!product) return null;
-                    return (
-                        <MemoizedAreaContent
-                            key={area.id}
-                            area={area}
-                            product={product}
-                            zoom={zoom}
-                            textScale={textScale}
-                            points={points}
-                            wallCenter={wallCenter}
-                            onMove={moveDesignArea}
-                            onDragStart={_saveHistory}
-                            interactionMode={interactionMode}
-                            isExporting={isExporting}
-                            onClick={() => {
-                                if (interactionMode === 'delete') {
-                                    useCanvasStore.getState().removeDesignArea(area.id);
-                                }
-                            }}
-                        />
-                    );
+                {allElements.map(el => {
+                    if (el.renderType === 'area') {
+                        const area = el as any;
+                        const product = products.find(p => p.id === area.productId);
+                        if (!product) return null;
+                        return (
+                            <MemoizedAreaContent
+                                key={area.id}
+                                area={area}
+                                product={product}
+                                zoom={zoom}
+                                textScale={textScale}
+                                points={points}
+                                wallCenter={wallCenter}
+                                onMove={moveDesignArea}
+                                onDragStart={_saveHistory}
+                                interactionMode={interactionMode}
+                                isExporting={isExporting}
+                                onClick={() => {
+                                    if (interactionMode === 'delete') {
+                                        useCanvasStore.getState().removeDesignArea(area.id);
+                                    }
+                                }}
+                            />
+                        );
+                    } else if (el.renderType === 'opening') {
+                        const op = el as any;
+                        return (
+                            <MemoizedOpeningContent
+                                key={op.id}
+                                opening={op}
+                                zoom={zoom}
+                                textScale={textScale}
+                                wallCenter={wallCenter}
+                                onMove={moveOpening}
+                                onDragStart={_saveHistory}
+                                interactionMode={interactionMode}
+                                isExporting={isExporting}
+                                onClick={() => {
+                                    if (interactionMode === 'delete') {
+                                        useCanvasStore.getState().removeOpening(op.id);
+                                    }
+                                }}
+                            />
+                        );
+                    } else if (el.renderType === 'list') {
+                        const list = el as any;
+                        return (
+                            <React.Fragment key={list.id}>
+                                {renderListContent(list)}
+                            </React.Fragment>
+                        );
+                    }
+                    return null;
                 })}
-
-                {openings.map(op => (
-                    <MemoizedOpeningContent
-                        key={op.id}
-                        opening={op}
-                        zoom={zoom}
-                        textScale={textScale}
-                        wallCenter={wallCenter}
-                        onMove={moveOpening}
-                        onDragStart={_saveHistory}
-                        interactionMode={interactionMode}
-                        onClick={() => {
-                            if (interactionMode === 'delete') {
-                                useCanvasStore.getState().removeOpening(op.id);
-                            }
-                        }}
-                    />
-                ))}
-
-                {lists.map(list => (
-                    <React.Fragment key={list.id}>
-                        {renderListContent(list)}
-                    </React.Fragment>
-                ))}
 
                 {currentDrawingArea && (
                     'productId' in currentDrawingArea

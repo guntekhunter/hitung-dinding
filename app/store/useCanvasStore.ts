@@ -24,6 +24,7 @@ export type DesignArea = {
     y: number;
     width: number;
     height: number;
+    createdAt?: number;
 };
 
 export type Opening = {
@@ -33,6 +34,7 @@ export type Opening = {
     y: number;
     width: number;
     height: number;
+    createdAt?: number;
 };
 
 export type ListElement = {
@@ -43,6 +45,7 @@ export type ListElement = {
     y1: number;
     x2: number;
     y2: number;
+    createdAt?: number;
 };
 
 export type Wall = {
@@ -558,6 +561,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 y: area.height > 0 ? area.y : area.y + area.height,
                 width: Math.abs(area.width),
                 height: Math.abs(area.height),
+                createdAt: Date.now(),
             };
 
             const updatedWalls = state.walls.map(w =>
@@ -590,6 +594,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 y: area.height > 0 ? area.y : area.y + area.height,
                 width: Math.abs(area.width),
                 height: Math.abs(area.height),
+                createdAt: Date.now(),
             };
 
             const updatedWalls = state.walls.map(w =>
@@ -643,10 +648,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             if (length < 5) return { currentDrawingList: null };
 
             const newLists: ListElement[] = [];
+            const now = Date.now();
             if (state.listDrawingType === 'line') {
                 newLists.push({
                     ...list,
-                    id: Math.random().toString(36).substr(2, 9)
+                    id: Math.random().toString(36).substr(2, 9),
+                    createdAt: now
                 });
             } else {
                 // Rectangle: 4 segments
@@ -666,7 +673,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                         x1: p1.x,
                         y1: p1.y,
                         x2: p2.x,
-                        y2: p2.y
+                        y2: p2.y,
+                        createdAt: now
                     });
                 }
             }
