@@ -10,7 +10,7 @@ import { supabase } from "../../lib/supabase";
 
 export default function ColoringToolbar({ wallEditorRef }: any) {
     const router = useRouter();
-    const { walls, products, setProductColor, customerInfo, materialPrices, projectId } = useCanvasStore();
+    const { walls, activeWallId, setActiveWall, products, setProductColor, customerInfo, materialPrices, projectId } = useCanvasStore();
     const company = useAuthStore(state => state.company);
     const [isSaving, setIsSaving] = React.useState(false);
     const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
@@ -128,7 +128,25 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                     Back to Projects
                 </button>
             </div>
-            <div className="p-4 flex items-center justify-between">
+            
+            {walls.length > 1 && (
+                <div className="p-4 border-b border-gray-100 flex flex-col gap-2 bg-gray-50/50">
+                    <label className="text-sm font-medium text-gray-700">Select Wall</label>
+                    <select
+                        value={activeWallId || ''}
+                        onChange={(e) => setActiveWall(e.target.value)}
+                        className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#7B6DED] bg-white text-gray-800"
+                    >
+                        {walls.map(wall => (
+                            <option key={wall.id} value={wall.id}>
+                                {wall.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex gap-2">
                     <button
                         onClick={handleDownload}

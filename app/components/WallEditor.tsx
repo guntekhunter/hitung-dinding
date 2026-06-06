@@ -431,7 +431,7 @@ const WallEditor = forwardRef((props, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
-    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting }: any) => {
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting, isColoringMode }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
 
@@ -539,8 +539,8 @@ const WallEditor = forwardRef((props, ref) => {
                     fillPatternRepeat="repeat"
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
                     fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
-                    stroke={product.countType === 'length' ? color : "#1e293b"}
-                    strokeWidth={product.countType === 'length' ? 2 / zoom : 1 / zoom}
+                    stroke={product.countType === 'length' ? color : (isColoringMode ? "transparent" : "#1e293b")}
+                    strokeWidth={product.countType === 'length' ? 2 / zoom : (isColoringMode ? 0 : 1 / zoom)}
                     onClick={onClick}
                     onTap={onClick}
                     onMouseEnter={(e: any) => {
@@ -747,7 +747,7 @@ const WallEditor = forwardRef((props, ref) => {
         if (!('productId' in area)) return null;
         const product = products.find(p => p.id === area.productId);
         if (!product) return null;
-        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} isExporting={shouldHideText} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
+        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} isExporting={shouldHideText} isColoringMode={isColoringMode} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
     };
 
     const renderOpeningContent = (opening: any) => {
@@ -798,6 +798,7 @@ const WallEditor = forwardRef((props, ref) => {
                                 onDragStart={_saveHistory}
                                 interactionMode={interactionMode}
                                 isExporting={shouldHideText}
+                                isColoringMode={isColoringMode}
                                 onClick={() => {
                                     if (interactionMode === 'delete') {
                                         useCanvasStore.getState().removeDesignArea(area.id);
