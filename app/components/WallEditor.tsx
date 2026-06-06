@@ -4,6 +4,7 @@ export const dynamic = 'force-static';
 import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { getPolygonRectIntersectionArea } from '../function/geometry';
+import { usePathname } from 'next/navigation';
 
 import { callWorker } from '../utils/workerManager';
 
@@ -51,6 +52,10 @@ const WallEditor = forwardRef((props, ref) => {
         undo, redo, mouldingGap, listDrawingType, setListDrawingType,
         products, isExporting
     } = useCanvasStore();
+
+    const pathname = usePathname();
+    const isColoringMode = pathname === '/coloring';
+    const shouldHideText = isExporting || isColoringMode;
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
     const {
@@ -547,17 +552,19 @@ const WallEditor = forwardRef((props, ref) => {
                         container.style.cursor = isClosed ? 'default' : 'crosshair';
                     }}
                 />
-                <Text
-                    text={product.name}
-                    fontSize={10}
-                    fill="#1e293b"
-                    fontStyle="bold"
-                    x={5 / zoom}
-                    y={5 / zoom}
-                    width={area.width - 10 / zoom}
-                    scaleX={textScale}
-                    scaleY={textScale}
-                />
+                {!isExporting && (
+                    <Text
+                        text={product.name}
+                        fontSize={10}
+                        fill="#1e293b"
+                        fontStyle="bold"
+                        x={5 / zoom}
+                        y={5 / zoom}
+                        width={area.width - 10 / zoom}
+                        scaleX={textScale}
+                        scaleY={textScale}
+                    />
+                )}
                 {!isExporting && (
                     <>
                         <Group y={area.height + dimOffset}>
@@ -596,17 +603,19 @@ const WallEditor = forwardRef((props, ref) => {
                 {product.countType !== 'length' && (
                     <Group clipFunc={(ctx) => ctx.rect(0, 0, area.width, area.height)}>
                         {!isExporting && lines}
-                        <Text
-                            text={`${count} pcs`}
-                            fontSize={11}
-                            fill="#1e293b"
-                            fontStyle="bold"
-                            x={area.width / 2}
-                            y={area.height / 2}
-                            offsetX={20}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
+                        {!isExporting && (
+                            <Text
+                                text={`${count} pcs`}
+                                fontSize={11}
+                                fill="#1e293b"
+                                fontStyle="bold"
+                                x={area.width / 2}
+                                y={area.height / 2}
+                                offsetX={20}
+                                scaleX={textScale}
+                                scaleY={textScale}
+                            />
+                        )}
                     </Group>
                 )}
             </Group>
@@ -671,7 +680,9 @@ const WallEditor = forwardRef((props, ref) => {
                 />
                 <Line points={[0, 0, opening.width, opening.height]} stroke="white" strokeWidth={2 / zoom} listening={false} />
                 <Line points={[0, opening.height, opening.width, 0]} stroke="white" strokeWidth={2 / zoom} listening={false} />
-                <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
+                {!isExporting && (
+                    <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
+                )}
                 {!isExporting && (
                     <>
                         <Group y={opening.height + dimOffset} listening={false}>
@@ -736,17 +747,17 @@ const WallEditor = forwardRef((props, ref) => {
         if (!('productId' in area)) return null;
         const product = products.find(p => p.id === area.productId);
         if (!product) return null;
-        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} isExporting={isExporting} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
+        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} isExporting={shouldHideText} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
     };
 
     const renderOpeningContent = (opening: any) => {
         if (!('type' in opening)) return null;
-        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} interactionMode={interactionMode} isExporting={isExporting} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
+        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} interactionMode={interactionMode} isExporting={shouldHideText} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
     };
 
     const renderListContent = (list: any) => {
         const product = products.find(p => p.id === list.productId);
-        return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} isExporting={isExporting} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
+        return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} isExporting={shouldHideText} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
     };
 
     const wallCenter = useMemo(() => ({
@@ -786,7 +797,7 @@ const WallEditor = forwardRef((props, ref) => {
                                 onMove={moveDesignArea}
                                 onDragStart={_saveHistory}
                                 interactionMode={interactionMode}
-                                isExporting={isExporting}
+                                isExporting={shouldHideText}
                                 onClick={() => {
                                     if (interactionMode === 'delete') {
                                         useCanvasStore.getState().removeDesignArea(area.id);
@@ -806,7 +817,7 @@ const WallEditor = forwardRef((props, ref) => {
                                 onMove={moveOpening}
                                 onDragStart={_saveHistory}
                                 interactionMode={interactionMode}
-                                isExporting={isExporting}
+                                isExporting={shouldHideText}
                                 onClick={() => {
                                     if (interactionMode === 'delete') {
                                         useCanvasStore.getState().removeOpening(op.id);
@@ -1321,6 +1332,8 @@ const WallEditor = forwardRef((props, ref) => {
                         const tickLen = 6 / zoom;
                         const angle = Math.atan2(dy, dx);
 
+                        if (shouldHideText) return null;
+
                         return (
                             <Group key={`dim-${i}`} onClick={() => { if (!isWallLocked) handleLabelClick(i, lengthM); }} onTap={() => { if (!isWallLocked) handleLabelClick(i, lengthM); }}>
                                 {/* Extension Lines */}
@@ -1396,7 +1409,7 @@ const WallEditor = forwardRef((props, ref) => {
                         return (
                             <Group key={i}>
                                 {/* Point Handle (Hide when locked) */}
-                                {!isWallLocked && (
+                                {!isWallLocked && !shouldHideText && (
                                     isMobile ? (
                                         // Mobile: large, finger-friendly drag handle
                                         <Group x={p.x} y={p.y}>
