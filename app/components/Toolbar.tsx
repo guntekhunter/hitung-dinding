@@ -806,7 +806,30 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 setCustomerInfo={setCustomerInfo}
                 onGenerate={async () => {
                     try {
-                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url);
+                        const wallImages: string[] = [];
+                        const stage = wallEditorRef.current?.getStage();
+
+                        if (stage && walls.length > 0) {
+                            const store = useCanvasStore.getState();
+                            const originalActiveId = activeWallId;
+
+                            for (const wall of walls) {
+                                store.setActiveWall(wall.id);
+                                // Wait for React to re-render the new wall + Konva to repaint
+                                await new Promise(r => setTimeout(r, 500));
+                                stage.draw();
+                                await new Promise(r => setTimeout(r, 200));
+                                try {
+                                    wallImages.push(stage.toDataURL({ pixelRatio: 1.5, mimeType: 'image/png' }));
+                                } catch { wallImages.push(''); }
+                            }
+
+                            // Restore original active wall
+                            store.setActiveWall(originalActiveId ?? walls[0]?.id ?? '');
+                            await new Promise(r => setTimeout(r, 100));
+                        }
+
+                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages);
                     } catch (e) { alert("PDF Error: " + e); }
                 }}
             />

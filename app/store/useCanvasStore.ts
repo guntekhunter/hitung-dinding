@@ -149,6 +149,10 @@ type CanvasState = {
     isExporting: boolean;
     setIsExporting: (isExporting: boolean) => void;
 
+    // Coloring Preview (temporarily render in coloring mode for RAB capture)
+    isColoringPreview: boolean;
+    setIsColoringPreview: (val: boolean) => void;
+
     // Wall Lock state
     toggleWallLock: () => void;
 
@@ -208,6 +212,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     isExporting: false,
     setIsExporting: (isExporting: boolean) => set({ isExporting }),
+
+    isColoringPreview: false,
+    setIsColoringPreview: (val: boolean) => set({ isColoringPreview: val }),
 
     wastePercentage: 0,
     setWastePercentage: (waste: number) => set({ wastePercentage: waste }),

@@ -50,11 +50,11 @@ const WallEditor = forwardRef((props, ref) => {
         startList, updateList, finishList, removeList,
         zoom, offset, setZoom, setOffset,
         undo, redo, mouldingGap, listDrawingType, setListDrawingType,
-        products, isExporting
+        products, isExporting, isColoringPreview
     } = useCanvasStore();
 
     const pathname = usePathname();
-    const isColoringMode = pathname === '/coloring';
+    const isColoringMode = pathname === '/coloring' || isColoringPreview;
     const shouldHideText = isExporting || isColoringMode;
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];

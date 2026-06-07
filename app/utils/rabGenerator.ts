@@ -29,7 +29,8 @@ export const generateRAB = async (
     totalProductCounts: Record<string, number>,
     materialPrices: Record<string, number>,
     products: Product[],
-    companyLogoUrl?: string
+    companyLogoUrl?: string,
+    wallImages?: string[]
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -204,6 +205,55 @@ export const generateRAB = async (
 
     doc.text(customerInfo.name || "Bapak Nirwan", pageWidth - 40, sigY + 30, { align: "center" });
     doc.text("Pemilik Bangunan", pageWidth - 40, sigY + 35, { align: "center" });
+
+    // 9. Appendix: per-wall design images
+    if (wallImages && wallImages.some(Boolean)) {
+        doc.addPage();
+        const pageWidthImg = doc.internal.pageSize.getWidth();
+        const pageHeightImg = doc.internal.pageSize.getHeight();
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(79, 70, 229);
+        doc.text("3. Lampiran Desain Dinding", 14, 18);
+        doc.setTextColor(0, 0, 0);
+        doc.setDrawColor(79, 70, 229);
+        doc.line(14, 21, pageWidthImg - 14, 21);
+
+        let imgCursorY = 28;
+        const maxImgWidth = pageWidthImg - 28;
+        const maxImgHeight = 80;
+
+        for (let i = 0; i < walls.length; i++) {
+            const imgData = wallImages[i];
+            if (!imgData) continue;
+
+            // Add new page if not enough space
+            if (imgCursorY + maxImgHeight + 18 > pageHeightImg) {
+                doc.addPage();
+                imgCursorY = 14;
+            }
+
+            // Wall name label
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(51, 65, 85);
+            doc.text(`${i + 1}. ${walls[i].name}`, 14, imgCursorY);
+            doc.setTextColor(0, 0, 0);
+            imgCursorY += 5;
+
+            try {
+                const t = await loadImage(imgData);
+                const ratio = t.width / t.height;
+                let dw = maxImgWidth, dh = dw / ratio;
+                if (dh > maxImgHeight) { dh = maxImgHeight; dw = dh * ratio; }
+                doc.addImage(imgData, 'PNG', 14, imgCursorY, dw, dh);
+                doc.setDrawColor(220, 220, 220);
+                doc.rect(14, imgCursorY, dw, dh);
+                imgCursorY += dh + 10;
+            } catch { imgCursorY += 10; }
+        }
+    }
 
     // Save PDF
     doc.save(`RAB-${customerInfo.name || "Customer"}-${Date.now()}.pdf`);
