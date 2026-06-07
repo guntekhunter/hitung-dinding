@@ -2,7 +2,6 @@
 import { useRef } from "react";
 import dynamic from "next/dynamic";
 import Toolbar from "./components/Toolbar";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 const WallEditor = dynamic(() => import("./components/WallEditor"), {
   ssr: false,
@@ -17,15 +16,13 @@ export default function Home() {
   const wallEditorRef = useRef<any>(null);
 
   return (
-    <ProtectedRoute>
-      <main className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50">
-        <div className="flex-1 min-h-0 relative">
-          <WallEditor ref={wallEditorRef} />
-        </div>
-        <div className="h-[60vh] md:h-full border-t md:border-t-0 md:border-l border-[#E5E5E5]">
-          <Toolbar wallEditorRef={wallEditorRef} />
-        </div>
-      </main>
-    </ProtectedRoute>
+    <main className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50">
+      <div className="flex-1 min-h-0 relative">
+        <WallEditor ref={wallEditorRef} />
+      </div>
+      <div className="h-[60vh] md:h-full border-t md:border-t-0 md:border-l border-[#E5E5E5]">
+        <Toolbar wallEditorRef={wallEditorRef} />
+      </div>
+    </main>
   );
 }

@@ -60,7 +60,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             if (error) {
                 // Handle "Invalid Refresh Token" or other terminal auth errors 
                 // by purging the stale local session entirely.
-                console.error("Auth initialization error:", error.message);
+                if (error.message !== "Auth session missing!") {
+                    console.error("Auth initialization error:", error.message);
+                }
                 if (error.message.includes("Refresh Token Not Found") || error.status === 401) {
                     supabase.auth.signOut({ scope: "local" });
                 }

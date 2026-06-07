@@ -20,18 +20,28 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
         <div className="bg-white border-b border-slate-100 flex flex-col shrink-0 border-b border-slate-100">
             <div className="p-4 flex justify-between items-center border-b border-slate-50 relative">
                 {/* User Dropdown Trigger */}
-                <div
-                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                >
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black bg-[#7B6DED]">
-                        {user?.name?.charAt(0).toUpperCase() || "U"}
+                {/* User Dropdown Trigger */}
+                {user ? (
+                    <div
+                        className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    >
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black bg-[#7B6DED]">
+                            {user?.name?.charAt(0).toUpperCase() || "U"}
+                        </div>
+                        <ChevronDown className="w-4 h-4" />
                     </div>
-                    <ChevronDown className="w-4 h-4" />
-                </div>
+                ) : (
+                    <Link
+                        href="/login"
+                        className="flex items-center justify-center h-10 px-4 rounded-xl text-white font-bold text-xs bg-[#7B6DED] hover:bg-[#6859dd] transition-all hover:scale-[1.02] duration-200 shadow-sm"
+                    >
+                        Login / Masuk
+                    </Link>
+                )}
 
                 {/* Dropdown Modal */}
-                {isProfileOpen && (
+                {isProfileOpen && user && (
                     <div className="absolute top-[70px] left-4 bg-[#232323] p-4 rounded-xl w-[260px] shadow-2xl z-50 flex flex-col gap-4">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-full flex shrink-0 items-center justify-center text-white font-black bg-[#7B6DED] text-xl">
@@ -59,22 +69,24 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
                     />
                 )}
 
-                <div className="flex gap-2 text-[.8rem]">
-                    <button
-                        onClick={onSaveClick}
-                        disabled={isSaving || !isClosed}
-                        className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Save className="w-[1rem]" />
-                        {isSaving ? 'Saving...' : 'Save'}
-                    </button>
+                {user && (
+                    <div className="flex gap-2 text-[.8rem]">
+                        <button
+                            onClick={onSaveClick}
+                            disabled={isSaving || !isClosed}
+                            className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Save className="w-[1rem]" />
+                            {isSaving ? 'Saving...' : 'Save'}
+                        </button>
 
-                    <Link href="/projects" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300"><Folder className="w-[1rem]" />
-                        Proyek</Link>
-                    <Link href="/settings" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300">
-                        <Settings className="w-[1rem]" />
-                    </Link>
-                </div>
+                        <Link href="/projects" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300"><Folder className="w-[1rem]" />
+                            Proyek</Link>
+                        <Link href="/settings" className="flex bg-[#F5F5F5] py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300">
+                            <Settings className="w-[1rem]" />
+                        </Link>
+                    </div>
+                )}
             </div>
             <div className="p-4 flex items-center justify-between">
                 <div className="flex space-x-[0.5rem] md:space-x-[0.75rem]">
@@ -646,7 +658,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <p className="text-xs font-medium text-slate-400 leading-relaxed italic">Click the wall surface<br />to begin placing materials</p>
                         </div>
                     ) : (
-                        <div className="space-y-6">
+                        <div className="space-y-6 relative">
                             <div className="grid grid-cols-2 gap-3">
                                 <StatCard
                                     label="Total Area"
@@ -664,98 +676,121 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             </div>
 
                             <hr className="border-[#E8E8E8]" />
-                            <h3 className="font-medium uppercase text-[10px] tracking-widest">Total Kebutuhan</h3>
-                            <div className="grid grid-cols-1 gap-x-4 gap-y-4">
-                                {products.map((product: Product) => {
-                                    const count = totalProductCounts[product.id] || 0;
-                                    if (count === 0) return null;
-                                    const price = materialPrices[product.id] || 0;
-                                    return (
-                                        <div key={product.id} className="flex flex-col gap-1.5">
-                                            <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
-                                                <span>{product.name}</span>
-                                                <span className="font-bold">{count} {product.countType === 'length' ? 'Btg' : 'Pcs'}</span>
-                                            </div>
-                                            <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
-                                                <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
-                                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
-                                                    <span>Rp</span>
-                                                    <input
-                                                        type="number"
-                                                        value={price === 0 ? '' : price}
-                                                        onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
-                                                        className="w-24 bg-transparent outline-none font-medium p-0"
-                                                        placeholder="0"
-                                                    />
+
+                            <div className={`space-y-6 transition-all ${!user ? "filter blur-md select-none pointer-events-none opacity-40" : ""}`}>
+                                <h3 className="font-medium uppercase text-[10px] tracking-widest">Total Kebutuhan</h3>
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-4">
+                                    {products.map((product: Product) => {
+                                        const count = totalProductCounts[product.id] || 0;
+                                        if (count === 0) return null;
+                                        const price = materialPrices[product.id] || 0;
+                                        return (
+                                            <div key={product.id} className="flex flex-col gap-1.5">
+                                                <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                                    <span>{product.name}</span>
+                                                    <span className="font-bold">{count} {product.countType === 'length' ? 'Btg' : 'Pcs'}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                    <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                    <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                        <span>Rp</span>
+                                                        <input
+                                                            type="number"
+                                                            value={price === 0 ? '' : price}
+                                                            onChange={(e) => setMaterialPrice(product.id, Number(e.target.value))}
+                                                            className="w-24 bg-transparent outline-none font-medium p-0"
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                    <span>Subtotal</span>
+                                                    <span className="font-bold">Rp {(count * price).toLocaleString('id-ID')}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
-                                                <span>Subtotal</span>
-                                                <span className="font-bold">Rp {(count * price).toLocaleString('id-ID')}</span>
-                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {totals.grandTotalPrice > 0 && (
+                                    <div className="mt-4 flex items-center justify-between gap-4">
+                                        <div className="flex flex-col w-[120px]">
+                                            <span className="text-[.8rem] font-bold text-[#303030]">Total Harga</span>
+                                            <span className="text-[.8rem] text-[#707070]">Sisa Bahan {wastePercentage}%</span>
                                         </div>
-                                    );
-                                })}
+                                        <div className="flex-1 flex items-center border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                            <span className="text-[.8rem] font-bold text-[#303030]">Rp {totals.grandTotalPrice.toLocaleString('id-ID')}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <hr className="border-[#E8E8E8]" />
+
+                                <div className="space-y-4">
+                                    <h3 className="font-medium uppercase text-[10px] tracking-widest">Detail Kebutuhan</h3>
+                                    {walls.map((wall, wallIdx) => {
+                                        const metrics = wallMetrics[wallIdx];
+                                        if (!metrics) return null;
+                                        const wallHasContent = Object.values(metrics.productAreas).some((a: any) => a > 0) || Object.values(metrics.productLengths).some((l: any) => l > 0);
+
+                                        return (
+                                            <div key={wall.id} className="bg-white rounded-xl border border-[#E5E5E5] flex">
+                                                <div className="w-16 flex justify-center pt-4">
+                                                    <span className="text-4xl font-bold text-[#303030]">{wallIdx + 1}</span>
+                                                </div>
+                                                <div className="flex-1 pr-4">
+                                                    {wallHasContent ? (
+                                                        <div className="flex flex-col">
+                                                            {products.map((product: Product) => {
+                                                                const area = metrics.productAreas[product.id] || 0;
+                                                                const length = metrics.productLengths[product.id] || 0;
+                                                                if (area === 0 && length === 0) return null;
+
+                                                                const val = product.countType === 'length' ? length : area;
+                                                                const unit = product.countType === 'length' ? 'm' : 'm²';
+                                                                const formattedVal = val.toFixed(2).replace(/\.00$/, ''); // Matches whole numbers like in the mockup
+
+                                                                return (
+                                                                    <div key={product.id} className="flex justify-between items-center py-4 border-b border-[#E5E5E5] last:border-0">
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">{product.name}</span>
+                                                                            <span className="text-[#303030] text-[.8rem] font-bold">{formattedVal} {unit}</span>
+                                                                        </div>
+                                                                        <div className="text-[#303030] text-[.8rem] font-bold">
+                                                                            {formattedVal} {unit}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="py-4 text-[.8rem] text-[#A3A3A3]">Tidak ada material</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            {totals.grandTotalPrice > 0 && (
-                                <div className="mt-4 flex items-center justify-between gap-4">
-                                    <div className="flex flex-col w-[120px]">
-                                        <span className="text-[.8rem] font-bold text-[#303030]">Total Harga</span>
-                                        <span className="text-[.8rem] text-[#707070]">Sisa Bahan {wastePercentage}%</span>
-                                    </div>
-                                    <div className="flex-1 flex items-center border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
-                                        <span className="text-[.8rem] font-bold text-[#303030]">Rp {totals.grandTotalPrice.toLocaleString('id-ID')}</span>
+                            {/* Center-aligned overlay for non-logged in users */}
+                            {!user && (
+                                <div className="absolute top-[80px] left-0 right-0 bottom-0 flex flex-col items-center justify-start pt-16 px-4 bg-white/40 backdrop-blur-[1px] rounded-xl z-20 pointer-events-auto">
+                                    <div className="bg-white/95 p-6 rounded-xl border border-slate-200 shadow-xl flex flex-col items-center gap-4 text-center max-w-[280px] w-full">
+                                        <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl font-bold shadow-inner animate-pulse">
+                                            🔒
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-700 leading-relaxed">
+                                            Silakan login terlebih dahulu untuk melihat hasil perhitungan kebutuhan material dan harga secara detail.
+                                        </p>
+                                        <Link
+                                            href="/login"
+                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition-all text-center shadow-md shadow-indigo-200 active:scale-95"
+                                        >
+                                            Login Sekarang
+                                        </Link>
                                     </div>
                                 </div>
                             )}
-                            <hr className="border-[#E8E8E8]" />
-
-                            <div className="space-y-4">
-                                <h3 className="font-medium uppercase text-[10px] tracking-widest">Detail Kebutuhan</h3>
-                                {walls.map((wall, wallIdx) => {
-                                    const metrics = wallMetrics[wallIdx];
-                                    if (!metrics) return null;
-                                    const wallHasContent = Object.values(metrics.productAreas).some((a: any) => a > 0) || Object.values(metrics.productLengths).some((l: any) => l > 0);
-
-                                    return (
-                                        <div key={wall.id} className="bg-white rounded-xl border border-[#E5E5E5] flex">
-                                            <div className="w-16 flex justify-center pt-4">
-                                                <span className="text-4xl font-bold text-[#303030]">{wallIdx + 1}</span>
-                                            </div>
-                                            <div className="flex-1 pr-4">
-                                                {wallHasContent ? (
-                                                    <div className="flex flex-col">
-                                                        {products.map((product: Product) => {
-                                                            const area = metrics.productAreas[product.id] || 0;
-                                                            const length = metrics.productLengths[product.id] || 0;
-                                                            if (area === 0 && length === 0) return null;
-
-                                                            const val = product.countType === 'length' ? length : area;
-                                                            const unit = product.countType === 'length' ? 'm' : 'm²';
-                                                            const formattedVal = val.toFixed(2).replace(/\.00$/, ''); // Matches whole numbers like in the mockup
-
-                                                            return (
-                                                                <div key={product.id} className="flex justify-between items-center py-4 border-b border-[#E5E5E5] last:border-0">
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <span className="text-[#A3A3A3] text-[.8rem]">{product.name}</span>
-                                                                        <span className="text-[#303030] text-[.8rem] font-bold">{formattedVal} {unit}</span>
-                                                                    </div>
-                                                                    <div className="text-[#303030] text-[.8rem] font-bold">
-                                                                        {formattedVal} {unit}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : (
-                                                    <div className="py-4 text-[.8rem] text-[#A3A3A3]">Tidak ada material</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
                         </div>
                     )}
                 </div>
@@ -769,7 +804,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 if (!company?.logo_url) { alert("Upload logo first!"); return; }
                                 setShowPdfModal(true);
                             }}
-                            disabled={!isClosed}
+                            disabled={!isClosed || !user}
                             className="flex items-center gap-3 p-3 bg-white border border-[#E5E5E5] rounded-md active:scale-95 disabled:opacity-50 transition-transform hover:bg-gray-50"
                         >
                             <FileText className="w-4 h-4 text-[#303030]" />
@@ -778,7 +813,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
                         <button
                             onClick={handleExport}
-                            disabled={!isClosed}
+                            disabled={!isClosed || !user}
                             className="flex items-center gap-3 p-3 bg-white border border-[#E5E5E5] rounded-md active:scale-95 disabled:opacity-50 transition-transform hover:bg-gray-50"
                         >
                             <Grid className="w-4 h-4 text-[#303030]" />
