@@ -97,6 +97,7 @@ type CanvasState = {
 
     // Actions
     addWall: () => void;
+    duplicateWall: (id: string) => void;
     removeWall: (id: string) => void;
     setActiveWall: (id: string) => void;
     updateWallName: (id: string, name: string) => void;
@@ -315,6 +316,30 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             activeWallId: id,
             interactionMode: 'draw'
         });
+    },
+
+    duplicateWall: (id) => {
+        const { walls } = get();
+        const source = walls.find(w => w.id === id);
+        if (!source) return;
+        const newId = `wall-${Date.now()}`;
+        const newWall: Wall = {
+            ...JSON.parse(JSON.stringify(source)),
+            id: newId,
+            name: `${source.name} (copy)`,
+            isWallLocked: false,
+            designAreas: source.designAreas.map(a => ({ ...a, id: Math.random().toString(36).substr(2, 9) })),
+            openings: source.openings.map(o => ({ ...o, id: Math.random().toString(36).substr(2, 9) })),
+            lists: source.lists.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
+        };
+        const insertIndex = walls.findIndex(w => w.id === id) + 1;
+        const newWalls = [
+            ...walls.slice(0, insertIndex),
+            newWall,
+            ...walls.slice(insertIndex)
+        ];
+        get()._saveHistory();
+        set({ walls: newWalls, activeWallId: newId });
     },
 
     removeWall: (id) => {

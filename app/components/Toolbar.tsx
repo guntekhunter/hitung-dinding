@@ -9,7 +9,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
-import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo } from 'lucide-react';
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
@@ -136,7 +136,7 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
     );
 });
 
-const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName }: any) => (
+const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName, duplicateWall }: any) => (
     <div className="space-y-[1rem]">
         <div className="flex justify-between items-center space-x-[2rem]">
             <h3 className="font-medium uppercase text-[10px] tracking-widest">Dinding</h3>
@@ -163,6 +163,13 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
                         onClick={(e) => e.stopPropagation()}
                         className="flex-1 bg-transparent border-none text-[.8rem] focus:outline-none"
                     />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); duplicateWall(wall.id); }}
+                        className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
+                        title="Duplicate wall"
+                    >
+                        <Copy className="w-[1rem]" />
+                    </button>
                     {walls.length > 1 && (
                         <button
                             onClick={(e) => { e.stopPropagation(); removeWall(wall.id); }}
@@ -327,7 +334,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const { user, company, clearSession } = useAuthStore();
 
     const {
-        walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName,
+        walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName, duplicateWall,
         reset, selectedProductId, setSelectedProduct,
         interactionMode, setInteractionMode,
         undo, redo, past, future,
@@ -590,6 +597,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     removeWall={removeWall}
                     setActiveWall={setActiveWall}
                     updateWallName={updateWallName}
+                    duplicateWall={duplicateWall}
                 />
                 <hr className="border-[#E8E8E8]" />
                 {/* Actions & Modes */}
