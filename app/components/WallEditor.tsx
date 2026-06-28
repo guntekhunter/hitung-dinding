@@ -24,6 +24,7 @@ const useCustomImage = (url: string) => {
             return;
         }
         const img = new Image();
+        img.crossOrigin = 'Anonymous';
         img.src = url;
         img.onload = () => setImage(img);
     }, [url]);
@@ -34,6 +35,7 @@ interface WallEditorProps {
     wallId?: string;
     overrideZoom?: number;
     overrideOffset?: { x: number, y: number };
+    readOnly?: boolean;
 }
 
 const WallEditor = forwardRef((props: WallEditorProps, ref) => {
@@ -1256,23 +1258,25 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 width={width}
                 height={height}
                 pixelRatio={Math.min(window.devicePixelRatio || 1, 1.5)}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onTouchStart={handleMouseDown}
-                onTouchMove={handleMouseMove}
-                onTouchEnd={handleMouseUp}
-                onWheel={handleWheel}
+                onMouseDown={props.readOnly ? undefined : handleMouseDown}
+                onMouseMove={props.readOnly ? undefined : handleMouseMove}
+                onMouseUp={props.readOnly ? undefined : handleMouseUp}
+                onTouchStart={props.readOnly ? undefined : handleMouseDown}
+                onTouchMove={props.readOnly ? undefined : handleMouseMove}
+                onTouchEnd={props.readOnly ? undefined : handleMouseUp}
+                onWheel={props.readOnly ? undefined : handleWheel}
                 scaleX={zoom}
                 scaleY={zoom}
                 x={offset.x}
                 y={offset.y}
                 draggable={false}
+                listening={!props.readOnly}
                 perfectDrawEnabled={!isMobile && !isTablet}
                 shadowForStrokeEnabled={false}
                 style={{
-                    cursor: isPanningRef.current ? 'grabbing' : (isClosed ? 'default' : 'crosshair'),
-                    touchAction: 'none'
+                    cursor: props.readOnly ? 'default' : (isPanningRef.current ? 'grabbing' : (isClosed ? 'default' : 'crosshair')),
+                    touchAction: 'none',
+                    pointerEvents: props.readOnly ? 'none' : 'auto'
                 }}
             >
                 <Layer>

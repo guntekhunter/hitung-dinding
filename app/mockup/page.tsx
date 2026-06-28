@@ -284,7 +284,18 @@ function MockupPageContent() {
           if (error || !data) throw new Error("Failed to load project data");
           
           const currentData = data.data;
+          
+          // Also grab the current custom colors to save them with the scene
+          const { walls, products } = useCanvasStore.getState();
+          const customColors: Record<string, string> = {};
+          products.forEach(p => {
+              if (p.color && (p.color.startsWith('http') || p.color.startsWith('data:') || p.color.startsWith('#'))) {
+                  customColors[p.id] = p.color;
+              }
+          });
+
           currentData.mockupScene = { bgImage, includedWalls, wallCorners };
+          currentData.materialColors = customColors;
 
           const { error: saveError } = await supabase.from("projects").update({ data: currentData }).eq("id", id);
           if (saveError) throw saveError;
@@ -408,7 +419,8 @@ function MockupPageContent() {
                               <WallEditor 
                                   wallId={wallId} 
                                   overrideZoom={1} 
-                                  overrideOffset={{ x: -dims.minX, y: -dims.minY }} 
+                                  overrideOffset={{ x: -dims.minX, y: -dims.minY }}
+                                  readOnly={true}
                               />
                           </div>
                       </div>
