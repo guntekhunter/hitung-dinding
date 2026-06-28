@@ -22,6 +22,7 @@ export default function ProjectsPage() {
     const company = useAuthStore(state => state.company);
     const [projects, setProjects] = useState<ProjectRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const itemsPerPage = 6;
@@ -40,7 +41,7 @@ export default function ProjectsPage() {
 
             const { data, error, count } = await supabase
                 .from("projects")
-                .select("*", { count: "exact" })
+                .select("id, name, created_at, previewImage:data->previewImage, rab:data->rab", { count: "exact" })
                 .eq("company_id", company.id)
                 .order("created_at", { ascending: false })
                 .range(from, to);
@@ -48,7 +49,16 @@ export default function ProjectsPage() {
             if (error) {
                 console.error("Error fetching projects:", error);
             } else {
-                setProjects(data || []);
+                const formattedProjects = (data || []).map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    created_at: p.created_at,
+                    data: {
+                        previewImage: p.previewImage,
+                        rab: p.rab
+                    } as ProjectData
+                }));
+                setProjects(formattedProjects);
                 setTotalPages(Math.ceil((count || 0) / itemsPerPage));
             }
             setLoading(false);
@@ -56,6 +66,28 @@ export default function ProjectsPage() {
 
         fetchProjects();
     }, [company?.id, page]);
+
+    const handleProjectClick = async (projectId: string) => {
+        setLoadingProjectId(projectId);
+        try {
+            const { data, error } = await supabase
+                .from("projects")
+                .select("data")
+                .eq("id", projectId)
+                .single();
+                
+            if (error || !data) {
+                throw new Error(error?.message || "Project not found");
+            }
+            
+            loadProject(projectId, data.data);
+            router.push("/");
+        } catch (error) {
+            console.error("Failed to load full project data:", error);
+            alert("Failed to load project data. Please try again.");
+            setLoadingProjectId(null);
+        }
+    };
 
     return (
         <ProtectedRoute>
@@ -87,10 +119,8 @@ export default function ProjectsPage() {
                                     <ProjectCard
                                         key={project.id}
                                         project={project}
-                                        onClick={() => {
-                                            loadProject(project.id, project.data);
-                                            router.push("/");
-                                        }}
+                                        isLoading={loadingProjectId === project.id}
+                                        onClick={() => handleProjectClick(project.id)}
                                     />
                                 ))}
                             </div>
@@ -142,7 +172,7 @@ function getRelativeTime(dateString: string) {
     return `Edited ${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
 }
 
-function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () => void }) {
+function ProjectCard({ project, onClick, isLoading }: { project: ProjectRow, onClick: () => void, isLoading?: boolean }) {
     const router = useRouter();
     const image = project.data?.previewImage;
     const rab = project.data?.rab;
@@ -155,7 +185,12 @@ function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () =>
     }).format(rab?.grandTotal || 0);
 
     return (
-        <div onClick={onClick} className="bg-white rounded-[12px] border border-gray-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group cursor-pointer w-full">
+        <div onClick={onClick} className={`bg-white rounded-[12px] border border-gray-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group cursor-pointer w-full relative ${isLoading ? 'pointer-events-none opacity-80' : ''}`}>
+            {isLoading && (
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-[#7B6DED]/30 border-t-[#7B6DED] rounded-full animate-spin"></div>
+                </div>
+            )}
             <div className="aspect-[16/10] bg-[#f5f5f5] flex items-center justify-center relative overflow-hidden border-b border-gray-100">
                 {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
