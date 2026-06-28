@@ -6,7 +6,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { supabase } from "../../lib/supabase";
-import html2canvas from "html2canvas";
+import * as htmlToImage from "html-to-image";
 
 const WallEditor = dynamic(() => import("../components/WallEditor"), {
   ssr: false,
@@ -84,6 +84,9 @@ function MockupPageContent() {
   // Background Image State
   const [bgImage, setBgImage] = useState<string | null>(null);
 
+  // Saved Mockups state
+  const [savedMockups, setSavedMockups] = useState<Record<string, { bgImage: string | null, corners: {x: number, y: number}[] }>>({});
+
   const activeWall = useMemo(() => walls.find(w => w.id === activeWallId) || walls[0], [walls, activeWallId]);
   
   // Dynamic box size based on wall bounds
@@ -118,22 +121,31 @@ function MockupPageContent() {
           useCanvasStore.getState().setZoom(1);
           useCanvasStore.getState().setOffset(-minX, -minY);
           
-          // Place the initial corners nicely in the center of screen
-          const scale = Math.min(800 / w, 500 / h, 1);
-          const displayW = w * scale;
-          const displayH = h * scale;
-          
-          const startX = Math.max(50, (window.innerWidth - displayW) / 2);
-          const startY = 100;
+          if (savedMockups[activeWall.id]) {
+              // Load saved mockup data
+              const saved = savedMockups[activeWall.id];
+              setBgImage(saved.bgImage);
+              setCorners(saved.corners);
+          } else {
+              // Reset to default
+              setBgImage(null);
+              // Place the initial corners nicely in the center of screen
+              const scale = Math.min(800 / w, 500 / h, 1);
+              const displayW = w * scale;
+              const displayH = h * scale;
+              
+              const startX = Math.max(50, (window.innerWidth - displayW) / 2);
+              const startY = 100;
 
-          setCorners([
-              { x: startX, y: startY },
-              { x: startX + displayW, y: startY },
-              { x: startX + displayW, y: startY + displayH },
-              { x: startX, y: startY + displayH }
-          ]);
+              setCorners([
+                  { x: startX, y: startY },
+                  { x: startX + displayW, y: startY },
+                  { x: startX + displayW, y: startY + displayH },
+                  { x: startX, y: startY + displayH }
+              ]);
+          }
       }
-  }, [activeWallId, activeWall]);
+  }, [activeWallId, activeWall, savedMockups]);
 
   useEffect(() => {
     async function init() {
@@ -148,6 +160,9 @@ function MockupPageContent() {
 
         if (data && !error) {
             loadProject(id, data.data);
+            if (data.data.mockups) {
+                setSavedMockups(data.data.mockups);
+            }
         }
         setLoadingProject(false);
       }
@@ -232,16 +247,14 @@ function MockupPageContent() {
           const handles = containerRef.current.querySelectorAll('.cursor-move');
           handles.forEach((h: any) => h.style.display = 'none');
           
-          const canvas = await html2canvas(containerRef.current, {
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: null,
+          const url = await htmlToImage.toPng(containerRef.current, {
+              cacheBust: true,
+              backgroundColor: '#e5e5f7' // ensure background matches
           });
           
           // Restore handles
           handles.forEach((h: any) => h.style.display = '');
 
-          const url = canvas.toDataURL("image/png");
           const link = document.createElement("a");
           link.href = url;
           link.download = `mockup-${activeWall?.name || 'wall'}.png`;
@@ -251,6 +264,34 @@ function MockupPageContent() {
       } catch (err) {
           console.error("Download failed:", err);
           alert("Failed to download mockup.");
+      }
+  };
+
+  const handleSaveMockup = async () => {
+      if (!id || !activeWallId) return;
+      
+      try {
+          // 1. Fetch current data
+          const { data, error } = await supabase.from("projects").select("data").eq("id", id).single();
+          if (error || !data) throw new Error("Failed to load project data");
+          
+          // 2. Update mockups object inside project data
+          const currentData = data.data;
+          const newMockups = {
+              ...(currentData.mockups || {}),
+              [activeWallId]: { bgImage, corners }
+          };
+          currentData.mockups = newMockups;
+
+          // 3. Save back to database
+          const { error: saveError } = await supabase.from("projects").update({ data: currentData }).eq("id", id);
+          if (saveError) throw saveError;
+          
+          setSavedMockups(newMockups);
+          alert("Mockup saved successfully!");
+      } catch (err) {
+          console.error(err);
+          alert("Failed to save mockup.");
       }
   };
 
@@ -291,7 +332,13 @@ function MockupPageContent() {
             </button>
             <h1 className="text-lg font-medium text-gray-800">Perspective Mockup</h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+            <button 
+                onClick={handleSaveMockup}
+                className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 px-4 py-1.5 rounded hover:bg-gray-50 transition shadow-sm active:scale-95"
+            >
+                Save Mockup
+            </button>
             <button 
                 onClick={handleDownload}
                 className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] px-4 py-1.5 rounded hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
