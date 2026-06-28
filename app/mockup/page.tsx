@@ -188,11 +188,38 @@ function MockupPageContent() {
       };
   }, [draggingIdx]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          const url = URL.createObjectURL(file);
-          setBgImage(url);
+          setIsUploading(true);
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+              const base64 = reader.result as string;
+              
+              try {
+                  const res = await fetch('/api/upload-cloudinary', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ file: base64 })
+                  });
+                  
+                  const data = await res.json();
+                  if (data.url) {
+                      setBgImage(data.url);
+                  } else {
+                      console.error("Cloudinary upload failed:", data.error);
+                      alert("Upload failed: " + data.error);
+                  }
+              } catch (err) {
+                  console.error(err);
+                  alert("Upload failed due to network error.");
+              } finally {
+                  setIsUploading(false);
+              }
+          };
+          reader.readAsDataURL(file);
       }
   };
 
@@ -234,9 +261,9 @@ function MockupPageContent() {
             <h1 className="text-lg font-medium text-gray-800">Perspective Mockup</h1>
         </div>
         <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition">
-                Upload Background
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <label className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                {isUploading ? 'Uploading...' : 'Upload Background'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
             </label>
             <div className="h-6 w-px bg-gray-300"></div>
             <label className="text-sm font-medium text-gray-600">Select Wall:</label>
