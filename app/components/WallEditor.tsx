@@ -58,7 +58,9 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         startList, updateList, finishList, removeList,
         zoom: storeZoom, offset: storeOffset, setZoom, setOffset,
         undo, redo, mouldingGap, listDrawingType, setListDrawingType,
-        products, isExporting, isColoringPreview
+        products, isExporting, isColoringPreview,
+        selectedDesignAreaId, setSelectedDesignAreaId,
+        selectedWallId, setSelectedWallId
     } = useCanvasStore();
 
     const activeWallId = props.wallId || storeActiveWallId;
@@ -443,7 +445,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
-    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting, isColoringMode }: any) => {
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting, isColoringMode, customColor, readOnly, selectedDesignAreaId, setSelectedDesignAreaId, wallId, selectedWallId, setSelectedWallId }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
 
@@ -508,37 +510,43 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const dimOffset = 20 / zoom;
         const tickLen = 4 / zoom;
 
-        const patternImage = useCustomImage(product.color);
+        // Custom per-area color overrides the product-level color
+        const effectiveColor = customColor || product.color;
+        const patternImage = useCustomImage(effectiveColor);
         const isPattern = !!patternImage;
+        const isSelected = selectedDesignAreaId === area.id;
+        const isWallSelected = selectedWallId === wallId;
+
+        const handleClick = () => {
+            if (readOnly && setSelectedDesignAreaId) {
+                // Select this specific rectangle AND activate its wall
+                setSelectedDesignAreaId(isSelected ? null : area.id);
+                if (setSelectedWallId) {
+                    setSelectedWallId(wallId || null);
+                }
+            } else {
+                onClick();
+            }
+        };
 
         return (
             <Group
                 x={area.x}
                 y={area.y}
-                draggable={interactionMode !== 'list'}
-                onDragStart={onDragStart}
-                onDragMove={(e) => {
-                    // When dragging a group, e.target.x() is the new position relative to the layer
+                draggable={!readOnly && interactionMode !== 'list'}
+                onDragStart={readOnly ? undefined : onDragStart}
+                onDragMove={readOnly ? undefined : (e) => {
                     let newX = e.target.x();
                     let newY = e.target.y();
-
-                    // Snap center of area to center of wall
                     const areaCenterX = newX + area.width / 2;
                     const areaCenterY = newY + area.height / 2;
-
                     const SNAP_DIST = 20 / zoom;
-
-                    if (Math.abs(areaCenterX - wallCenter.x) < SNAP_DIST) {
-                        newX = wallCenter.x - area.width / 2;
-                    }
-                    if (Math.abs(areaCenterY - wallCenter.y) < SNAP_DIST) {
-                        newY = wallCenter.y - area.height / 2;
-                    }
-
+                    if (Math.abs(areaCenterX - wallCenter.x) < SNAP_DIST) newX = wallCenter.x - area.width / 2;
+                    if (Math.abs(areaCenterY - wallCenter.y) < SNAP_DIST) newY = wallCenter.y - area.height / 2;
                     e.target.x(newX);
                     e.target.y(newY);
                 }}
-                onDragEnd={(e) => {
+                onDragEnd={readOnly ? undefined : (e) => {
                     onMove(area.id, e.target.x(), e.target.y());
                 }}
             >
@@ -546,22 +554,39 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     name="design-area"
                     width={area.width}
                     height={area.height}
-                    fill={isPattern ? undefined : (product.countType === 'length' ? "transparent" : product.color)}
+                    fill={isPattern ? undefined : (product.countType === 'length' ? "transparent" : effectiveColor)}
                     fillPatternImage={isPattern ? patternImage : undefined}
                     fillPatternRepeat="repeat"
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
                     fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
-                    stroke={product.countType === 'length' ? color : (isColoringMode ? "transparent" : "#1e293b")}
-                    strokeWidth={product.countType === 'length' ? 2 / zoom : (isColoringMode ? 0 : 1 / zoom)}
-                    onClick={onClick}
-                    onTap={onClick}
+                    stroke={
+                        isSelected
+                            ? "#7B6DED"
+                            : isWallSelected && readOnly
+                                ? "#22c55e"
+                                : product.countType === 'length'
+                                    ? effectiveColor.replace('0.4', '1')
+                                    : isColoringMode ? "transparent" : "#1e293b"
+                    }
+                    strokeWidth={
+                        isSelected
+                            ? 4 / zoom
+                            : isWallSelected && readOnly
+                                ? 2 / zoom
+                                : product.countType === 'length'
+                                    ? 2 / zoom
+                                    : isColoringMode ? 0 : 1 / zoom
+                    }
+                    dash={isWallSelected && !isSelected && readOnly ? [6 / zoom, 3 / zoom] : undefined}
+                    onClick={handleClick}
+                    onTap={handleClick}
                     onMouseEnter={(e: any) => {
-                        const container = e.target.getStage().container();
-                        container.style.cursor = 'move';
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = readOnly ? 'pointer' : 'move';
                     }}
                     onMouseLeave={(e: any) => {
-                        const container = e.target.getStage().container();
-                        container.style.cursor = isClosed ? 'default' : 'crosshair';
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = 'default';
                     }}
                 />
                 {!isExporting && (
@@ -759,7 +784,24 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         if (!('productId' in area)) return null;
         const product = products.find(p => p.id === area.productId);
         if (!product) return null;
-        return <MemoizedAreaContent area={area} product={product} zoom={zoom} textScale={textScale} points={points} interactionMode={interactionMode} isExporting={shouldHideText} isColoringMode={isColoringMode} onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)} />;
+        return <MemoizedAreaContent
+            area={area}
+            product={product}
+            zoom={zoom}
+            textScale={textScale}
+            points={points}
+            interactionMode={interactionMode}
+            isExporting={shouldHideText}
+            isColoringMode={isColoringMode}
+            customColor={area.customColor}
+            readOnly={props.readOnly}
+            selectedDesignAreaId={selectedDesignAreaId}
+            setSelectedDesignAreaId={setSelectedDesignAreaId}
+            selectedWallId={selectedWallId}
+            setSelectedWallId={setSelectedWallId}
+            wallId={activeWallId}
+            onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)}
+        />;
     };
 
     const renderOpeningContent = (opening: any) => {
@@ -811,6 +853,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 interactionMode={interactionMode}
                                 isExporting={shouldHideText}
                                 isColoringMode={isColoringMode}
+                                customColor={area.customColor}
+                                readOnly={props.readOnly}
+                                selectedDesignAreaId={selectedDesignAreaId}
+                                selectedWallId={selectedWallId}
+                                setSelectedDesignAreaId={setSelectedDesignAreaId}
+                                setSelectedWallId={setSelectedWallId}
+                                wallId={activeWallId}
                                 onClick={() => {
                                     if (interactionMode === 'delete') {
                                         useCanvasStore.getState().removeDesignArea(area.id);
@@ -908,7 +957,14 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 )}
             </Group>
         );
-    }, [designAreas, openings, lists, currentDrawingArea, currentDrawingList, clipFunc, interactionMode, zoom, points, wallCenter, products]);
+    }, [
+        designAreas, openings, lists, currentDrawingArea, currentDrawingList,
+        clipFunc, interactionMode, zoom, textScale, points, wallCenter, products,
+        shouldHideText, isColoringMode, props.readOnly, activeWallId,
+        selectedDesignAreaId, selectedWallId,
+        setSelectedDesignAreaId, setSelectedWallId,
+        listDrawingType, renderListContent, renderAreaContent, renderOpeningContent
+    ]);
 
     const getPointerPosition = () => {
         const stage = stageRef.current;
@@ -1270,13 +1326,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 x={offset.x}
                 y={offset.y}
                 draggable={false}
-                listening={!props.readOnly}
+                listening={true}
                 perfectDrawEnabled={!isMobile && !isTablet}
                 shadowForStrokeEnabled={false}
                 style={{
-                    cursor: props.readOnly ? 'default' : (isPanningRef.current ? 'grabbing' : (isClosed ? 'default' : 'crosshair')),
+                    cursor: 'default',
                     touchAction: 'none',
-                    pointerEvents: props.readOnly ? 'none' : 'auto'
+                    pointerEvents: 'auto'
                 }}
             >
                 <Layer>

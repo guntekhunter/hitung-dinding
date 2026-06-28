@@ -25,6 +25,7 @@ export type DesignArea = {
     width: number;
     height: number;
     createdAt?: number;
+    customColor?: string;
 };
 
 export type Opening = {
@@ -81,6 +82,17 @@ type CanvasState = {
     selectedProductId: string;
     currentDrawingArea: DesignArea | Opening | null;
     currentDrawingList: ListElement | null;
+    
+    // Specifically selected DesignArea/Wall (for mockup per-wall custom colors)
+    selectedDesignAreaId: string | null;
+    setSelectedDesignAreaId: (id: string | null) => void;
+    setDesignAreaColor: (areaId: string, color: string) => void;
+
+    // The wall currently being painted in the mockup
+    selectedWallId: string | null;
+    setSelectedWallId: (id: string | null) => void;
+    // Apply a color/texture to ALL design areas of productId inside one wall
+    setWallProductColor: (wallId: string, productId: string, color: string) => void;
 
     // Customer Info
     customerInfo: {
@@ -202,6 +214,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     selectedProductId: '',
     currentDrawingArea: null,
     currentDrawingList: null,
+    selectedDesignAreaId: null,
+    selectedWallId: null,
+    customerInfo: {
+        name: '',
+        phone: '',
+        address: '',
+        surveyorName: '',
+    },
     past: [],
     future: [],
 
@@ -271,18 +291,36 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         }
     },
 
-    setProductColor: (productId: string, color: string) => {
-        set((state) => ({
-            products: state.products.map(p => p.id === productId ? { ...p, color } : p)
-        }));
-    },
+    setProductColor: (productId, color) => set((state) => ({
+        products: state.products.map(p => p.id === productId ? { ...p, color } : p)
+    })),
 
-    customerInfo: {
-        name: "",
-        phone: "",
-        address: "",
-        surveyorName: ""
-    },
+    setSelectedDesignAreaId: (id) => set({ selectedDesignAreaId: id }),
+
+    setDesignAreaColor: (areaId, color) => set((state) => ({
+        walls: state.walls.map(wall => ({
+            ...wall,
+            designAreas: wall.designAreas.map(area =>
+                area.id === areaId ? { ...area, customColor: color } : area
+            )
+        }))
+    })),
+
+    setSelectedWallId: (id) => set({ selectedWallId: id }),
+
+    // Update customColor on every design area of the given product inside one specific wall
+    setWallProductColor: (wallId, productId, color) => set((state) => ({
+        walls: state.walls.map(wall => {
+            if (wall.id !== wallId) return wall;
+            return {
+                ...wall,
+                designAreas: wall.designAreas.map(area =>
+                    area.productId === productId ? { ...area, customColor: color } : area
+                )
+            };
+        })
+    })),
+
     materialPrices: {},
 
     setMaterialPrice: (productId, price) => set((state) => ({
