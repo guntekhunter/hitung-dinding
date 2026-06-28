@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, Suspense, useState } from "react";
+import { useEffect, useRef, Suspense, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -16,14 +16,86 @@ const WallEditor = dynamic(() => import("../components/WallEditor"), {
   ),
 });
 
+// Helper for solving homography
+function solveHomography(src: {x: number, y: number}[], dst: {x: number, y: number}[]) {
+    const A = [];
+    for (let i = 0; i < 4; i++) {
+        const x = src[i].x;
+        const y = src[i].y;
+        const u = dst[i].x;
+        const v = dst[i].y;
+        A.push([x, y, 1, 0, 0, 0, -x * u, -y * u, u]);
+        A.push([0, 0, 0, x, y, 1, -x * v, -y * v, v]);
+    }
+    
+    // Gaussian elimination
+    for (let i = 0; i < 8; i++) {
+        let maxEl = Math.abs(A[i][i]);
+        let maxRow = i;
+        for (let k = i + 1; k < 8; k++) {
+            if (Math.abs(A[k][i]) > maxEl) {
+                maxEl = Math.abs(A[k][i]);
+                maxRow = k;
+            }
+        }
+        
+        const tmp = A[maxRow];
+        A[maxRow] = A[i];
+        A[i] = tmp;
+        
+        const pivot = A[i][i];
+        if (pivot === 0) return null;
+        
+        for (let k = i; k < 9; k++) {
+            A[i][k] /= pivot;
+        }
+        
+        for (let j = 0; j < 8; j++) {
+            if (i !== j) {
+                const factor = A[j][i];
+                for (let k = i; k < 9; k++) {
+                    A[j][k] -= factor * A[i][k];
+                }
+            }
+        }
+    }
+    
+    const H = [
+        A[0][8], A[3][8], 0, A[6][8],
+        A[1][8], A[4][8], 0, A[7][8],
+        0,       0,       1, 0,
+        A[2][8], A[5][8], 0, 1
+    ];
+    
+    return `matrix3d(${H.join(',')})`;
+}
+
 function MockupPageContent() {
   const wallEditorRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const router = useRouter();
   
-  const { loadProject, fetchProducts, walls, activeWallId, setActiveWall } = useCanvasStore();
+  const { loadProject, fetchProducts, walls, activeWallId, setActiveWall, setIsColoringPreview } = useCanvasStore();
   const [loadingProject, setLoadingProject] = useState(!!id);
+
+  // Background Image State
+  const [bgImage, setBgImage] = useState<string | null>(null);
+
+  // Box size constraint for the WallEditor
+  const BOX_WIDTH = 800;
+  const BOX_HEIGHT = 600;
+
+  // Draggable corners (TL, TR, BR, BL)
+  const [corners, setCorners] = useState([
+      { x: 100, y: 100 },
+      { x: 700, y: 100 },
+      { x: 700, y: 500 },
+      { x: 100, y: 500 }
+  ]);
+
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -43,7 +115,60 @@ function MockupPageContent() {
       }
     }
     init();
-  }, [id, loadProject, fetchProducts]);
+
+    // Enable coloring preview mode for the Mockup to hide labels and sizes
+    setIsColoringPreview(true);
+    return () => setIsColoringPreview(false);
+  }, [id, loadProject, fetchProducts, setIsColoringPreview]);
+
+  // Handle Dragging
+  useEffect(() => {
+      const handleMouseMove = (e: MouseEvent) => {
+          if (draggingIdx === null || !containerRef.current) return;
+          const rect = containerRef.current.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          setCorners(prev => {
+              const newCorners = [...prev];
+              newCorners[draggingIdx] = { x, y };
+              return newCorners;
+          });
+      };
+
+      const handleMouseUp = () => {
+          setDraggingIdx(null);
+      };
+
+      if (draggingIdx !== null) {
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
+      }
+
+      return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+      };
+  }, [draggingIdx]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const url = URL.createObjectURL(file);
+          setBgImage(url);
+      }
+  };
+
+  const transformMatrix = useMemo(() => {
+      // Source corners are the literal pixel corners of the WallEditor container
+      const src = [
+          { x: 0, y: 0 },
+          { x: BOX_WIDTH, y: 0 },
+          { x: BOX_WIDTH, y: BOX_HEIGHT },
+          { x: 0, y: BOX_HEIGHT }
+      ];
+      return solveHomography(src, corners);
+  }, [corners]);
 
   if (loadingProject) {
     return (
@@ -69,9 +194,14 @@ function MockupPageContent() {
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
             </button>
-            <h1 className="text-lg font-medium text-gray-800">Mockup View</h1>
+            <h1 className="text-lg font-medium text-gray-800">Perspective Mockup</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition">
+                Upload Background
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </label>
+            <div className="h-6 w-px bg-gray-300"></div>
             <label className="text-sm font-medium text-gray-600">Select Wall:</label>
             <select 
                 value={activeWallId || ''} 
@@ -88,11 +218,51 @@ function MockupPageContent() {
       </div>
 
       {/* Main Mockup Area */}
-      <div className="flex-1 min-h-0 relative pointer-events-none">
-          {/* We use pointer-events-none here to make it a pure view-only mockup. Or we can just let WallEditor handle its own read-only state. Since WallEditor allows dragging and editing, if we want a pure static mockup we could wrap it. For now, letting it render as is, but you can interact with it unless we add a specific read-only prop. */}
-          <div className="w-full h-full pointer-events-auto">
-            <WallEditor ref={wallEditorRef} />
+      <div 
+        ref={containerRef}
+        className="flex-1 min-h-0 relative overflow-hidden bg-[#e5e5f7]"
+        style={{
+            backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
+            backgroundSize: bgImage ? 'contain' : '10px 10px',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+        }}
+      >
+          {/* Transformed Wall Wrapper */}
+          <div 
+            className="absolute top-0 left-0 origin-top-left pointer-events-none"
+            style={{ 
+                width: BOX_WIDTH, 
+                height: BOX_HEIGHT,
+                transform: transformMatrix || 'none'
+            }}
+          >
+              <div className="w-full h-full pointer-events-auto shadow-2xl opacity-90 overflow-hidden bg-transparent">
+                  <WallEditor ref={wallEditorRef} />
+              </div>
           </div>
+
+          {/* Draggable Corner Handles */}
+          {corners.map((corner, i) => (
+              <div
+                  key={i}
+                  onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setDraggingIdx(i);
+                  }}
+                  className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 z-50 hover:scale-110 active:scale-95 transition-transform"
+                  style={{ left: corner.x, top: corner.y }}
+              />
+          ))}
+          
+          {!bgImage && (
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center pointer-events-none">
+                  <p className="text-gray-500 font-medium bg-white/80 px-4 py-2 rounded-full shadow-sm">
+                      Drag the corner points to perspective-warp the wall design.<br/>
+                      Upload a background photo of a room for a realistic mockup!
+                  </p>
+              </div>
+          )}
       </div>
     </main>
   );
