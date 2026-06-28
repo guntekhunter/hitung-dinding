@@ -84,68 +84,62 @@ function MockupPageContent() {
   // Background Image State
   const [bgImage, setBgImage] = useState<string | null>(null);
 
-  // Saved Mockups state
-  const [savedMockups, setSavedMockups] = useState<Record<string, { bgImage: string | null, corners: {x: number, y: number}[] }>>({});
-
-  const activeWall = useMemo(() => walls.find(w => w.id === activeWallId) || walls[0], [walls, activeWallId]);
+  // Scene state
+  const [includedWalls, setIncludedWalls] = useState<string[]>([]);
+  const [wallCorners, setWallCorners] = useState<Record<string, {x: number, y: number}[]>>({});
   
-  // Dynamic box size based on wall bounds
-  const [boxDimensions, setBoxDimensions] = useState({ width: 800, height: 600 });
+  // Keep track of dynamic box sizes for each included wall
+  const [boxDimensions, setBoxDimensions] = useState<Record<string, {width: number, height: number, minX: number, minY: number}>>({});
 
-  // Draggable corners (TL, TR, BR, BL)
-  const [corners, setCorners] = useState([
-      { x: 100, y: 100 },
-      { x: 700, y: 100 },
-      { x: 700, y: 500 },
-      { x: 100, y: 500 }
-  ]);
+  const [draggingHandle, setDraggingHandle] = useState<{wallId: string, index: number} | null>(null);
 
-  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
-
-  // Adjust exact bounds when active wall changes
+  // Initialize/Update bounds when included walls change
   useEffect(() => {
-      if (activeWall && activeWall.points.length >= 3) {
-          const xs = activeWall.points.map(p => p.x);
-          const ys = activeWall.points.map(p => p.y);
-          const minX = Math.min(...xs);
-          const minY = Math.min(...ys);
-          const maxX = Math.max(...xs);
-          const maxY = Math.max(...ys);
-          
-          const w = Math.max(10, maxX - minX);
-          const h = Math.max(10, maxY - minY);
+      const newDims = { ...boxDimensions };
+      let updatedCorners = { ...wallCorners };
+      let changed = false;
 
-          setBoxDimensions({ width: w, height: h });
-          
-          // Force Canvas to show exact bounds without margins
-          useCanvasStore.getState().setZoom(1);
-          useCanvasStore.getState().setOffset(-minX, -minY);
-          
-          if (savedMockups[activeWall.id]) {
-              // Load saved mockup data
-              const saved = savedMockups[activeWall.id];
-              setBgImage(saved.bgImage);
-              setCorners(saved.corners);
-          } else {
-              // Reset to default
-              setBgImage(null);
-              // Place the initial corners nicely in the center of screen
-              const scale = Math.min(800 / w, 500 / h, 1);
-              const displayW = w * scale;
-              const displayH = h * scale;
+      includedWalls.forEach(wallId => {
+          const wData = walls.find(w => w.id === wallId);
+          if (wData && wData.points.length >= 3 && !newDims[wallId]) {
+              const xs = wData.points.map(p => p.x);
+              const ys = wData.points.map(p => p.y);
+              const minX = Math.min(...xs);
+              const minY = Math.min(...ys);
+              const maxX = Math.max(...xs);
+              const maxY = Math.max(...ys);
               
-              const startX = Math.max(50, (window.innerWidth - displayW) / 2);
-              const startY = 100;
+              const w = Math.max(10, maxX - minX);
+              const h = Math.max(10, maxY - minY);
+              
+              newDims[wallId] = { width: w, height: h, minX, minY };
+              
+              if (!updatedCorners[wallId]) {
+                  const scale = Math.min(800 / w, 500 / h, 1);
+                  const displayW = w * scale;
+                  const displayH = h * scale;
+                  
+                  // offset slightly based on how many walls are included to avoid full overlap
+                  const offset = Object.keys(updatedCorners).length * 40;
+                  const startX = Math.max(50, (window.innerWidth - displayW) / 2) + offset;
+                  const startY = 100 + offset;
 
-              setCorners([
-                  { x: startX, y: startY },
-                  { x: startX + displayW, y: startY },
-                  { x: startX + displayW, y: startY + displayH },
-                  { x: startX, y: startY + displayH }
-              ]);
+                  updatedCorners[wallId] = [
+                      { x: startX, y: startY },
+                      { x: startX + displayW, y: startY },
+                      { x: startX + displayW, y: startY + displayH },
+                      { x: startX, y: startY + displayH }
+                  ];
+              }
+              changed = true;
           }
+      });
+      
+      if (changed) {
+          setBoxDimensions(newDims);
+          setWallCorners(updatedCorners);
       }
-  }, [activeWallId, activeWall, savedMockups]);
+  }, [includedWalls, walls, boxDimensions, wallCorners]);
 
   useEffect(() => {
     async function init() {
@@ -160,8 +154,18 @@ function MockupPageContent() {
 
         if (data && !error) {
             loadProject(id, data.data);
-            if (data.data.mockups) {
-                setSavedMockups(data.data.mockups);
+            if (data.data.mockupScene) {
+                setBgImage(data.data.mockupScene.bgImage || null);
+                setIncludedWalls(data.data.mockupScene.includedWalls || []);
+                setWallCorners(data.data.mockupScene.wallCorners || {});
+            } else if (data.data.mockups) {
+                // legacy migration
+                const firstId = Object.keys(data.data.mockups)[0];
+                if (firstId) {
+                    setBgImage(data.data.mockups[firstId].bgImage);
+                    setIncludedWalls([firstId]);
+                    setWallCorners({ [firstId]: data.data.mockups[firstId].corners });
+                }
             }
         }
         setLoadingProject(false);
@@ -177,23 +181,27 @@ function MockupPageContent() {
   // Handle Dragging
   useEffect(() => {
       const handleMouseMove = (e: MouseEvent) => {
-          if (draggingIdx === null || !containerRef.current) return;
+          if (!draggingHandle || !containerRef.current) return;
           const rect = containerRef.current.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
           
-          setCorners(prev => {
-              const newCorners = [...prev];
-              newCorners[draggingIdx] = { x, y };
+          setWallCorners(prev => {
+              const newCorners = { ...prev };
+              if (newCorners[draggingHandle.wallId]) {
+                  const arr = [...newCorners[draggingHandle.wallId]];
+                  arr[draggingHandle.index] = { x, y };
+                  newCorners[draggingHandle.wallId] = arr;
+              }
               return newCorners;
           });
       };
 
       const handleMouseUp = () => {
-          setDraggingIdx(null);
+          setDraggingHandle(null);
       };
 
-      if (draggingIdx !== null) {
+      if (draggingHandle) {
           window.addEventListener('mousemove', handleMouseMove);
           window.addEventListener('mouseup', handleMouseUp);
       }
@@ -202,7 +210,7 @@ function MockupPageContent() {
           window.removeEventListener('mousemove', handleMouseMove);
           window.removeEventListener('mouseup', handleMouseUp);
       };
-  }, [draggingIdx]);
+  }, [draggingHandle]);
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -257,7 +265,7 @@ function MockupPageContent() {
 
           const link = document.createElement("a");
           link.href = url;
-          link.download = `mockup-${activeWall?.name || 'wall'}.png`;
+          link.download = `mockup-scene.png`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -268,26 +276,18 @@ function MockupPageContent() {
   };
 
   const handleSaveMockup = async () => {
-      if (!id || !activeWallId) return;
+      if (!id) return;
       
       try {
-          // 1. Fetch current data
           const { data, error } = await supabase.from("projects").select("data").eq("id", id).single();
           if (error || !data) throw new Error("Failed to load project data");
           
-          // 2. Update mockups object inside project data
           const currentData = data.data;
-          const newMockups = {
-              ...(currentData.mockups || {}),
-              [activeWallId]: { bgImage, corners }
-          };
-          currentData.mockups = newMockups;
+          currentData.mockupScene = { bgImage, includedWalls, wallCorners };
 
-          // 3. Save back to database
           const { error: saveError } = await supabase.from("projects").update({ data: currentData }).eq("id", id);
           if (saveError) throw saveError;
           
-          setSavedMockups(newMockups);
           alert("Mockup saved successfully!");
       } catch (err) {
           console.error(err);
@@ -295,16 +295,18 @@ function MockupPageContent() {
       }
   };
 
-  const transformMatrix = useMemo(() => {
-      // Source corners are the literal pixel corners of the WallEditor container
+  const getTransformMatrix = (wallId: string) => {
+      const dims = boxDimensions[wallId];
+      const corners = wallCorners[wallId];
+      if (!dims || !corners || corners.length !== 4) return 'none';
       const src = [
           { x: 0, y: 0 },
-          { x: boxDimensions.width, y: 0 },
-          { x: boxDimensions.width, y: boxDimensions.height },
-          { x: 0, y: boxDimensions.height }
+          { x: dims.width, y: 0 },
+          { x: dims.width, y: dims.height },
+          { x: 0, y: dims.height }
       ];
       return solveHomography(src, corners);
-  }, [corners, boxDimensions]);
+  };
 
   if (loadingProject) {
     return (
@@ -350,18 +352,25 @@ function MockupPageContent() {
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
             </label>
             <div className="h-6 w-px bg-gray-300"></div>
-            <label className="text-sm font-medium text-gray-600">Select Wall:</label>
-            <select 
-                value={activeWallId || ''} 
-                onChange={(e) => setActiveWall(e.target.value)}
-                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#7B6DED] focus:border-[#7B6DED] block p-2.5 outline-none min-w-[150px]"
-            >
-                {walls.map((wall) => (
-                    <option key={wall.id} value={wall.id}>
-                        {wall.name}
-                    </option>
-                ))}
-            </select>
+            <label className="text-sm font-medium text-gray-600">Select Walls to Include:</label>
+            <div className="relative group">
+                <button className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#7B6DED] focus:border-[#7B6DED] block p-2.5 outline-none min-w-[150px] text-left flex justify-between items-center">
+                    {includedWalls.length} wall(s) selected
+                    <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block z-50">
+                    <ul className="py-1">
+                        {walls.map((wall) => (
+                            <li key={wall.id} className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer" onClick={() => {
+                                setIncludedWalls(prev => prev.includes(wall.id) ? prev.filter(id => id !== wall.id) : [...prev, wall.id]);
+                            }}>
+                                <input type="checkbox" checked={includedWalls.includes(wall.id)} readOnly className="mr-2 rounded text-[#7B6DED] focus:ring-[#7B6DED]" />
+                                <span className="text-sm text-gray-700">{wall.name}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
         </div>
       </div>
 
@@ -376,34 +385,49 @@ function MockupPageContent() {
             backgroundRepeat: 'no-repeat'
         }}
       >
-          {/* Transformed Wall Wrapper */}
-          <div 
-            className="absolute top-0 left-0 origin-top-left pointer-events-none"
-            style={{ 
-                width: boxDimensions.width, 
-                height: boxDimensions.height,
-                transform: transformMatrix || 'none'
-            }}
-          >
-              <div className="w-full h-full pointer-events-auto shadow-2xl opacity-90 overflow-hidden bg-transparent">
-                  <WallEditor ref={wallEditorRef} />
-              </div>
-          </div>
+          {includedWalls.map(wallId => {
+              const dims = boxDimensions[wallId];
+              const corners = wallCorners[wallId];
+              if (!dims || !corners) return null;
 
-          {/* Draggable Corner Handles */}
-          {corners.map((corner, i) => (
-              <div
-                  key={i}
-                  onMouseDown={(e) => {
-                      e.stopPropagation();
-                      setDraggingIdx(i);
-                  }}
-                  className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 z-50 hover:scale-110 active:scale-95 transition-transform"
-                  style={{ left: corner.x, top: corner.y }}
-              />
-          ))}
+              return (
+                  <div key={wallId}>
+                      {/* Transformed Wall Wrapper */}
+                      <div 
+                        className="absolute top-0 left-0 origin-top-left pointer-events-none"
+                        style={{ 
+                            width: dims.width, 
+                            height: dims.height,
+                            transform: getTransformMatrix(wallId) || 'none',
+                            zIndex: 10
+                        }}
+                      >
+                          <div className="w-full h-full shadow-2xl opacity-90 overflow-hidden bg-transparent pointer-events-none">
+                              <WallEditor 
+                                  wallId={wallId} 
+                                  overrideZoom={1} 
+                                  overrideOffset={{ x: -dims.minX, y: -dims.minY }} 
+                              />
+                          </div>
+                      </div>
+
+                      {/* Draggable Corner Handles */}
+                      {corners.map((corner, i) => (
+                          <div
+                              key={`${wallId}-corner-${i}`}
+                              onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  setDraggingHandle({ wallId, index: i });
+                              }}
+                              className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform"
+                              style={{ left: corner.x, top: corner.y, zIndex: 50 + (includedWalls.indexOf(wallId) * 10) }}
+                          />
+                      ))}
+                  </div>
+              );
+          })}
           
-          {!bgImage && (
+          {!bgImage && includedWalls.length === 0 && (
               <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center pointer-events-none">
                   <p className="text-gray-500 font-medium bg-white/80 px-4 py-2 rounded-full shadow-sm">
                       Drag the corner points to perspective-warp the wall design.<br/>

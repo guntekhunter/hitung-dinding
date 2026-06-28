@@ -30,7 +30,13 @@ const useCustomImage = (url: string) => {
     return image;
 };
 
-const WallEditor = forwardRef((props, ref) => {
+interface WallEditorProps {
+    wallId?: string;
+    overrideZoom?: number;
+    overrideOffset?: { x: number, y: number };
+}
+
+const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const stageRef = useRef<any>(null);
     const lastPointerPos = useRef({ x: 0, y: 0 });
     const isPanningRef = useRef(false); // Using ref for panning to avoid re-renders during mouse move
@@ -43,15 +49,19 @@ const WallEditor = forwardRef((props, ref) => {
     const lastCenter = useRef<{ x: number, y: number } | null>(null);
 
     const {
-        walls, activeWallId, addPoint, updatePoint, updateEdgeLength,
+        walls, activeWallId: storeActiveWallId, addPoint, updatePoint, updateEdgeLength,
         interactionMode, currentDrawingArea, currentDrawingList,
         startDesignArea, updateDesignArea, finishDesignArea, removeDesignArea,
         startOpening, updateOpening, finishOpening, removeOpening,
         startList, updateList, finishList, removeList,
-        zoom, offset, setZoom, setOffset,
+        zoom: storeZoom, offset: storeOffset, setZoom, setOffset,
         undo, redo, mouldingGap, listDrawingType, setListDrawingType,
         products, isExporting, isColoringPreview
     } = useCanvasStore();
+
+    const activeWallId = props.wallId || storeActiveWallId;
+    const zoom = props.overrideZoom !== undefined ? props.overrideZoom : storeZoom;
+    const offset = props.overrideOffset !== undefined ? props.overrideOffset : storeOffset;
 
     const pathname = usePathname();
     const isColoringMode = pathname === '/coloring' || isColoringPreview;
@@ -60,7 +70,7 @@ const WallEditor = forwardRef((props, ref) => {
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
     const {
         points, isClosed, designAreas, openings, lists, isWallLocked
-    } = activeWall;
+    } = activeWall || {};
 
     // Interaction State
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
