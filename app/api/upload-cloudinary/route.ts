@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 export async function POST(request: Request) {
     try {
-        const { file } = await request.json(); // Data URI base64
+        const { file, folder: customFolder } = await request.json(); // Data URI base64
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         }
 
         const timestamp = Math.round(new Date().getTime() / 1000).toString();
-        const folder = "hitung-dinding";
+        const folder = customFolder || "hitung-dinding";
 
         // Signature needs to be sorted alphabetically
         // params: folder, timestamp

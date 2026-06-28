@@ -69,11 +69,28 @@ export default function UploadMaterialPage() {
         setStatus({ type: null, message: '' });
 
         try {
+            // 1. Upload to Cloudinary
+            const uploadRes = await fetch('/api/upload-cloudinary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file: imagePreview, folder: 'motif' }),
+            });
+
+            const uploadData = await uploadRes.json();
+            if (!uploadRes.ok) {
+                throw new Error(uploadData.error || "Failed to upload image to Cloudinary");
+            }
+
+            const imageUrl = uploadData.url;
+
+            // 2. Save to Supabase
             const { error } = await supabase
                 .from("material_colors")
                 .insert({
                     material_id: selectedMaterial,
-                    image: imagePreview,
+                    image: imageUrl,
                     user_id: user.id
                 });
 
