@@ -18,7 +18,7 @@ const WallEditor = dynamic(() => import("../components/WallEditor"), {
 
 // Helper for solving homography
 function solveHomography(src: {x: number, y: number}[], dst: {x: number, y: number}[]) {
-    const A = [];
+    const A: number[][] = [];
     for (let i = 0; i < 4; i++) {
         const x = src[i].x;
         const y = src[i].y;
@@ -83,9 +83,10 @@ function MockupPageContent() {
   // Background Image State
   const [bgImage, setBgImage] = useState<string | null>(null);
 
-  // Box size constraint for the WallEditor
-  const BOX_WIDTH = 800;
-  const BOX_HEIGHT = 600;
+  const activeWall = useMemo(() => walls.find(w => w.id === activeWallId) || walls[0], [walls, activeWallId]);
+  
+  // Dynamic box size based on wall bounds
+  const [boxDimensions, setBoxDimensions] = useState({ width: 800, height: 600 });
 
   // Draggable corners (TL, TR, BR, BL)
   const [corners, setCorners] = useState([
@@ -96,6 +97,42 @@ function MockupPageContent() {
   ]);
 
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+
+  // Adjust exact bounds when active wall changes
+  useEffect(() => {
+      if (activeWall && activeWall.points.length >= 3) {
+          const xs = activeWall.points.map(p => p.x);
+          const ys = activeWall.points.map(p => p.y);
+          const minX = Math.min(...xs);
+          const minY = Math.min(...ys);
+          const maxX = Math.max(...xs);
+          const maxY = Math.max(...ys);
+          
+          const w = Math.max(10, maxX - minX);
+          const h = Math.max(10, maxY - minY);
+
+          setBoxDimensions({ width: w, height: h });
+          
+          // Force Canvas to show exact bounds without margins
+          useCanvasStore.getState().setZoom(1);
+          useCanvasStore.getState().setOffset(-minX, -minY);
+          
+          // Place the initial corners nicely in the center of screen
+          const scale = Math.min(800 / w, 500 / h, 1);
+          const displayW = w * scale;
+          const displayH = h * scale;
+          
+          const startX = Math.max(50, (window.innerWidth - displayW) / 2);
+          const startY = 100;
+
+          setCorners([
+              { x: startX, y: startY },
+              { x: startX + displayW, y: startY },
+              { x: startX + displayW, y: startY + displayH },
+              { x: startX, y: startY + displayH }
+          ]);
+      }
+  }, [activeWallId, activeWall]);
 
   useEffect(() => {
     async function init() {
@@ -163,12 +200,12 @@ function MockupPageContent() {
       // Source corners are the literal pixel corners of the WallEditor container
       const src = [
           { x: 0, y: 0 },
-          { x: BOX_WIDTH, y: 0 },
-          { x: BOX_WIDTH, y: BOX_HEIGHT },
-          { x: 0, y: BOX_HEIGHT }
+          { x: boxDimensions.width, y: 0 },
+          { x: boxDimensions.width, y: boxDimensions.height },
+          { x: 0, y: boxDimensions.height }
       ];
       return solveHomography(src, corners);
-  }, [corners]);
+  }, [corners, boxDimensions]);
 
   if (loadingProject) {
     return (
@@ -232,8 +269,8 @@ function MockupPageContent() {
           <div 
             className="absolute top-0 left-0 origin-top-left pointer-events-none"
             style={{ 
-                width: BOX_WIDTH, 
-                height: BOX_HEIGHT,
+                width: boxDimensions.width, 
+                height: boxDimensions.height,
                 transform: transformMatrix || 'none'
             }}
           >
