@@ -203,15 +203,26 @@ function ProjectCard({ project, onClick }: { project: ProjectRow, onClick: () =>
                         {formattedTotal}
                     </span>
                 </div>
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/coloring?id=${project.id}`);
-                    }} 
-                    className="px-4 py-2 bg-[#7B6DED] text-white rounded-md font-medium hover:bg-[#A29AF7] transition active:scale-95 text-[14px]"
-                >
-                    Coloring
-                </button>
+                <div className="flex gap-2 w-full mt-2">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/mockup?id=${project.id}`);
+                        }} 
+                        className="flex-1 px-4 py-2 bg-white text-[#7B6DED] border border-[#7B6DED] rounded-md font-medium hover:bg-gray-50 transition active:scale-95 text-[14px]"
+                    >
+                        Mockup
+                    </button>
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/coloring?id=${project.id}`);
+                        }} 
+                        className="flex-1 px-4 py-2 bg-[#7B6DED] text-white rounded-md font-medium hover:bg-[#A29AF7] transition active:scale-95 text-[14px]"
+                    >
+                        Coloring
+                    </button>
+                </div>
             </div>
         </div>
     );
