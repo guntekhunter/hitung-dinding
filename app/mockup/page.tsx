@@ -6,6 +6,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { supabase } from "../../lib/supabase";
+import html2canvas from "html2canvas";
 
 const WallEditor = dynamic(() => import("../components/WallEditor"), {
   ssr: false,
@@ -223,6 +224,36 @@ function MockupPageContent() {
       }
   };
 
+  const handleDownload = async () => {
+      if (!containerRef.current) return;
+      
+      try {
+          // Hide corner handles for the screenshot
+          const handles = containerRef.current.querySelectorAll('.cursor-move');
+          handles.forEach((h: any) => h.style.display = 'none');
+          
+          const canvas = await html2canvas(containerRef.current, {
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: null,
+          });
+          
+          // Restore handles
+          handles.forEach((h: any) => h.style.display = '');
+
+          const url = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `mockup-${activeWall?.name || 'wall'}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      } catch (err) {
+          console.error("Download failed:", err);
+          alert("Failed to download mockup.");
+      }
+  };
+
   const transformMatrix = useMemo(() => {
       // Source corners are the literal pixel corners of the WallEditor container
       const src = [
@@ -261,6 +292,12 @@ function MockupPageContent() {
             <h1 className="text-lg font-medium text-gray-800">Perspective Mockup</h1>
         </div>
         <div className="flex items-center gap-4">
+            <button 
+                onClick={handleDownload}
+                className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] px-4 py-1.5 rounded hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
+            >
+                Download Mockup
+            </button>
             <label className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
                 {isUploading ? 'Uploading...' : 'Upload Background'}
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
