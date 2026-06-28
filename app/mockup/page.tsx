@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { supabase } from "../../lib/supabase";
 import * as htmlToImage from "html-to-image";
+import TextureSelector from "../components/TextureSelector";
 
 const WallEditor = dynamic(() => import("../components/WallEditor"), {
   ssr: false,
@@ -374,11 +375,12 @@ function MockupPageContent() {
         </div>
       </div>
 
-      {/* Main Mockup Area */}
-      <div 
-        ref={containerRef}
-        className="flex-1 min-h-0 relative overflow-hidden bg-[#e5e5f7]"
-        style={{
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 relative">
+        {/* Main Mockup Area */}
+        <div 
+          ref={containerRef}
+          className="flex-1 min-h-0 min-w-0 relative overflow-hidden bg-[#e5e5f7]"
+          style={{
             backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
             backgroundSize: bgImage ? 'contain' : '10px 10px',
             backgroundPosition: 'center',
@@ -435,6 +437,12 @@ function MockupPageContent() {
                   </p>
               </div>
           )}
+        </div>
+        
+        {/* Right Sidebar: Texture Selector */}
+        <div className="w-full md:w-[320px] h-[30vh] md:h-full flex-shrink-0 border-l border-gray-200 shadow-sm z-10">
+            <TextureSelector />
+        </div>
       </div>
     </main>
   );
