@@ -94,6 +94,26 @@ function MockupPageContent() {
 
     const [draggingHandle, setDraggingHandle] = useState<{ wallId: string, index: number } | null>(null);
     const [zoom, setZoom] = useState(1);
+    const [canvasDims, setCanvasDims] = useState({ width: 3000, height: 3000 });
+
+    useEffect(() => {
+        if (!bgImage) {
+            setCanvasDims({ width: 3000, height: 3000 });
+            return;
+        }
+        const img = new window.Image();
+        img.src = bgImage;
+        img.onload = () => {
+            if (img.width && img.height) {
+                const aspect = img.width / img.height;
+                if (aspect > 1) {
+                    setCanvasDims({ width: 3000, height: 3000 / aspect });
+                } else {
+                    setCanvasDims({ width: 3000 * aspect, height: 3000 });
+                }
+            }
+        };
+    }, [bgImage]);
 
     // Initialize/Update bounds when included walls change
     useEffect(() => {
@@ -325,16 +345,68 @@ function MockupPageContent() {
     };
 
     const handleDownload = async () => {
-        if (!containerRef.current) return;
+        const canvasNode = document.getElementById('mockup-canvas-inner');
+        if (!canvasNode) return;
 
         try {
             // Hide corner handles for the screenshot
-            const handles = containerRef.current.querySelectorAll('.cursor-move');
+            const handles = canvasNode.querySelectorAll('.cursor-move');
             handles.forEach((h: any) => h.style.display = 'none');
 
-            const url = await htmlToImage.toPng(containerRef.current, {
+            let cropWidth = 3000;
+            let cropHeight = 3000;
+
+            if (bgImage) {
+                // Determine actual image dimensions
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = bgImage;
+                await new Promise((resolve) => {
+                    img.onload = resolve;
+                    img.onerror = resolve; // fallback to 3000x3000
+                });
+
+                if (img.width && img.height) {
+                    const aspect = img.width / img.height;
+                    if (aspect > 1) {
+                        cropWidth = 3000;
+                        cropHeight = 3000 / aspect;
+                    } else {
+                        cropHeight = 3000;
+                        cropWidth = 3000 * aspect;
+                    }
+                }
+            } else {
+                // If no background image, crop to the bounding box of included walls
+                let minX = 3000, minY = 3000, maxX = 0, maxY = 0;
+                let hasWalls = false;
+                includedWalls.forEach(wallId => {
+                    const corners = wallCorners[wallId];
+                    if (corners) {
+                        corners.forEach(c => {
+                            hasWalls = true;
+                            if (c.x < minX) minX = c.x;
+                            if (c.y < minY) minY = c.y;
+                            if (c.x > maxX) maxX = c.x;
+                            if (c.y > maxY) maxY = c.y;
+                        });
+                    }
+                });
+                if (hasWalls) {
+                    cropWidth = Math.max(500, maxX + 100);
+                    cropHeight = Math.max(500, maxY + 100);
+                }
+            }
+
+            const url = await htmlToImage.toPng(canvasNode, {
                 cacheBust: true,
-                backgroundColor: '#e5e5f7' // ensure background matches
+                width: cropWidth,
+                height: cropHeight,
+                style: {
+                    transform: 'none', // Reset zoom for high quality
+                    transformOrigin: 'top left'
+                },
+                pixelRatio: 2 // High resolution download
             });
 
             // Restore handles
@@ -468,12 +540,13 @@ function MockupPageContent() {
                     ref={containerRef}
                     className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
                 >
-                    <div style={{ width: 3000 * zoom, height: 3000 * zoom, position: 'relative' }}>
+                    <div style={{ width: canvasDims.width * zoom, height: canvasDims.height * zoom, position: 'relative', margin: '0 auto' }}>
                         <div
+                            id="mockup-canvas-inner"
                             className="absolute top-0 left-0"
                             style={{
-                                width: '3000px',
-                                height: '3000px',
+                                width: `${canvasDims.width}px`,
+                                height: `${canvasDims.height}px`,
                                 transform: `scale(${zoom})`,
                                 transformOrigin: 'top left',
                                 backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
