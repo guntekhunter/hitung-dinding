@@ -190,7 +190,7 @@ function MockupPageContent() {
             const rect = containerRef.current.getBoundingClientRect();
             const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
             const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-            
+
             const x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
             const y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
 
@@ -278,7 +278,7 @@ function MockupPageContent() {
 
         window.addEventListener('wheel', handleWheel, { passive: false });
         window.addEventListener('keydown', handleKeyDown, { passive: false });
-        
+
         const container = containerRef.current;
         if (container) {
             container.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -416,7 +416,7 @@ function MockupPageContent() {
     return (
         <main className="flex flex-col h-[calc(100vh-60px)] md:h-screen overflow-hidden bg-slate-50">
             {/* Top Header & Dropdown */}
-            <div className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
+            <div className="relative h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0 shadow-sm z-[200]">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.push('/projects')}
@@ -475,74 +475,74 @@ function MockupPageContent() {
                     className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
                 >
                     <div style={{ width: 3000 * zoom, height: 3000 * zoom, position: 'relative' }}>
-                        <div 
+                        <div
                             className="absolute top-0 left-0"
                             style={{
                                 width: '3000px',
                                 height: '3000px',
-                            transform: `scale(${zoom})`,
-                            transformOrigin: 'top left',
-                            backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
-                            backgroundSize: bgImage ? 'contain' : '10px 10px',
-                            backgroundPosition: 'top left',
-                            backgroundRepeat: 'no-repeat'
-                        }}
-                    >
-                    {includedWalls.map(wallId => {
-                        const dims = boxDimensions[wallId];
-                        const corners = wallCorners[wallId];
-                        if (!dims || !corners) return null;
+                                transform: `scale(${zoom})`,
+                                transformOrigin: 'top left',
+                                backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
+                                backgroundSize: bgImage ? 'contain' : '10px 10px',
+                                backgroundPosition: 'top left',
+                                backgroundRepeat: 'no-repeat'
+                            }}
+                        >
+                            {includedWalls.map(wallId => {
+                                const dims = boxDimensions[wallId];
+                                const corners = wallCorners[wallId];
+                                if (!dims || !corners) return null;
 
-                        return (
-                            <div key={wallId}>
-                                {/* Transformed Wall Wrapper */}
-                                <div
-                                    className="absolute top-0 left-0 origin-top-left pointer-events-auto"
-                                    style={{
-                                        width: dims.width,
-                                        height: dims.height,
-                                        transform: getTransformMatrix(wallId) || 'none',
-                                        zIndex: 10
-                                    }}
-                                >
-                                    <div className="w-full h-full shadow-2xl opacity-90 overflow-hidden bg-transparent pointer-events-auto">
-                                        <WallEditor
-                                            wallId={wallId}
-                                            overrideZoom={1}
-                                            overrideOffset={{ x: -dims.minX, y: -dims.minY }}
-                                            readOnly={true}
-                                        />
+                                return (
+                                    <div key={wallId}>
+                                        {/* Transformed Wall Wrapper */}
+                                        <div
+                                            className="absolute top-0 left-0 origin-top-left pointer-events-auto"
+                                            style={{
+                                                width: dims.width,
+                                                height: dims.height,
+                                                transform: getTransformMatrix(wallId) || 'none',
+                                                zIndex: 10
+                                            }}
+                                        >
+                                            <div className="w-full h-full shadow-2xl opacity-90 overflow-hidden bg-transparent pointer-events-auto">
+                                                <WallEditor
+                                                    wallId={wallId}
+                                                    overrideZoom={1}
+                                                    overrideOffset={{ x: -dims.minX, y: -dims.minY }}
+                                                    readOnly={true}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Draggable Corner Handles */}
+                                        {corners.map((corner, i) => (
+                                            <div
+                                                key={`${wallId}-corner-${i}`}
+                                                onMouseDown={(e) => {
+                                                    e.stopPropagation();
+                                                    setDraggingHandle({ wallId, index: i });
+                                                }}
+                                                onTouchStart={(e) => {
+                                                    e.stopPropagation();
+                                                    setDraggingHandle({ wallId, index: i });
+                                                }}
+                                                className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform touch-none"
+                                                style={{ left: corner.x, top: corner.y, zIndex: 50 + (includedWalls.indexOf(wallId) * 10) }}
+                                            />
+                                        ))}
                                     </div>
+                                );
+                            })}
+
+                            {!bgImage && includedWalls.length === 0 && (
+                                <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center pointer-events-none">
+                                    <p className="text-gray-500 font-medium bg-white/80 px-4 py-2 rounded-full shadow-sm">
+                                        Drag the corner points to perspective-warp the wall design.<br />
+                                        Upload a background photo of a room for a realistic mockup!
+                                    </p>
                                 </div>
-
-                                {/* Draggable Corner Handles */}
-                                {corners.map((corner, i) => (
-                                    <div
-                                        key={`${wallId}-corner-${i}`}
-                                        onMouseDown={(e) => {
-                                            e.stopPropagation();
-                                            setDraggingHandle({ wallId, index: i });
-                                        }}
-                                        onTouchStart={(e) => {
-                                            e.stopPropagation();
-                                            setDraggingHandle({ wallId, index: i });
-                                        }}
-                                        className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform touch-none"
-                                        style={{ left: corner.x, top: corner.y, zIndex: 50 + (includedWalls.indexOf(wallId) * 10) }}
-                                    />
-                                ))}
-                            </div>
-                        );
-                    })}
-
-                    {!bgImage && includedWalls.length === 0 && (
-                        <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center pointer-events-none">
-                            <p className="text-gray-500 font-medium bg-white/80 px-4 py-2 rounded-full shadow-sm">
-                                Drag the corner points to perspective-warp the wall design.<br />
-                                Upload a background photo of a room for a realistic mockup!
-                            </p>
-                        </div>
-                    )}
+                            )}
                         </div>
                     </div>
                 </div>
