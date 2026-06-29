@@ -234,7 +234,7 @@ function MockupPageContent() {
                 e.preventDefault();
                 setZoom(z => {
                     const newZoom = e.deltaY < 0 ? z + 0.05 : z - 0.05;
-                    return Math.max(0.2, Math.min(3, newZoom));
+                    return Math.max(0.05, Math.min(5, newZoom));
                 });
             }
         };
@@ -244,7 +244,7 @@ function MockupPageContent() {
                 e.preventDefault();
                 setZoom(z => {
                     const newZoom = (e.key === '=' || e.key === '+') ? z + 0.1 : z - 0.1;
-                    return Math.max(0.2, Math.min(3, newZoom));
+                    return Math.max(0.05, Math.min(5, newZoom));
                 });
             }
         };
@@ -272,7 +272,7 @@ function MockupPageContent() {
                     e.touches[0].pageY - e.touches[1].pageY
                 );
                 const newZoom = initialZoom * (dist / initialDist);
-                setZoom(Math.max(0.2, Math.min(3, newZoom)));
+                setZoom(Math.max(0.05, Math.min(5, newZoom)));
             }
         };
 
