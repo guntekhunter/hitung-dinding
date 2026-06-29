@@ -278,20 +278,14 @@ function MockupPageContent() {
 
         window.addEventListener('wheel', handleWheel, { passive: false });
         window.addEventListener('keydown', handleKeyDown, { passive: false });
-
-        const container = containerRef.current;
-        if (container) {
-            container.addEventListener('touchstart', handleTouchStart, { passive: false });
-            container.addEventListener('touchmove', handleTouchMove, { passive: false });
-        }
+        window.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
         return () => {
             window.removeEventListener('wheel', handleWheel);
             window.removeEventListener('keydown', handleKeyDown);
-            if (container) {
-                container.removeEventListener('touchstart', handleTouchStart);
-                container.removeEventListener('touchmove', handleTouchMove);
-            }
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchmove', handleTouchMove);
         };
     }, []);
 
