@@ -93,6 +93,7 @@ function MockupPageContent() {
     const [boxDimensions, setBoxDimensions] = useState<Record<string, { width: number, height: number, minX: number, minY: number }>>({});
 
     const [draggingHandle, setDraggingHandle] = useState<{ wallId: string, index: number } | null>(null);
+    const [zoom, setZoom] = useState(1);
 
     // Initialize/Update bounds when included walls change
     useEffect(() => {
@@ -181,11 +182,17 @@ function MockupPageContent() {
 
     // Handle Dragging
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
+        const handleMove = (e: MouseEvent | TouchEvent) => {
             if (!draggingHandle || !containerRef.current) return;
+            if (e.cancelable && 'touches' in e) {
+                e.preventDefault();
+            }
             const rect = containerRef.current.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+            
+            const x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
+            const y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
 
             setWallCorners(prev => {
                 const newCorners = { ...prev };
@@ -198,20 +205,95 @@ function MockupPageContent() {
             });
         };
 
-        const handleMouseUp = () => {
+        const handleUp = () => {
             setDraggingHandle(null);
         };
 
         if (draggingHandle) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('mousemove', handleMove, { passive: false });
+            window.addEventListener('mouseup', handleUp);
+            window.addEventListener('touchmove', handleMove, { passive: false });
+            window.addEventListener('touchend', handleUp);
         }
 
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp);
+            window.removeEventListener('touchmove', handleMove);
+            window.removeEventListener('touchend', handleUp);
         };
-    }, [draggingHandle]);
+    }, [draggingHandle, zoom]);
+
+    // Zoom Handling
+    useEffect(() => {
+        let initialDist = 0;
+        let initialZoom = 1;
+
+        const handleWheel = (e: WheelEvent) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                setZoom(z => {
+                    const newZoom = e.deltaY < 0 ? z + 0.05 : z - 0.05;
+                    return Math.max(0.2, Math.min(3, newZoom));
+                });
+            }
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && (e.key === '=' || e.key === '-' || e.key === '+' || e.key === '_')) {
+                e.preventDefault();
+                setZoom(z => {
+                    const newZoom = (e.key === '=' || e.key === '+') ? z + 0.1 : z - 0.1;
+                    return Math.max(0.2, Math.min(3, newZoom));
+                });
+            }
+        };
+
+        const handleTouchStart = (e: TouchEvent) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const dist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                initialDist = dist;
+                setZoom(z => {
+                    initialZoom = z;
+                    return z;
+                });
+            }
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const dist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                const newZoom = initialZoom * (dist / initialDist);
+                setZoom(Math.max(0.2, Math.min(3, newZoom)));
+            }
+        };
+
+        window.addEventListener('wheel', handleWheel, { passive: false });
+        window.addEventListener('keydown', handleKeyDown, { passive: false });
+        
+        const container = containerRef.current;
+        if (container) {
+            container.addEventListener('touchstart', handleTouchStart, { passive: false });
+            container.addEventListener('touchmove', handleTouchMove, { passive: false });
+        }
+
+        return () => {
+            window.removeEventListener('wheel', handleWheel);
+            window.removeEventListener('keydown', handleKeyDown);
+            if (container) {
+                container.removeEventListener('touchstart', handleTouchStart);
+                container.removeEventListener('touchmove', handleTouchMove);
+            }
+        };
+    }, []);
 
     const [isUploading, setIsUploading] = useState(false);
 
@@ -386,18 +468,26 @@ function MockupPageContent() {
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col md:flex-row min-h-0 relative">
+            <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
                 {/* Main Mockup Area */}
                 <div
                     ref={containerRef}
-                    className="flex-1 min-h-0 min-w-0 relative overflow-hidden bg-[#e5e5f7]"
-                    style={{
-                        backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
-                        backgroundSize: bgImage ? 'contain' : '10px 10px',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat'
-                    }}
+                    className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
                 >
+                    <div style={{ width: 3000 * zoom, height: 3000 * zoom, position: 'relative' }}>
+                        <div 
+                            className="absolute top-0 left-0"
+                            style={{
+                                width: '3000px',
+                                height: '3000px',
+                            transform: `scale(${zoom})`,
+                            transformOrigin: 'top left',
+                            backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
+                            backgroundSize: bgImage ? 'contain' : '10px 10px',
+                            backgroundPosition: 'top left',
+                            backgroundRepeat: 'no-repeat'
+                        }}
+                    >
                     {includedWalls.map(wallId => {
                         const dims = boxDimensions[wallId];
                         const corners = wallCorners[wallId];
@@ -433,7 +523,11 @@ function MockupPageContent() {
                                             e.stopPropagation();
                                             setDraggingHandle({ wallId, index: i });
                                         }}
-                                        className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform"
+                                        onTouchStart={(e) => {
+                                            e.stopPropagation();
+                                            setDraggingHandle({ wallId, index: i });
+                                        }}
+                                        className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform touch-none"
                                         style={{ left: corner.x, top: corner.y, zIndex: 50 + (includedWalls.indexOf(wallId) * 10) }}
                                     />
                                 ))}
@@ -449,6 +543,8 @@ function MockupPageContent() {
                             </p>
                         </div>
                     )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Sidebar: Texture Selector */}
