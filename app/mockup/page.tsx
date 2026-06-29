@@ -492,33 +492,42 @@ function MockupPageContent() {
                             <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <h1 className="text-lg font-medium text-gray-800">Perspective Mockup</h1>
+                    <h1 className="text-lg font-medium text-gray-800 hidden md:flex">Perspective Mockup</h1>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                     <button
                         onClick={handleSaveMockup}
-                        className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 px-4 py-1.5 rounded hover:bg-gray-50 transition shadow-sm active:scale-95"
+                        title="Save Mockup"
+                        className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-50 transition shadow-sm active:scale-95"
                     >
-                        Save Mockup
+                        <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                        <span className="hidden md:inline">Save</span>
                     </button>
                     <button
                         onClick={handleDownload}
-                        className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] px-4 py-1.5 rounded hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
+                        title="Download Mockup"
+                        className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
                     >
-                        Download Mockup
+                        <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span className="hidden md:inline">Download</span>
                     </button>
-                    <label className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {isUploading ? 'Uploading...' : 'Upload Background'}
+                    <label title="Upload Background" className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <svg className={`w-4 h-4 md:mr-2 shrink-0 ${isUploading ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span className="hidden md:inline">{isUploading ? 'Uploading...' : 'Background'}</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                     </label>
-                    <div className="h-6 w-px bg-gray-300"></div>
-                    <label className="text-sm font-medium text-gray-600">Select Walls to Include:</label>
+                    <div className="h-6 w-px bg-gray-300 hidden md:block"></div>
+                    <label className="text-sm font-medium text-gray-600 hidden md:block">Walls:</label>
                     <div className="relative group">
-                        <button className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#7B6DED] focus:border-[#7B6DED] block p-2.5 outline-none min-w-[150px] text-left flex justify-between items-center">
-                            {includedWalls.length} wall(s) selected
-                            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <button title="Select Walls" className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#7B6DED] focus:border-[#7B6DED] flex items-center justify-center p-2 outline-none min-w-[2.25rem] md:min-w-[120px] md:justify-between">
+                            <span className="flex items-center">
+                                <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                <span className="hidden md:inline">{includedWalls.length} selected</span>
+                                <span className="md:hidden ml-1 font-semibold">{includedWalls.length}</span>
+                            </span>
+                            <svg className="w-4 h-4 ml-2 hidden md:block shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
-                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block z-100">
+                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block z-[250]">
                             <ul className="py-1">
                                 {walls.map((wall) => (
                                     <li key={wall.id} className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer" onClick={() => {
