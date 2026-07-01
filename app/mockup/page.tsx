@@ -572,7 +572,7 @@ function MockupPageContent() {
                     ref={containerRef}
                     className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
                 >
-                    <div style={{ width: canvasDims.width * zoom, height: canvasDims.height * zoom, position: 'relative', margin: '0 auto' }}>
+                    <div style={{ width: canvasDims.width * zoom, height: canvasDims.height * zoom, position: 'relative', margin: '0 auto', minHeight: '100%' }}>
                         <div
                             id="mockup-canvas-inner"
                             className="absolute top-0 left-0"
@@ -581,12 +581,19 @@ function MockupPageContent() {
                                 height: `${canvasDims.height}px`,
                                 transform: `scale(${zoom})`,
                                 transformOrigin: 'top left',
-                                backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
-                                backgroundSize: bgImage ? 'contain' : '10px 10px',
-                                backgroundPosition: 'top left',
-                                backgroundRepeat: 'no-repeat'
                             }}
                         >
+                            {/* Background Image Layer - Separated to prevent mobile 3D transform clipping bugs */}
+                            <div 
+                                className="absolute inset-0 pointer-events-none"
+                                style={{
+                                    backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
+                                    backgroundSize: bgImage ? '100% 100%' : '10px 10px',
+                                    backgroundPosition: 'top left',
+                                    backgroundRepeat: 'no-repeat',
+                                    transform: 'translateZ(0)' // Force hardware acceleration on the background too
+                                }}
+                            />
                             {includedWalls.map(wallId => {
                                 const dims = boxDimensions[wallId];
                                 const corners = wallCorners[wallId];
