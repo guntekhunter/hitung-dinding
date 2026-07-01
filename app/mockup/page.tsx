@@ -581,19 +581,30 @@ function MockupPageContent() {
                                 height: `${canvasDims.height}px`,
                                 transform: `scale(${zoom})`,
                                 transformOrigin: 'top left',
+                                transformStyle: 'preserve-3d'
                             }}
                         >
                             {/* Background Image Layer - Separated to prevent mobile 3D transform clipping bugs */}
-                            <div 
-                                className="absolute inset-0 pointer-events-none"
-                                style={{
-                                    backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
-                                    backgroundSize: bgImage ? '100% 100%' : '10px 10px',
-                                    backgroundPosition: 'top left',
-                                    backgroundRepeat: 'no-repeat',
-                                    transform: 'translateZ(0)' // Force hardware acceleration on the background too
-                                }}
-                            />
+                            {bgImage ? (
+                                <img 
+                                    src={bgImage} 
+                                    alt="Background" 
+                                    className="absolute inset-0 w-full h-full pointer-events-none"
+                                    style={{ objectFit: 'fill', transform: 'translateZ(-1px)' }}
+                                    crossOrigin="anonymous"
+                                />
+                            ) : (
+                                <div 
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                        backgroundImage: `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
+                                        backgroundSize: '10px 10px',
+                                        backgroundPosition: 'top left',
+                                        backgroundRepeat: 'no-repeat',
+                                        transform: 'translateZ(-1px)'
+                                    }}
+                                />
+                            )}
                             {includedWalls.map(wallId => {
                                 const dims = boxDimensions[wallId];
                                 const corners = wallCorners[wallId];
