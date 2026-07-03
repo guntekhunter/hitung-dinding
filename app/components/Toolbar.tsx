@@ -354,6 +354,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     // --- Background Calculation Engine ---
     useEffect(() => {
         let isCurrent = true;
+        let timeoutId: NodeJS.Timeout;
+
         const triggerCalculation = async () => {
             if (walls.length === 0) return;
             setIsCalculating(true);
@@ -387,8 +389,15 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             }
         };
 
-        triggerCalculation();
-        return () => { isCurrent = false; };
+        // Debounce the worker calculation to prevent flooding on drag/rapid clicks
+        timeoutId = setTimeout(() => {
+            triggerCalculation();
+        }, 400);
+
+        return () => { 
+            isCurrent = false; 
+            clearTimeout(timeoutId);
+        };
         // We only re-calculate when the physical geometry or material settings change
     }, [walls, products, wastePercentage]);
 

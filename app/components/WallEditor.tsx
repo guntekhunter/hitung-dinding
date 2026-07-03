@@ -450,16 +450,27 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const calculateArea = useWorker();
 
         useEffect(() => {
+            let isCurrent = true;
+            let timeoutId: NodeJS.Timeout;
+
             const runCalc = async () => {
                 const result: any = await calculateArea({
                     type: 'CALCULATE_AREA_INTERSECTION',
                     data: { polygon: points, rect: area }
                 });
-                if (result?.type === 'AREA_INTERSECTION_RESULT') {
+                if (isCurrent && result?.type === 'AREA_INTERSECTION_RESULT') {
                     setAsyncAreaM2(result.area / (SCALE * SCALE));
                 }
             };
-            runCalc();
+            
+            timeoutId = setTimeout(() => {
+                runCalc();
+            }, 200);
+
+            return () => {
+                isCurrent = false;
+                clearTimeout(timeoutId);
+            };
         }, [area, points, calculateArea]);
 
         const panelWidthPx = (product.width || 0) * SCALE;

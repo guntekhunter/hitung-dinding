@@ -427,8 +427,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         if (activeWall.points.length > 0) {
             const lastPoint = activeWall.points[activeWall.points.length - 1];
             const distToLast = Math.hypot(lastPoint.x - x, lastPoint.y - y);
-            if (distToLast < 5) return;
+            const now = Date.now();
+            const lastAddedTime = (get() as any)._lastPointAddedAt || 0;
+            
+            // Reject if extremely close OR if it was added less than 300ms ago (Konva double-fire)
+            if (distToLast < 5 || (now - lastAddedTime < 300)) {
+                return;
+            }
         }
+        
+        // Save the time we added this point
+        (get() as any)._lastPointAddedAt = Date.now();
 
         // Check if closing
         if (activeWall.points.length >= 3) {
