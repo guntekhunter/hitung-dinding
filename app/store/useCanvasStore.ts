@@ -423,6 +423,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         const activeWall = walls.find(w => w.id === activeWallId);
         if (!activeWall || activeWall.isClosed) return;
 
+        // Prevent double taps or identical points
+        if (activeWall.points.length > 0) {
+            const lastPoint = activeWall.points[activeWall.points.length - 1];
+            const distToLast = Math.hypot(lastPoint.x - x, lastPoint.y - y);
+            if (distToLast < 5) return;
+        }
+
         // Check if closing
         if (activeWall.points.length >= 3) {
             const first = activeWall.points[0];
