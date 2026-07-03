@@ -2,6 +2,15 @@
 
 let workerInstance: Worker | null = null;
 
+// Eager initialization if in browser
+if (typeof window !== 'undefined' && !workerInstance) {
+    try {
+        workerInstance = new Worker(new URL('./calcWorker.ts', import.meta.url));
+    } catch (e) {
+        console.error("Failed to eagerly initialize worker", e);
+    }
+}
+
 export const getWorker = () => {
     if (typeof window !== 'undefined' && !workerInstance) {
         workerInstance = new Worker(new URL('./calcWorker.ts', import.meta.url));
