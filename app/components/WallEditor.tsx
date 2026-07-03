@@ -3,10 +3,9 @@ import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeH
 export const dynamic = 'force-static';
 import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
-import { getPolygonRectIntersectionArea } from '../function/geometry';
 import { usePathname } from 'next/navigation';
 
-import { callWorker } from '../utils/workerManager';
+import { callWorker, warmupWorker } from '../utils/workerManager';
 
 const useWorker = () => {
     const postMessage = useCallback((message: any) => {
@@ -114,6 +113,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        warmupWorker().catch(() => { });
     }, []);
 
     useEffect(() => {
@@ -462,7 +465,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     setAsyncAreaM2(result.area / (SCALE * SCALE));
                 }
             };
-            
+
             timeoutId = setTimeout(() => {
                 runCalc();
             }, 200);

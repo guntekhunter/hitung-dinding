@@ -91,6 +91,14 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
 self.onmessage = (e: MessageEvent) => {
     const { type, data, requestId } = e.data;
 
+    if (type === "warmup") {
+        self.postMessage({
+            requestId,
+            success: true,
+        });
+        return;
+    }
+
     if (type === 'CALCULATE_PROJECT_METRICS') {
         const { walls, products, wastePercentage } = data;
         
