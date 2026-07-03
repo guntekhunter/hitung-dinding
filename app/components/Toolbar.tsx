@@ -357,7 +357,9 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         let timeoutId: NodeJS.Timeout;
 
         const triggerCalculation = async () => {
-            if (walls.length === 0) return;
+            const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
+            if (walls.length === 0 || (activeWall && !activeWall.isClosed)) return;
+            
             setIsCalculating(true);
             try {
                 // Offload heavy geometry and material math to the background worker
