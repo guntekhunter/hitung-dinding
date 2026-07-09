@@ -468,6 +468,61 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     }, [points, isClosed]);
 
     // 3. Generate the Panels Visual
+    const MemoizedAreaDimensions = React.memo(({ area, zoom, textScale, points, isExporting }: any) => {
+        if (isExporting) return null;
+        
+        const absWidth = Math.abs(area.width);
+        const dimOffset = 20 / zoom;
+        const tickLen = 4 / zoom;
+        
+        const maxY = points && points.length > 0 ? Math.max(...points.map((p: any) => p.y)) : area.y + area.height;
+        const bottomY = maxY - area.y + dimOffset;
+
+        return (
+            <Group x={area.x} y={area.y} listening={false}>
+                <Group y={bottomY}>
+                    <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={area.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                </Group>
+            </Group>
+        );
+    });
+
+    const MemoizedOpeningDimensions = React.memo(({ opening, zoom, textScale, isExporting }: any) => {
+        if (isExporting) return null;
+        
+        const absWidth = Math.abs(opening.width);
+        const absHeight = Math.abs(opening.height);
+        // Place dimensions ABOVE and to the LEFT so they never collide with
+        // wall panel dimensions which go below and to the right
+        const dimOffset = 16 / zoom;
+        const tickLen = 4 / zoom;
+        const topY = -dimOffset;       // above the opening
+        const leftX = -dimOffset;      // left of the opening
+
+        return (
+            <Group x={opening.x} y={opening.y} listening={false}>
+                {/* Width above the opening */}
+                <Group y={topY}>
+                    <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={4 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                </Group>
+                {/* Height to the left of the opening */}
+                <Group x={leftX}>
+                    <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-4 / zoom} y={opening.height / 2} rotation={-90} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                </Group>
+            </Group>
+        );
+    });
+
+    // 4. Generate the Panels Content
     const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting, isColoringMode, customColor, readOnly, selectedDesignAreaId, setSelectedDesignAreaId, wallId, selectedWallId, setSelectedWallId }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
@@ -541,8 +596,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const color = product.color.replace('0.4', '1');
         const absWidth = Math.abs(area.width);
         const absHeight = Math.abs(area.height);
-        const dimOffset = 20 / zoom;
-        const tickLen = 4 / zoom;
 
         // Custom per-area color overrides the product-level color
         const effectiveColor = customColor || product.color;
@@ -636,41 +689,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         scaleY={textScale}
                     />
                 )}
-                {!isExporting && (
-                    <>
-                        <Group y={area.height + dimOffset}>
-                            <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                            <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Text
-                                text={`${(absWidth / SCALE).toFixed(2)}m`}
-                                fontSize={9}
-                                fill="#475569"
-                                x={area.width / 2}
-                                y={-12 / zoom}
-                                offsetX={15}
-                                scaleX={textScale}
-                                scaleY={textScale}
-                            />
-                        </Group>
-                        <Group x={area.width + dimOffset}>
-                            <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                            <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Text
-                                text={`${(absHeight / SCALE).toFixed(2)}m`}
-                                fontSize={9}
-                                fill="#475569"
-                                x={4 / zoom}
-                                y={area.height / 2}
-                                rotation={90}
-                                offsetX={15}
-                                scaleX={textScale}
-                                scaleY={textScale}
-                            />
-                        </Group>
-                    </>
-                )}
                 {product.countType !== 'length' && (
                     <Group clipFunc={(ctx) => ctx.rect(0, 0, area.width, area.height)}>
                         {!isExporting && lines}
@@ -749,22 +767,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 />
                 {!isExporting && (
                     <Text text={label} fontSize={12} fill="#1e293b" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
-                )}
-                {!isExporting && (
-                    <>
-                        <Group y={opening.height + dimOffset} listening={false}>
-                            <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                            <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
-                        </Group>
-                        <Group x={opening.width + dimOffset} listening={false}>
-                            <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                            <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                            <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={opening.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
-                        </Group>
-                    </>
                 )}
             </Group>
         );
@@ -863,71 +865,71 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         allElements.sort((a, b) => ((a as any).createdAt || 0) - ((b as any).createdAt || 0));
 
         return (
-            <Group clipFunc={clipFunc}>
-                {allElements.map(el => {
-                    if (el.renderType === 'area') {
-                        const area = el as any;
-                        const product = products.find(p => p.id === area.productId);
-                        if (!product) return null;
-                        return (
-                            <MemoizedAreaContent
-                                key={area.id}
-                                area={area}
-                                product={product}
-                                zoom={zoom}
-                                textScale={textScale}
-                                points={points}
-                                wallCenter={wallCenter}
-                                onMove={moveDesignArea}
-                                onDragStart={_saveHistory}
-                                interactionMode={interactionMode}
-                                isExporting={shouldHideText}
-                                isColoringMode={isColoringMode}
-                                customColor={area.customColor}
-                                readOnly={props.readOnly}
-                                selectedDesignAreaId={selectedDesignAreaId}
-                                selectedWallId={selectedWallId}
-                                setSelectedDesignAreaId={setSelectedDesignAreaId}
-                                setSelectedWallId={setSelectedWallId}
-                                wallId={activeWallId}
-                                onClick={() => {
-                                    if (interactionMode === 'delete') {
-                                        useCanvasStore.getState().removeDesignArea(area.id);
-                                    }
-                                }}
-                            />
-                        );
-                    } else if (el.renderType === 'opening') {
-                        const op = el as any;
-                        return (
-                            <MemoizedOpeningContent
-                                key={op.id}
-                                opening={op}
-                                zoom={zoom}
-                                textScale={textScale}
-                                wallCenter={wallCenter}
-                                onMove={moveOpening}
-                                onDragStart={_saveHistory}
-                                interactionMode={interactionMode}
-                                isExporting={shouldHideText}
-                                onClick={() => {
-                                    if (interactionMode === 'delete') {
-                                        useCanvasStore.getState().removeOpening(op.id);
-                                    }
-                                }}
-                            />
-                        );
-                    } else if (el.renderType === 'list') {
-                        const list = el as any;
-                        return (
-                            <React.Fragment key={list.id}>
-                                {renderListContent(list)}
-                            </React.Fragment>
-                        );
-                    }
-                    return null;
-                })}
-
+            <Group>
+                <Group clipFunc={clipFunc}>
+                    {allElements.map(el => {
+                        if (el.renderType === 'area') {
+                            const area = el as any;
+                            const product = products.find(p => p.id === area.productId);
+                            if (!product) return null;
+                            return (
+                                <MemoizedAreaContent
+                                    key={area.id}
+                                    area={area}
+                                    product={product}
+                                    zoom={zoom}
+                                    textScale={textScale}
+                                    points={points}
+                                    wallCenter={wallCenter}
+                                    onMove={moveDesignArea}
+                                    onDragStart={_saveHistory}
+                                    interactionMode={interactionMode}
+                                    isExporting={shouldHideText}
+                                    isColoringMode={isColoringMode}
+                                    customColor={area.customColor}
+                                    readOnly={props.readOnly}
+                                    selectedDesignAreaId={selectedDesignAreaId}
+                                    selectedWallId={selectedWallId}
+                                    setSelectedDesignAreaId={setSelectedDesignAreaId}
+                                    setSelectedWallId={setSelectedWallId}
+                                    wallId={activeWallId}
+                                    onClick={() => {
+                                        if (interactionMode === 'delete') {
+                                            useCanvasStore.getState().removeDesignArea(area.id);
+                                        }
+                                    }}
+                                />
+                            );
+                        } else if (el.renderType === 'opening') {
+                            const op = el as any;
+                            return (
+                                <MemoizedOpeningContent
+                                    key={op.id}
+                                    opening={op}
+                                    zoom={zoom}
+                                    textScale={textScale}
+                                    wallCenter={wallCenter}
+                                    onMove={moveOpening}
+                                    onDragStart={_saveHistory}
+                                    interactionMode={interactionMode}
+                                    isExporting={shouldHideText}
+                                    onClick={() => {
+                                        if (interactionMode === 'delete') {
+                                            useCanvasStore.getState().removeOpening(op.id);
+                                        }
+                                    }}
+                                />
+                            );
+                        } else if (el.renderType === 'list') {
+                            const list = el as any;
+                            return (
+                                <React.Fragment key={list.id}>
+                                    {renderListContent(list)}
+                                </React.Fragment>
+                            );
+                        }
+                        return null;
+                    })}
                 {currentDrawingArea && (
                     'productId' in currentDrawingArea
                         ? renderAreaContent(currentDrawingArea)
@@ -984,6 +986,23 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             </Group>
                         );
                     })()
+                )}
+                </Group>
+                
+                {/* Draw unclipped dimensions */}
+                {allElements.map(el => {
+                    if (el.renderType === 'area') {
+                        return <MemoizedAreaDimensions key={`dim-${el.id}`} area={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />;
+                    } else if (el.renderType === 'opening') {
+                        return <MemoizedOpeningDimensions key={`dim-${el.id}`} opening={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />;
+                    }
+                    return null;
+                })}
+                {currentDrawingArea && 'productId' in currentDrawingArea && (
+                    <MemoizedAreaDimensions area={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                )}
+                {currentDrawingArea && !('productId' in currentDrawingArea) && (
+                    <MemoizedOpeningDimensions opening={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
                 )}
             </Group>
         );
