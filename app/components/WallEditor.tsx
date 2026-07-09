@@ -648,7 +648,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     });
 
     // 4. Generate the Panels Content
-    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting, isColoringMode, customColor, readOnly, selectedDesignAreaId, setSelectedDesignAreaId, wallId, selectedWallId, setSelectedWallId }: any) => {
+    const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onSaveHistory, wallCenter, interactionMode, isExporting, isColoringMode, customColor, readOnly, selectedDesignAreaId, setSelectedDesignAreaId, wallId, selectedWallId, setSelectedWallId }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
         const calculateArea = useWorker();
 
@@ -746,7 +746,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 x={area.x}
                 y={area.y}
                 draggable={!readOnly && interactionMode !== 'list'}
-                onDragStart={readOnly ? undefined : onDragStart}
                 onDragMove={readOnly ? undefined : (e) => {
                     let newX = e.target.x();
                     let newY = e.target.y();
@@ -759,6 +758,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     e.target.y(newY);
                 }}
                 onDragEnd={readOnly ? undefined : (e) => {
+                    onSaveHistory();
                     onMove(area.id, e.target.x(), e.target.y());
                 }}
             >
@@ -836,7 +836,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         );
     });
 
-    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter, interactionMode, isExporting }: any) => {
+    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onSaveHistory, wallCenter, interactionMode, isExporting }: any) => {
         const isWindow = opening.type === 'window';
         const color = "#ffffff";
         const label = isWindow ? "Window" : "Door";
@@ -850,7 +850,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 x={opening.x}
                 y={opening.y}
                 draggable={interactionMode !== 'list'}
-                onDragStart={onDragStart}
                 onDragMove={(e) => {
                     let newX = e.target.x();
                     let newY = e.target.y();
@@ -872,6 +871,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     e.target.y(newY);
                 }}
                 onDragEnd={(e) => {
+                    onSaveHistory();
                     onMove(opening.id, e.target.x(), e.target.y());
                 }}
             >
@@ -1007,7 +1007,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     points={points}
                                     wallCenter={wallCenter}
                                     onMove={moveDesignArea}
-                                    onDragStart={_saveHistory}
+                                    onSaveHistory={_saveHistory}
                                     interactionMode={interactionMode}
                                     isExporting={shouldHideText}
                                     isColoringMode={isColoringMode}
@@ -1035,7 +1035,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     textScale={textScale}
                                     wallCenter={wallCenter}
                                     onMove={moveOpening}
-                                    onDragStart={_saveHistory}
+                                    onSaveHistory={_saveHistory}
                                     interactionMode={interactionMode}
                                     isExporting={shouldHideText}
                                     onClick={() => {
