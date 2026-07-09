@@ -276,50 +276,62 @@ function MockupPageContent() {
     const wallCornersRef = useRef(wallCorners);
     useEffect(() => { wallCornersRef.current = wallCorners; }, [wallCorners]);
 
+    const cornersPastRef = useRef(cornersPast);
+    useEffect(() => { cornersPastRef.current = cornersPast; }, [cornersPast]);
+
+    const cornersFutureRef = useRef(cornersFuture);
+    useEffect(() => { cornersFutureRef.current = cornersFuture; }, [cornersFuture]);
+
     // Handle Undo/Redo keydown globally for MockupPage
     useEffect(() => {
         const handleUndoRedo = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             if (e.ctrlKey || e.metaKey) {
-                if (e.key === 'z') {
-                    e.preventDefault();
-                    e.stopPropagation();
+                if (e.key === 'z' || e.key === 'Z') {
                     if (e.shiftKey) {
                         // Redo
+                        if (cornersFutureRef.current.length > 0) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            setCornersFuture(prev => {
+                                const next = prev[0];
+                                const current = wallCornersRef.current;
+                                setCornersPast(past => [...past, current]);
+                                setWallCorners(next);
+                                return prev.slice(1);
+                            });
+                        }
+                    } else {
+                        // Undo
+                        if (cornersPastRef.current.length > 0) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            setCornersPast(prev => {
+                                const previous = prev[prev.length - 1];
+                                const current = wallCornersRef.current;
+                                setCornersFuture(future => [current, ...future]);
+                                setWallCorners(previous);
+                                return prev.slice(0, -1);
+                            });
+                        }
+                    }
+                } else if (e.key === 'y' || e.key === 'Y') {
+                    if (cornersFutureRef.current.length > 0) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        // Redo
                         setCornersFuture(prev => {
-                            if (prev.length === 0) return prev;
                             const next = prev[0];
                             const current = wallCornersRef.current;
                             setCornersPast(past => [...past, current]);
                             setWallCorners(next);
                             return prev.slice(1);
                         });
-                    } else {
-                        // Undo
-                        setCornersPast(prev => {
-                            if (prev.length === 0) return prev;
-                            const previous = prev[prev.length - 1];
-                            const current = wallCornersRef.current;
-                            setCornersFuture(future => [current, ...future]);
-                            setWallCorners(previous);
-                            return prev.slice(0, -1);
-                        });
                     }
-                } else if (e.key === 'y') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Redo
-                    setCornersFuture(prev => {
-                        if (prev.length === 0) return prev;
-                        const next = prev[0];
-                        const current = wallCornersRef.current;
-                        setCornersPast(past => [...past, current]);
-                        setWallCorners(next);
-                        return prev.slice(1);
-                    });
                 }
             }
+
         };
 
         window.addEventListener('keydown', handleUndoRedo, true); // Use capture phase to intercept before WallEditor
