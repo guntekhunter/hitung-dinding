@@ -92,6 +92,10 @@ function MockupPageContent() {
     // Keep track of dynamic box sizes for each included wall
     const [boxDimensions, setBoxDimensions] = useState<Record<string, { width: number, height: number, minX: number, minY: number }>>({});
 
+    // History for undo/redo of corners
+    const [cornersPast, setCornersPast] = useState<Record<string, { x: number, y: number }[]>[]>([]);
+    const [cornersFuture, setCornersFuture] = useState<Record<string, { x: number, y: number }[]>[]>([]);
+
     const [draggingHandle, setDraggingHandle] = useState<{ wallId: string, index: number } | null>(null);
     const [zoom, setZoom] = useState(1);
     const [wallDropdownOpen, setWallDropdownOpen] = useState(false);
@@ -260,6 +264,50 @@ function MockupPageContent() {
             window.removeEventListener('touchend', handleUp);
         };
     }, [draggingHandle, zoom]);
+
+    // Handle Undo/Redo keydown globally for MockupPage
+    useEffect(() => {
+        const handleUndoRedo = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') {
+                    if (e.shiftKey) {
+                        // Redo
+                        setCornersFuture(prev => {
+                            if (prev.length === 0) return prev;
+                            const next = prev[0];
+                            setCornersPast(past => [...past, wallCorners]);
+                            setWallCorners(next);
+                            return prev.slice(1);
+                        });
+                    } else {
+                        // Undo
+                        setCornersPast(prev => {
+                            if (prev.length === 0) return prev;
+                            const previous = prev[prev.length - 1];
+                            setCornersFuture(future => [wallCorners, ...future]);
+                            setWallCorners(previous);
+                            return prev.slice(0, -1);
+                        });
+                    }
+                    // We don't call preventDefault here so WallEditor's undo can also run for colors
+                } else if (e.key === 'y') {
+                    // Redo
+                    setCornersFuture(prev => {
+                        if (prev.length === 0) return prev;
+                        const next = prev[0];
+                        setCornersPast(past => [...past, wallCorners]);
+                        setWallCorners(next);
+                        return prev.slice(1);
+                    });
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleUndoRedo);
+        return () => window.removeEventListener('keydown', handleUndoRedo);
+    }, [wallCorners]);
 
     // Zoom Handling
     useEffect(() => {
@@ -622,7 +670,7 @@ function MockupPageContent() {
                                                 zIndex: 10
                                             }}
                                         >
-                                            <div className="w-full h-full shadow-2xl opacity-90 overflow-hidden bg-transparent pointer-events-auto">
+                                            <div className="w-full h-full shadow-2xl opacity-90 overflow-visible bg-transparent pointer-events-auto">
                                                 <WallEditor
                                                     wallId={wallId}
                                                     overrideZoom={1}
@@ -638,10 +686,14 @@ function MockupPageContent() {
                                                 key={`${wallId}-corner-${i}`}
                                                 onMouseDown={(e) => {
                                                     e.stopPropagation();
+                                                    setCornersPast(prev => [...prev, wallCorners]);
+                                                    setCornersFuture([]);
                                                     setDraggingHandle({ wallId, index: i });
                                                 }}
                                                 onTouchStart={(e) => {
                                                     e.stopPropagation();
+                                                    setCornersPast(prev => [...prev, wallCorners]);
+                                                    setCornersFuture([]);
                                                     setDraggingHandle({ wallId, index: i });
                                                 }}
                                                 className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform touch-none"

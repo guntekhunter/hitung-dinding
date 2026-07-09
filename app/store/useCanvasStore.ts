@@ -297,29 +297,35 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     setSelectedDesignAreaId: (id) => set({ selectedDesignAreaId: id }),
 
-    setDesignAreaColor: (areaId, color) => set((state) => ({
-        walls: state.walls.map(wall => ({
-            ...wall,
-            designAreas: wall.designAreas.map(area =>
-                area.id === areaId ? { ...area, customColor: color } : area
-            )
-        }))
-    })),
+    setDesignAreaColor: (areaId, color) => {
+        get()._saveHistory();
+        set((state) => ({
+            walls: state.walls.map(wall => ({
+                ...wall,
+                designAreas: wall.designAreas.map(area =>
+                    area.id === areaId ? { ...area, customColor: color } : area
+                )
+            }))
+        }));
+    },
 
     setSelectedWallId: (id) => set({ selectedWallId: id }),
 
     // Update customColor on every design area of the given product inside one specific wall
-    setWallProductColor: (wallId, productId, color) => set((state) => ({
-        walls: state.walls.map(wall => {
-            if (wall.id !== wallId) return wall;
-            return {
-                ...wall,
-                designAreas: wall.designAreas.map(area =>
-                    area.productId === productId ? { ...area, customColor: color } : area
-                )
-            };
-        })
-    })),
+    setWallProductColor: (wallId, productId, color) => {
+        get()._saveHistory();
+        set((state) => ({
+            walls: state.walls.map(wall => {
+                if (wall.id !== wallId) return wall;
+                return {
+                    ...wall,
+                    designAreas: wall.designAreas.map(area =>
+                        area.productId === productId ? { ...area, customColor: color } : area
+                    )
+                };
+            })
+        }));
+    },
 
     materialPrices: {},
 
