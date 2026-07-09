@@ -80,7 +80,10 @@ function MockupPageContent() {
     const router = useRouter();
 
     const { loadProject, fetchProducts, walls, activeWallId, setActiveWall, setIsColoringPreview } = useCanvasStore();
-    const [loadingProject, setLoadingProject] = useState(!!id);
+    
+    // Always start with loading = true to prevent hydration mismatch between server and client
+    // (searchParams is empty on server during static generation, but populated on client)
+    const [loadingProject, setLoadingProject] = useState(true);
 
     // Background Image State
     const [bgImage, setBgImage] = useState<string | null>(null);
@@ -232,8 +235,12 @@ function MockupPageContent() {
             const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
             const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
 
-            const x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
-            const y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
+            let x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
+            let y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
+
+            // Clamp points within canvas dimensions so they don't get lost
+            x = Math.max(0, Math.min(x, canvasDims.width));
+            y = Math.max(0, Math.min(y, canvasDims.height));
 
             setWallCorners(prev => {
                 const newCorners = { ...prev };
@@ -263,7 +270,7 @@ function MockupPageContent() {
             window.removeEventListener('touchmove', handleMove);
             window.removeEventListener('touchend', handleUp);
         };
-    }, [draggingHandle, zoom]);
+    }, [draggingHandle, zoom, canvasDims]);
 
     // Use a ref for wallCorners so undo/redo closures always have the latest value
     const wallCornersRef = useRef(wallCorners);
@@ -535,10 +542,33 @@ function MockupPageContent() {
 
                 if (!sourceCanvas) continue;
 
-                // Source rectangle: use actual canvas pixel dimensions
-                // Konva renders at pixelRatio, so canvas.width may be larger than dims.width
-                const srcW = sourceCanvas.width;
-                const srcH = sourceCanvas.height;
+                // Source dimensions: The Konva Stage renders into a canvas with
+                // canvas.width = logicalWidth * pixelRatio. To get the correct logical
+                // source coordinate space, we need to account for this.
+                // The canvas CSS dimensions (set by Konva via style.width/height) 
+                // reflect the logical Stage size which may differ from dims.width/height
+                // if the WallEditor container size doesn't match exactly.
+                // 
+                // Use the canvas's CSS dimensions as the definitive source coordinate space,
+                // since that's what the Stage actually rendered into.
+                const canvasCSSWidth = parseFloat(sourceCanvas.style.width) || sourceCanvas.offsetWidth || dims.width;
+                const canvasCSSHeight = parseFloat(sourceCanvas.style.height) || sourceCanvas.offsetHeight || dims.height;
+                const srcW = canvasCSSWidth;
+                const srcH = canvasCSSHeight;
+
+                // Debug logging to diagnose size discrepancy
+                console.log(`[Export Debug] Wall ${wallId}:`, {
+                    'dims.width': dims.width,
+                    'dims.height': dims.height,
+                    'canvas.width (pixels)': sourceCanvas.width,
+                    'canvas.height (pixels)': sourceCanvas.height,
+                    'canvas.style.width': sourceCanvas.style.width,
+                    'canvas.style.height': sourceCanvas.style.height,
+                    'canvas.offsetWidth': sourceCanvas.offsetWidth,
+                    'canvas.offsetHeight': sourceCanvas.offsetHeight,
+                    'srcW used': srcW,
+                    'srcH used': srcH,
+                });
 
                 // Destination corners (perspective-warped positions), shifted by export offset
                 const dst = corners.map(c => ({ x: c.x - minX, y: c.y - minY }));
@@ -547,14 +577,23 @@ function MockupPageContent() {
                 drawTexturedQuad(ctx, sourceCanvas, srcW, srcH, dst);
             }
 
-            // Convert to PNG and download
-            const url = exportCanvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'mockup-scene.png';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Convert to PNG and download using Blob to avoid base64 URL length limits
+            exportCanvas.toBlob((blob) => {
+                if (!blob) {
+                    alert("Failed to generate image.");
+                    return;
+                }
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = 'mockup-scene.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Clean up the object URL to free memory
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            }, 'image/png');
         } catch (err) {
             console.error("Download failed:", err);
             alert("Failed to download mockup.");
@@ -571,40 +610,104 @@ function MockupPageContent() {
     ) {
         // Subdivide the quad into a grid and draw each cell as two triangles
         // More subdivisions = better perspective approximation
-        const divisions = 12;
+        const divisions = 20;
+
+        const src = [
+            { x: 0, y: 0 },
+            { x: srcW, y: 0 },
+            { x: srcW, y: srcH },
+            { x: 0, y: srcH }
+        ];
+
+        const hParams = getHomographyParams(src, dst);
 
         for (let row = 0; row < divisions; row++) {
             for (let col = 0; col < divisions; col++) {
-                const u0 = col / divisions;
-                const u1 = (col + 1) / divisions;
-                const v0 = row / divisions;
-                const v1 = (row + 1) / divisions;
-
-                // Bilinear interpolation of destination positions
-                const p00 = bilinearInterp(dst, u0, v0);
-                const p10 = bilinearInterp(dst, u1, v0);
-                const p01 = bilinearInterp(dst, u0, v1);
-                const p11 = bilinearInterp(dst, u1, v1);
-
                 // Source coordinates
-                const sx0 = u0 * srcW;
-                const sx1 = u1 * srcW;
-                const sy0 = v0 * srcH;
-                const sy1 = v1 * srcH;
+                const sx0 = (col / divisions) * srcW;
+                const sx1 = ((col + 1) / divisions) * srcW;
+                const sy0 = (row / divisions) * srcH;
+                const sy1 = ((row + 1) / divisions) * srcH;
+
+                // Project points using true perspective (homography)
+                // Fallback to bilinear if homography fails (collinear points etc)
+                const p00 = hParams ? applyHomography(sx0, sy0, hParams) : bilinearInterp(dst, col / divisions, row / divisions);
+                const p10 = hParams ? applyHomography(sx1, sy0, hParams) : bilinearInterp(dst, (col + 1) / divisions, row / divisions);
+                const p01 = hParams ? applyHomography(sx0, sy1, hParams) : bilinearInterp(dst, col / divisions, (row + 1) / divisions);
+                const p11 = hParams ? applyHomography(sx1, sy1, hParams) : bilinearInterp(dst, (col + 1) / divisions, (row + 1) / divisions);
 
                 // Triangle 1: top-left
                 drawTriangle(ctx, sourceCanvas,
                     sx0, sy0, sx1, sy0, sx0, sy1,
-                    p00.x, p00.y, p10.x, p10.y, p01.x, p01.y
+                    p00.x, p00.y, p10.x, p10.y, p01.x, p01.y,
+                    srcW, srcH
                 );
 
                 // Triangle 2: bottom-right
                 drawTriangle(ctx, sourceCanvas,
                     sx1, sy0, sx1, sy1, sx0, sy1,
-                    p10.x, p10.y, p11.x, p11.y, p01.x, p01.y
+                    p10.x, p10.y, p11.x, p11.y, p01.x, p01.y,
+                    srcW, srcH
                 );
             }
         }
+    }
+
+    function getHomographyParams(src: { x: number, y: number }[], dst: { x: number, y: number }[]) {
+        const A: number[][] = [];
+        for (let i = 0; i < 4; i++) {
+            const x = src[i].x;
+            const y = src[i].y;
+            const u = dst[i].x;
+            const v = dst[i].y;
+            A.push([x, y, 1, 0, 0, 0, -x * u, -y * u, u]);
+            A.push([0, 0, 0, x, y, 1, -x * v, -y * v, v]);
+        }
+
+        for (let i = 0; i < 8; i++) {
+            let maxEl = Math.abs(A[i][i]);
+            let maxRow = i;
+            for (let k = i + 1; k < 8; k++) {
+                if (Math.abs(A[k][i]) > maxEl) {
+                    maxEl = Math.abs(A[k][i]);
+                    maxRow = k;
+                }
+            }
+
+            const tmp = A[maxRow];
+            A[maxRow] = A[i];
+            A[i] = tmp;
+
+            const pivot = A[i][i];
+            if (pivot === 0) return null;
+
+            for (let k = i; k < 9; k++) {
+                A[i][k] /= pivot;
+            }
+
+            for (let j = 0; j < 8; j++) {
+                if (i !== j) {
+                    const factor = A[j][i];
+                    for (let k = i; k < 9; k++) {
+                        A[j][k] -= factor * A[i][k];
+                    }
+                }
+            }
+        }
+
+        return {
+            h11: A[0][8], h12: A[1][8], h13: A[2][8],
+            h21: A[3][8], h22: A[4][8], h23: A[5][8],
+            h31: A[6][8], h32: A[7][8]
+        };
+    }
+
+    function applyHomography(x: number, y: number, h: any) {
+        const w = h.h31 * x + h.h32 * y + 1;
+        return {
+            x: (h.h11 * x + h.h12 * y + h.h13) / w,
+            y: (h.h21 * x + h.h22 * y + h.h23) / w
+        };
     }
 
     function bilinearInterp(corners: { x: number; y: number }[], u: number, v: number) {
@@ -624,7 +727,8 @@ function MockupPageContent() {
         ctx: CanvasRenderingContext2D,
         img: HTMLCanvasElement,
         sx0: number, sy0: number, sx1: number, sy1: number, sx2: number, sy2: number,
-        dx0: number, dy0: number, dx1: number, dy1: number, dx2: number, dy2: number
+        dx0: number, dy0: number, dx1: number, dy1: number, dx2: number, dy2: number,
+        srcW: number, srcH: number
     ) {
         ctx.save();
 
@@ -654,7 +758,7 @@ function MockupPageContent() {
         const f = (dy0 * (sx1 * sy2 - sx2 * sy1) + dy1 * (sx2 * sy0 - sx0 * sy2) + dy2 * (sx0 * sy1 - sx1 * sy0)) / denom;
 
         ctx.transform(a, b, c, d, e, f);
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, srcW, srcH);
         ctx.restore();
     }
 
@@ -743,7 +847,7 @@ function MockupPageContent() {
                         className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
                     >
                         <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        <span className="hidden md:inline">Download</span>
+                        <span className="hidden md:inline">Download PNG</span>
                     </button>
                     <label title="Upload Background" className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
                         <svg className={`w-4 h-4 md:mr-2 shrink-0 ${isUploading ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
