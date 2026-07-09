@@ -102,6 +102,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     useEffect(() => {
         setMounted(true);
+    }, []);
+
+    // Measure container size AFTER mounted=true so the real container (with ref) is rendered
+    useEffect(() => {
+        if (!mounted) return;
+
         const handleResize = () => {
             if (containerRef.current) {
                 setStageSize({
@@ -110,10 +116,24 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 });
             }
         };
-        handleResize();
+
+        // Use requestAnimationFrame to ensure layout is settled after mount
+        const raf = requestAnimationFrame(handleResize);
+
+        // ResizeObserver for reliable size tracking (handles parent size changes)
+        let observer: ResizeObserver | null = null;
+        if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+            observer = new ResizeObserver(handleResize);
+            observer.observe(containerRef.current);
+        }
+
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('resize', handleResize);
+            if (observer) observer.disconnect();
+        };
+    }, [mounted]);
 
     useEffect(() => {
         warmupWorker().catch(() => { });

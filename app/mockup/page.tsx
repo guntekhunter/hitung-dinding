@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, Suspense, useState, useMemo } from "react";
+import { useEffect, useRef, Suspense, useState } from "react";
 import dynamic from "next/dynamic";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { supabase } from "../../lib/supabase";
-import * as htmlToImage from "html-to-image";
+
 import TextureSelector from "../components/TextureSelector";
 
 const WallEditor = dynamic(() => import("../components/WallEditor"), {
@@ -265,6 +265,10 @@ function MockupPageContent() {
         };
     }, [draggingHandle, zoom]);
 
+    // Use a ref for wallCorners so undo/redo closures always have the latest value
+    const wallCornersRef = useRef(wallCorners);
+    useEffect(() => { wallCornersRef.current = wallCorners; }, [wallCorners]);
+
     // Handle Undo/Redo keydown globally for MockupPage
     useEffect(() => {
         const handleUndoRedo = (e: KeyboardEvent) => {
@@ -272,12 +276,15 @@ function MockupPageContent() {
 
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z') {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (e.shiftKey) {
                         // Redo
                         setCornersFuture(prev => {
                             if (prev.length === 0) return prev;
                             const next = prev[0];
-                            setCornersPast(past => [...past, wallCorners]);
+                            const current = wallCornersRef.current;
+                            setCornersPast(past => [...past, current]);
                             setWallCorners(next);
                             return prev.slice(1);
                         });
@@ -286,18 +293,21 @@ function MockupPageContent() {
                         setCornersPast(prev => {
                             if (prev.length === 0) return prev;
                             const previous = prev[prev.length - 1];
-                            setCornersFuture(future => [wallCorners, ...future]);
+                            const current = wallCornersRef.current;
+                            setCornersFuture(future => [current, ...future]);
                             setWallCorners(previous);
                             return prev.slice(0, -1);
                         });
                     }
-                    // We don't call preventDefault here so WallEditor's undo can also run for colors
                 } else if (e.key === 'y') {
+                    e.preventDefault();
+                    e.stopPropagation();
                     // Redo
                     setCornersFuture(prev => {
                         if (prev.length === 0) return prev;
                         const next = prev[0];
-                        setCornersPast(past => [...past, wallCorners]);
+                        const current = wallCornersRef.current;
+                        setCornersPast(past => [...past, current]);
                         setWallCorners(next);
                         return prev.slice(1);
                     });
@@ -305,9 +315,9 @@ function MockupPageContent() {
             }
         };
 
-        window.addEventListener('keydown', handleUndoRedo);
-        return () => window.removeEventListener('keydown', handleUndoRedo);
-    }, [wallCorners]);
+        window.addEventListener('keydown', handleUndoRedo, true); // Use capture phase to intercept before WallEditor
+        return () => window.removeEventListener('keydown', handleUndoRedo, true);
+    }, []);
 
     // Zoom Handling
     useEffect(() => {
@@ -410,76 +420,138 @@ function MockupPageContent() {
     };
 
     const handleDownload = async () => {
-        const canvasNode = document.getElementById('mockup-canvas-inner');
-        if (!canvasNode) return;
-
         try {
-            // Hide corner handles for the screenshot
-            const handles = canvasNode.querySelectorAll('.cursor-move');
-            handles.forEach((h: any) => h.style.display = 'none');
+            // === Canvas-based export to avoid html-to-image 3D transform clipping ===
+            const pixelRatio = 2; // High resolution
 
-            let cropWidth = 3000;
-            let cropHeight = 3000;
+            // Determine export bounds
+            let minX = 0;
+            let minY = 0;
+            let maxX = canvasDims.width;
+            let maxY = canvasDims.height;
 
-            if (bgImage) {
-                // Determine actual image dimensions
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.src = bgImage;
-                await new Promise((resolve) => {
-                    img.onload = resolve;
-                    img.onerror = resolve; // fallback to 3000x3000
-                });
+            if (!bgImage) {
+                minX = 3000;
+                minY = 3000;
+                maxX = 0;
+                maxY = 0;
+            }
 
-                if (img.width && img.height) {
-                    const aspect = img.width / img.height;
-                    if (aspect > 1) {
-                        cropWidth = 3000;
-                        cropHeight = 3000 / aspect;
-                    } else {
-                        cropHeight = 3000;
-                        cropWidth = 3000 * aspect;
-                    }
+            includedWalls.forEach(wallId => {
+                const corners = wallCorners[wallId];
+                if (corners) {
+                    corners.forEach(c => {
+                        if (c.x < minX) minX = c.x;
+                        if (c.y < minY) minY = c.y;
+                        if (c.x > maxX) maxX = c.x;
+                        if (c.y > maxY) maxY = c.y;
+                    });
                 }
+            });
+
+            if (!bgImage && maxX < minX) {
+                minX = 0; minY = 0; maxX = 500; maxY = 500;
             } else {
-                // If no background image, crop to the bounding box of included walls
-                let minX = 3000, minY = 3000, maxX = 0, maxY = 0;
-                let hasWalls = false;
-                includedWalls.forEach(wallId => {
-                    const corners = wallCorners[wallId];
-                    if (corners) {
-                        corners.forEach(c => {
-                            hasWalls = true;
-                            if (c.x < minX) minX = c.x;
-                            if (c.y < minY) minY = c.y;
-                            if (c.x > maxX) maxX = c.x;
-                            if (c.y > maxY) maxY = c.y;
-                        });
-                    }
+                minX -= 50;
+                minY -= 50;
+                maxX += 50;
+                maxY += 50;
+            }
+
+            // Clamp to valid range
+            minX = Math.max(0, minX);
+            minY = Math.max(0, minY);
+
+            const exportWidth = maxX - minX;
+            const exportHeight = maxY - minY;
+
+            // Create export canvas
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = exportWidth * pixelRatio;
+            exportCanvas.height = exportHeight * pixelRatio;
+            const ctx = exportCanvas.getContext('2d')!;
+            ctx.scale(pixelRatio, pixelRatio);
+
+            // 1. Draw background image
+            if (bgImage) {
+                const bgImg = new window.Image();
+                bgImg.crossOrigin = 'anonymous';
+                bgImg.src = bgImage;
+                await new Promise<void>((resolve) => {
+                    bgImg.onload = () => {
+                        ctx.drawImage(bgImg, -minX, -minY, canvasDims.width, canvasDims.height);
+                        resolve();
+                    };
+                    bgImg.onerror = () => resolve();
                 });
-                if (hasWalls) {
-                    cropWidth = Math.max(500, maxX + 100);
-                    cropHeight = Math.max(500, maxY + 100);
+            } else {
+                // Draw dotted pattern background
+                ctx.fillStyle = '#e5e5f7';
+                ctx.fillRect(0, 0, exportWidth, exportHeight);
+                ctx.fillStyle = '#444cf7';
+                for (let py = 0; py < canvasDims.height; py += 10) {
+                    for (let px = 0; px < canvasDims.width; px += 10) {
+                        const drawX = px - minX;
+                        const drawY = py - minY;
+                        if (drawX >= -1 && drawX <= exportWidth + 1 && drawY >= -1 && drawY <= exportHeight + 1) {
+                            ctx.beginPath();
+                            ctx.arc(drawX, drawY, 0.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
                 }
             }
 
-            const url = await htmlToImage.toPng(canvasNode, {
-                cacheBust: true,
-                width: cropWidth,
-                height: cropHeight,
-                style: {
-                    transform: 'none', // Reset zoom for high quality
-                    transformOrigin: 'top left'
-                },
-                pixelRatio: 2 // High resolution download
-            });
+            // 2. For each wall, extract the Konva canvas and warp it using perspective triangulation
+            for (const wallId of includedWalls) {
+                const dims = boxDimensions[wallId];
+                const corners = wallCorners[wallId];
+                if (!dims || !corners || corners.length !== 4) continue;
 
-            // Restore handles
-            handles.forEach((h: any) => h.style.display = '');
+                // Find the Konva canvas element for this wall
+                // Each WallEditor renders a Konva Stage which creates a canvas
+                const wallWrappers = document.querySelectorAll(`[data-wall-id="${wallId}"]`);
+                let sourceCanvas: HTMLCanvasElement | null = null;
 
-            const link = document.createElement("a");
+                if (wallWrappers.length > 0) {
+                    sourceCanvas = wallWrappers[0].querySelector('canvas') as HTMLCanvasElement;
+                }
+
+                // Fallback: find canvas inside the transformed wall div
+                if (!sourceCanvas) {
+                    const allTransformedDivs = document.querySelectorAll('#mockup-canvas-inner .origin-top-left');
+                    for (const div of Array.from(allTransformedDivs)) {
+                        const canvas = div.querySelector('canvas');
+                        if (canvas) {
+                            // Check if this canvas belongs to the current wall by checking parent's style
+                            const parentEl = canvas.closest('.origin-top-left') as HTMLElement;
+                            if (parentEl && Math.abs(parentEl.offsetWidth - dims.width) < 5) {
+                                sourceCanvas = canvas;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!sourceCanvas) continue;
+
+                // Source rectangle: use actual canvas pixel dimensions
+                // Konva renders at pixelRatio, so canvas.width may be larger than dims.width
+                const srcW = sourceCanvas.width;
+                const srcH = sourceCanvas.height;
+
+                // Destination corners (perspective-warped positions), shifted by export offset
+                const dst = corners.map(c => ({ x: c.x - minX, y: c.y - minY }));
+
+                // Draw the warped wall using triangle-based affine subdivision
+                drawTexturedQuad(ctx, sourceCanvas, srcW, srcH, dst);
+            }
+
+            // Convert to PNG and download
+            const url = exportCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
             link.href = url;
-            link.download = `mockup-scene.png`;
+            link.download = 'mockup-scene.png';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -488,6 +560,103 @@ function MockupPageContent() {
             alert("Failed to download mockup.");
         }
     };
+
+    // Helper: Draw a textured quad with perspective using triangle subdivision
+    function drawTexturedQuad(
+        ctx: CanvasRenderingContext2D,
+        sourceCanvas: HTMLCanvasElement,
+        srcW: number,
+        srcH: number,
+        dst: { x: number; y: number }[]
+    ) {
+        // Subdivide the quad into a grid and draw each cell as two triangles
+        // More subdivisions = better perspective approximation
+        const divisions = 12;
+
+        for (let row = 0; row < divisions; row++) {
+            for (let col = 0; col < divisions; col++) {
+                const u0 = col / divisions;
+                const u1 = (col + 1) / divisions;
+                const v0 = row / divisions;
+                const v1 = (row + 1) / divisions;
+
+                // Bilinear interpolation of destination positions
+                const p00 = bilinearInterp(dst, u0, v0);
+                const p10 = bilinearInterp(dst, u1, v0);
+                const p01 = bilinearInterp(dst, u0, v1);
+                const p11 = bilinearInterp(dst, u1, v1);
+
+                // Source coordinates
+                const sx0 = u0 * srcW;
+                const sx1 = u1 * srcW;
+                const sy0 = v0 * srcH;
+                const sy1 = v1 * srcH;
+
+                // Triangle 1: top-left
+                drawTriangle(ctx, sourceCanvas,
+                    sx0, sy0, sx1, sy0, sx0, sy1,
+                    p00.x, p00.y, p10.x, p10.y, p01.x, p01.y
+                );
+
+                // Triangle 2: bottom-right
+                drawTriangle(ctx, sourceCanvas,
+                    sx1, sy0, sx1, sy1, sx0, sy1,
+                    p10.x, p10.y, p11.x, p11.y, p01.x, p01.y
+                );
+            }
+        }
+    }
+
+    function bilinearInterp(corners: { x: number; y: number }[], u: number, v: number) {
+        // corners: [topLeft, topRight, bottomRight, bottomLeft]
+        const tl = corners[0];
+        const tr = corners[1];
+        const br = corners[2];
+        const bl = corners[3];
+
+        return {
+            x: tl.x * (1 - u) * (1 - v) + tr.x * u * (1 - v) + br.x * u * v + bl.x * (1 - u) * v,
+            y: tl.y * (1 - u) * (1 - v) + tr.y * u * (1 - v) + br.y * u * v + bl.y * (1 - u) * v,
+        };
+    }
+
+    function drawTriangle(
+        ctx: CanvasRenderingContext2D,
+        img: HTMLCanvasElement,
+        sx0: number, sy0: number, sx1: number, sy1: number, sx2: number, sy2: number,
+        dx0: number, dy0: number, dx1: number, dy1: number, dx2: number, dy2: number
+    ) {
+        ctx.save();
+
+        // Clip to the destination triangle
+        ctx.beginPath();
+        ctx.moveTo(dx0, dy0);
+        ctx.lineTo(dx1, dy1);
+        ctx.lineTo(dx2, dy2);
+        ctx.closePath();
+        ctx.clip();
+
+        // Calculate affine transform: source triangle -> destination triangle
+        // [ a  c  e ] [ sx ]   [ dx ]
+        // [ b  d  f ] [ sy ] = [ dy ]
+        // [ 0  0  1 ] [ 1  ]   [ 1  ]
+        const denom = (sx0 * (sy1 - sy2) + sx1 * (sy2 - sy0) + sx2 * (sy0 - sy1));
+        if (Math.abs(denom) < 0.001) {
+            ctx.restore();
+            return;
+        }
+
+        const a = (dx0 * (sy1 - sy2) + dx1 * (sy2 - sy0) + dx2 * (sy0 - sy1)) / denom;
+        const b = (dy0 * (sy1 - sy2) + dy1 * (sy2 - sy0) + dy2 * (sy0 - sy1)) / denom;
+        const c = (dx0 * (sx2 - sx1) + dx1 * (sx0 - sx2) + dx2 * (sx1 - sx0)) / denom;
+        const d = (dy0 * (sx2 - sx1) + dy1 * (sx0 - sx2) + dy2 * (sx1 - sx0)) / denom;
+        const e = (dx0 * (sx1 * sy2 - sx2 * sy1) + dx1 * (sx2 * sy0 - sx0 * sy2) + dx2 * (sx0 * sy1 - sx1 * sy0)) / denom;
+        const f = (dy0 * (sx1 * sy2 - sx2 * sy1) + dy1 * (sx2 * sy0 - sx0 * sy2) + dy2 * (sx0 * sy1 - sx1 * sy0)) / denom;
+
+        ctx.transform(a, b, c, d, e, f);
+        ctx.drawImage(img, 0, 0);
+        ctx.restore();
+    }
 
     const handleSaveMockup = async () => {
         if (!id) return;
@@ -637,8 +806,8 @@ function MockupPageContent() {
                                 <img 
                                     src={bgImage} 
                                     alt="Background" 
-                                    className="absolute inset-0 w-full h-full pointer-events-none"
-                                    style={{ objectFit: 'fill', transform: 'translateZ(-1px)' }}
+                                    className="absolute top-0 left-0 pointer-events-none"
+                                    style={{ width: `${canvasDims.width}px`, height: `${canvasDims.height}px`, objectFit: 'fill', transform: 'translateZ(-1px)' }}
                                     crossOrigin="anonymous"
                                 />
                             ) : (
@@ -659,7 +828,7 @@ function MockupPageContent() {
                                 if (!dims || !corners) return null;
 
                                 return (
-                                    <div key={wallId}>
+                                    <div key={wallId} data-wall-id={wallId}>
                                         {/* Transformed Wall Wrapper */}
                                         <div
                                             className="absolute top-0 left-0 origin-top-left pointer-events-auto"
