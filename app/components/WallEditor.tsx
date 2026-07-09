@@ -472,19 +472,30 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         if (isExporting) return null;
         
         const absWidth = Math.abs(area.width);
+        const absHeight = Math.abs(area.height);
         const dimOffset = 20 / zoom;
         const tickLen = 4 / zoom;
         
         const maxY = points && points.length > 0 ? Math.max(...points.map((p: any) => p.y)) : area.y + area.height;
         const bottomY = maxY - area.y + dimOffset;
+        // Height dimension goes to the right of the panel
+        const rightX = area.width + dimOffset;
 
         return (
             <Group x={area.x} y={area.y} listening={false}>
+                {/* Width below the panel */}
                 <Group y={bottomY}>
                     <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={area.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                </Group>
+                {/* Height to the right of the panel */}
+                <Group x={rightX}>
+                    <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={area.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
             </Group>
         );
