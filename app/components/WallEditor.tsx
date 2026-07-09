@@ -695,7 +695,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onDragStart, wallCenter, interactionMode, isExporting }: any) => {
         const isWindow = opening.type === 'window';
-        const color = isWindow ? "rgba(14, 165, 233, 0.6)" : "rgba(217, 119, 6, 0.6)";
+        const color = "#ffffff";
         const label = isWindow ? "Window" : "Door";
         const absWidth = Math.abs(opening.width);
         const absHeight = Math.abs(opening.height);
@@ -736,8 +736,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     width={opening.width}
                     height={opening.height}
                     fill={color}
-                    stroke="white"
-                    strokeWidth={2 / zoom}
                     onClick={onClick}
                     onTap={onClick}
                     onMouseEnter={(e: any) => {
@@ -749,10 +747,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         container.style.cursor = isClosed ? 'default' : 'crosshair';
                     }}
                 />
-                <Line points={[0, 0, opening.width, opening.height]} stroke="white" strokeWidth={2 / zoom} listening={false} />
-                <Line points={[0, opening.height, opening.width, 0]} stroke="white" strokeWidth={2 / zoom} listening={false} />
                 {!isExporting && (
-                    <Text text={label} fontSize={12} fill="white" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
+                    <Text text={label} fontSize={12} fill="#1e293b" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
                 )}
                 {!isExporting && (
                     <>
