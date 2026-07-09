@@ -522,6 +522,120 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         );
     });
 
+    // Gap Dimensions: distance from opening edges to wall boundary
+    const MemoizedOpeningGapDimensions = React.memo(({ opening, zoom, textScale, points, isExporting }: any) => {
+        if (isExporting) return null;
+        if (!points || points.length < 3) return null;
+
+        const xs: number[] = points.map((p: any) => p.x);
+        const ys: number[] = points.map((p: any) => p.y);
+        const wallMinX = Math.min(...xs);
+        const wallMaxX = Math.max(...xs);
+        const wallMinY = Math.min(...ys);
+        const wallMaxY = Math.max(...ys);
+
+        const openLeft   = opening.x;
+        const openRight  = opening.x + opening.width;
+        const openTop    = opening.y;
+        const openBottom = opening.y + opening.height;
+
+        const gapLeft   = openLeft - wallMinX;
+        const gapRight  = wallMaxX - openRight;
+        const gapTop    = openTop  - wallMinY;
+        const gapBottom = wallMaxY - openBottom;
+
+        const tickLen   = 4 / zoom;
+        const labelOff  = 6 / zoom;
+        const lineColor = "#0ea5e9"; // sky-500
+        const textColor = "#0369a1"; // sky-700
+        const sw = 0.8 / zoom;
+        const swT = 1 / zoom;
+
+        // Vertical center of the opening for left/right gap lines
+        const midY = opening.y + opening.height / 2;
+        // Horizontal center for top/bottom gap lines
+        const midX = opening.x + opening.width / 2;
+
+        return (
+            <Group listening={false}>
+                {/* Left gap: wallMinX → opening.x, drawn at midY */}
+                {gapLeft > 2 && (
+                    <Group y={midY}>
+                        <Line points={[wallMinX, 0, openLeft, 0]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
+                        <Line points={[wallMinX - tickLen, -tickLen, wallMinX + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[openLeft - tickLen, -tickLen, openLeft + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Text
+                            text={`${(gapLeft / SCALE).toFixed(2)}m`}
+                            fontSize={9}
+                            fill={textColor}
+                            fontStyle="bold"
+                            x={(wallMinX + openLeft) / 2}
+                            y={-labelOff - 9 / zoom}
+                            offsetX={15}
+                            scaleX={textScale}
+                            scaleY={textScale}
+                        />
+                    </Group>
+                )}
+                {/* Right gap: openRight → wallMaxX, drawn at midY */}
+                {gapRight > 2 && (
+                    <Group y={midY}>
+                        <Line points={[openRight, 0, wallMaxX, 0]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
+                        <Line points={[openRight - tickLen, -tickLen, openRight + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[wallMaxX - tickLen, -tickLen, wallMaxX + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Text
+                            text={`${(gapRight / SCALE).toFixed(2)}m`}
+                            fontSize={9}
+                            fill={textColor}
+                            fontStyle="bold"
+                            x={(openRight + wallMaxX) / 2}
+                            y={-labelOff - 9 / zoom}
+                            offsetX={15}
+                            scaleX={textScale}
+                            scaleY={textScale}
+                        />
+                    </Group>
+                )}
+                {/* Top gap: wallMinY → openTop, drawn at midX */}
+                {gapTop > 2 && (
+                    <Group x={midX}>
+                        <Line points={[0, wallMinY, 0, openTop]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
+                        <Line points={[-tickLen, wallMinY - tickLen, tickLen, wallMinY + tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[-tickLen, openTop - tickLen, tickLen, openTop + tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Text
+                            text={`${(gapTop / SCALE).toFixed(2)}m`}
+                            fontSize={9}
+                            fill={textColor}
+                            fontStyle="bold"
+                            x={labelOff}
+                            y={(wallMinY + openTop) / 2}
+                            scaleX={textScale}
+                            scaleY={textScale}
+                        />
+                    </Group>
+                )}
+                {/* Bottom gap: openBottom → wallMaxY, drawn at midX */}
+                {gapBottom > 2 && (
+                    <Group x={midX}>
+                        <Line points={[0, openBottom, 0, wallMaxY]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
+                        <Line points={[-tickLen, openBottom - tickLen, tickLen, openBottom + tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[-tickLen, wallMaxY - tickLen, tickLen, wallMaxY + tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Text
+                            text={`${(gapBottom / SCALE).toFixed(2)}m`}
+                            fontSize={9}
+                            fill={textColor}
+                            fontStyle="bold"
+                            x={labelOff}
+                            y={(openBottom + wallMaxY) / 2}
+                            scaleX={textScale}
+                            scaleY={textScale}
+                        />
+                    </Group>
+                )}
+            </Group>
+        );
+    });
+
     // 4. Generate the Panels Content
     const MemoizedAreaContent = React.memo(({ area, product, zoom, textScale, onClick, points, onMove, onDragStart, wallCenter, interactionMode, isExporting, isColoringMode, customColor, readOnly, selectedDesignAreaId, setSelectedDesignAreaId, wallId, selectedWallId, setSelectedWallId }: any) => {
         const [asyncAreaM2, setAsyncAreaM2] = useState<number | null>(null);
@@ -994,7 +1108,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     if (el.renderType === 'area') {
                         return <MemoizedAreaDimensions key={`dim-${el.id}`} area={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />;
                     } else if (el.renderType === 'opening') {
-                        return <MemoizedOpeningDimensions key={`dim-${el.id}`} opening={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />;
+                        return (
+                            <React.Fragment key={`dim-${el.id}`}>
+                                <MemoizedOpeningDimensions opening={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                                <MemoizedOpeningGapDimensions opening={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                            </React.Fragment>
+                        );
                     }
                     return null;
                 })}
@@ -1002,7 +1121,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     <MemoizedAreaDimensions area={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
                 )}
                 {currentDrawingArea && !('productId' in currentDrawingArea) && (
-                    <MemoizedOpeningDimensions opening={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                    <React.Fragment>
+                        <MemoizedOpeningDimensions opening={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                        <MemoizedOpeningGapDimensions opening={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                    </React.Fragment>
                 )}
             </Group>
         );
