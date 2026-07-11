@@ -1,5 +1,6 @@
 import { BadgeCheck, Check, ShieldCheck } from "lucide-react";
 import Button from "./Button";
+import CountdownTimer from "./CountdownTimer";
 
 interface PaymentCardProps {
   oldPrice: string;
@@ -51,7 +52,7 @@ export default function PaymentCard({
       <div className="mt-5 rounded-xl bg-[#E8E3FF] py-4">
         <p className="text-center text-xs text-[#6B5CE7]">
           Harga naik menjadi <strong>199.000</strong> dalam{" "}
-          <strong>{countdown}</strong>
+          <strong><CountdownTimer initialTime={countdown} /></strong>
         </p>
       </div>
 
