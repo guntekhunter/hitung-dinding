@@ -2,6 +2,14 @@ import Image from "next/image";
 import Button from "./reusable/Button";
 import PaymentCard from "./reusable/PaymentCard";
 
+// Lightweight icon component — avoids Next/Image overhead for tiny SVGs
+const CheckIcon = () => (
+  <img src="/check.svg" alt="" width={20} height={20} className="w-5 h-5 shrink-0" loading="lazy" />
+);
+const CrossIcon = () => (
+  <img src="/cross.svg" alt="" width={20} height={20} className="w-5 h-5 shrink-0" loading="lazy" />
+);
+
 export default function Home() {
   const items = [
     "Toko PVC",
@@ -16,10 +24,11 @@ export default function Home() {
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5]">
         <Image
           src="/logo.svg"
-          alt="Landing page preview"
-          width={500}
-          height={500}
-          className="rounded-md top-[50%] w-[40%]"
+          alt="Logo"
+          width={200}
+          height={60}
+          priority
+          className="w-[40%] h-auto"
         />
       </div>
       <section className="px-4 flex justify-center items-center py-16">
@@ -58,18 +67,20 @@ export default function Home() {
             <div className="pl-4">
               <Image
                 src="/landing-page/1.webp"
-                alt="Landing page preview"
+                alt="Tampilan aplikasi"
                 width={500}
-                height={500}
-                className="rounded-md"
+                height={375}
+                priority
+                className="rounded-md w-full h-auto"
               />
             </div>
             <Image
               src="/landing-page/2-baru.webp"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md absolute top-[50%] w-[25%]"
+              alt="Detail fitur"
+              width={125}
+              height={94}
+              priority
+              className="rounded-md absolute top-[50%] w-[25%] h-auto"
             />
           </div>
         </div>
@@ -79,76 +90,13 @@ export default function Home() {
           Sering Mengalami Hal Ini?
         </h2>
         <div className="space-y-6">
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Menggambar di buku.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Salah hitung material.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Pelanggan minta revisi, harus hitung ulang.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Harus bayar desain interior & drafter</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Membuat RAB menggunakan Excel</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Desain AI sulit diedit untuk dinding lebih dari 1.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Revisi desain lama.</p>
-          </div>
+          <div className="flex space-x-5"><CheckIcon /><p>Menggambar di buku.</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Salah hitung material.</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Pelanggan minta revisi, harus hitung ulang.</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Harus bayar desain interior & drafter</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Membuat RAB menggunakan Excel</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Desain AI sulit diedit untuk dinding lebih dari 1.</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Revisi desain lama.</p></div>
         </div>
       </section>
       <section className="px-4 justify-center items-center py-16 space-y-10">
@@ -156,69 +104,12 @@ export default function Home() {
           Akibatnya
         </h2>
         <div className="space-y-6">
-          <div className="flex space-x-5">
-            <Image
-              src="/cross.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Pelanggan menunggu terlalu lama.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/cross.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Sales sulit memberikan penawaran saat itu juga.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/cross.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Estimasi biaya sering berubah karena salah hitung.</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/cross.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>
-              Kontraktor menghabiskan waktu untuk pekerjaan administratif
-              daripada mengerjakan proyek.
-            </p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/cross.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Bayar mahal drafter dan desain iterior</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/cross.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Closing menjadi lebih lambat.</p>
-          </div>
+          <div className="flex space-x-5"><CrossIcon /><p>Pelanggan menunggu terlalu lama.</p></div>
+          <div className="flex space-x-5"><CrossIcon /><p>Sales sulit memberikan penawaran saat itu juga.</p></div>
+          <div className="flex space-x-5"><CrossIcon /><p>Estimasi biaya sering berubah karena salah hitung.</p></div>
+          <div className="flex space-x-5"><CrossIcon /><p>Kontraktor menghabiskan waktu untuk pekerjaan administratif daripada mengerjakan proyek.</p></div>
+          <div className="flex space-x-5"><CrossIcon /><p>Bayar mahal drafter dan desain iterior</p></div>
+          <div className="flex space-x-5"><CrossIcon /><p>Closing menjadi lebih lambat.</p></div>
         </div>
       </section>
       <section className="px-4 justify-center items-center py-16 space-y-10">
@@ -226,66 +117,12 @@ export default function Home() {
           Dengan satu aplikasi Ini Kamu bisa
         </h2>
         <div className="space-y-6">
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Membuat drafting dinding</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Menghitung luas area secara otomatis</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Menghitung kebutuhan material</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Membuat estimasi biaya & RAB</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Membuat mockup langsung pada foto ruangan pelanggan</p>
-          </div>
-          <div className="flex space-x-5">
-            <Image
-              src="/check.svg"
-              alt="Landing page preview"
-              width={500}
-              height={500}
-              className="rounded-md top-[50%] w-5"
-            />
-            <p>Export hasil untuk presentasi</p>
-          </div>
+          <div className="flex space-x-5"><CheckIcon /><p>Membuat drafting dinding</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Menghitung luas area secara otomatis</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Menghitung kebutuhan material</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Membuat estimasi biaya & RAB</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Membuat mockup langsung pada foto ruangan pelanggan</p></div>
+          <div className="flex space-x-5"><CheckIcon /><p>Export hasil untuk presentasi</p></div>
         </div>
       </section>
       <section className="px-4 justify-center items-center py-16 space-y-10">
