@@ -12,8 +12,17 @@ export default function Home() {
     "Supplier Wall Panel",
   ];
   return (
-    <div className="px-4 text-[#303030] font-mona-sans tracking-tight">
-      <section className="flex justify-center items-center py-16">
+    <div className="text-[#303030] font-mona-sans tracking-tight">
+      <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5]">
+        <Image
+          src="/logo.svg"
+          alt="Landing page preview"
+          width={500}
+          height={500}
+          className="rounded-md top-[50%] w-[40%]"
+        />
+      </div>
+      <section className="px-4 flex justify-center items-center py-16">
         <div className="space-y-7 w-full">
           <div className="w-full flex justify-center">
             <div className="w-[60%] bg-[#F5F5F5] rounded-full">
@@ -65,7 +74,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section className="justify-center items-center py-16 space-y-10">
+      <section className="px-4 justify-center items-center py-16 space-y-10">
         <h2 className="font-bold w-full text-center text-[1.2rem]">
           Sering Mengalami Hal Ini?
         </h2>
@@ -142,7 +151,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section className="justify-center items-center py-16 space-y-10">
+      <section className="px-4 justify-center items-center py-16 space-y-10">
         <h2 className="font-bold w-full text-center text-[1.2rem]">
           Akibatnya
         </h2>
@@ -212,7 +221,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section className="justify-center items-center py-16 space-y-10">
+      <section className="px-4 justify-center items-center py-16 space-y-10">
         <h2 className="font-bold w-full text-center text-[1.2rem]">
           Dengan satu aplikasi Ini Kamu bisa
         </h2>
@@ -279,7 +288,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section className="justify-center items-center py-16 space-y-10">
+      <section className="px-4 justify-center items-center py-16 space-y-10">
         <h2 className="font-bold w-full text-center text-[1.2rem]">
           Bagaimana Cara kerjanya
         </h2>
@@ -316,7 +325,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section className="justify-center items-center py-16 space-y-10">
+      <section className="px-4 justify-center items-center py-16 space-y-10">
         <h2 className="font-bold w-full text-center text-[1.2rem]">
           Cocok Digunakan Oleh
         </h2>
@@ -331,7 +340,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-      <section className="justify-center items-center py-16 space-y-3 bg-[#7B6DED] text-white">
+      <section className="px-4 justify-center items-center py-16 space-y-3 bg-[#7B6DED] text-white">
         <div className="w-full flex justify-center">
           <div className="w-[80%]">
             <h2 className="font-bold w-full text-center text-[2rem]">
@@ -346,7 +355,7 @@ export default function Home() {
           </p>
         </div>
       </section>
-      <section className="py-12 space-y-4">
+      <section className="px-4 py-12 space-y-4">
         <h2 className="font-bold w-full text-center text-[1.2rem]">
           Aktivasi akun + onboarding + akses trial 30 hari.
         </h2>
