@@ -36,11 +36,21 @@ export const saveProjectToDatabase = async (
         let response;
 
         if (projectId) {
+            const { data: existingProject, error: fetchError } = await supabase
+                .from("projects")
+                .select("data")
+                .eq("id", projectId)
+                .single();
+
+            const finalData = (!fetchError && existingProject?.data) 
+                ? { ...existingProject.data, ...projectData }
+                : projectData;
+
             response = await supabase
                 .from("projects")
                 .update({
                     name: projectName,
-                    data: projectData,
+                    data: finalData,
                     company_id: companyId
                 })
                 .eq("id", projectId)
