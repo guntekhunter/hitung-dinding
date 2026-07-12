@@ -1,6 +1,9 @@
+"use client";
+
 import Image from "next/image";
-import Button from "./reusable/Button";
 import PaymentCard from "./reusable/PaymentCard";
+import { useAuthStore } from "../store/useAuthStore";
+import Button from "./reusable/Button";
 
 // Lightweight icon component — avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
@@ -11,6 +14,7 @@ const CrossIcon = () => (
 );
 
 export default function Home() {
+  const { user } = useAuthStore();
   const items = [
     "Toko PVC",
     "Kontraktor Interior",
