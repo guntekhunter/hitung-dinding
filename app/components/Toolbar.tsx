@@ -330,6 +330,23 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                if (!isClosed || isSaving) return;
+                
+                if (customerInfo.name && customerInfo.surveyorName) {
+                    handleSaveProject();
+                } else {
+                    setShowSaveModal(true);
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    });
+
     const router = useRouter();
     const { user, company, clearSession } = useAuthStore();
 
@@ -587,7 +604,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 user={user}
                 company={company}
                 onLogout={handleLogout}
-                onSaveClick={() => setShowSaveModal(true)}
+                onSaveClick={() => {
+                    if (customerInfo.name && customerInfo.surveyorName) {
+                        handleSaveProject();
+                    } else {
+                        setShowSaveModal(true);
+                    }
+                }}
                 isSaving={isSaving}
                 isClosed={isClosed}
                 toggleWallLock={toggleWallLock}
