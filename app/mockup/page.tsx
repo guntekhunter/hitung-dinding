@@ -72,6 +72,39 @@ function solveHomography(src: { x: number, y: number }[], dst: { x: number, y: n
     return `matrix3d(${H.join(',')})`;
 }
 
+import { Plus, Copy, Minus } from 'lucide-react';
+
+const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setActiveMockup, updateMockupName, duplicateMockup }: any) => (
+    <div className="w-full md:w-[260px] flex-shrink-0 bg-white border-r border-gray-200 shadow-sm z-10 flex flex-col h-[30vh] md:h-full p-4 overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold uppercase text-[12px] text-gray-700 tracking-wider">Mockups</h3>
+            <button onClick={addMockup} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition">
+                <Plus size={16} />
+            </button>
+        </div>
+        <div className="flex flex-col gap-2">
+            {mockups.map((m: any) => (
+                <div key={m.id} onClick={() => setActiveMockup(m.id)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${activeMockupId === m.id ? 'bg-[#F5F3FF] border-[#7B6DED] shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                    <input
+                        value={m.name}
+                        onChange={(e) => updateMockupName(m.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-transparent border-none text-sm focus:outline-none text-gray-800 font-medium"
+                    />
+                    <button onClick={(e) => { e.stopPropagation(); duplicateMockup(m.id); }} className="p-1 text-gray-400 hover:text-[#7B6DED] transition">
+                        <Copy size={14} />
+                    </button>
+                    {mockups.length > 1 && (
+                        <button onClick={(e) => { e.stopPropagation(); removeMockup(m.id); }} className="p-1 text-gray-400 hover:text-red-500 transition">
+                            <Minus size={14} />
+                        </button>
+                    )}
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
 function MockupPageContent() {
     const wallEditorRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +117,12 @@ function MockupPageContent() {
     // Always start with loading = true to prevent hydration mismatch between server and client
     // (searchParams is empty on server during static generation, but populated on client)
     const [loadingProject, setLoadingProject] = useState(true);
+
+    // Multiple Mockups State
+    const [mockupsList, setMockupsList] = useState<{ id: string, name: string, bgImage: string | null, includedWalls: string[], wallCorners: Record<string, { x: number, y: number }[]> }[]>([
+        { id: '1', name: 'Mockup 1', bgImage: null, includedWalls: [], wallCorners: {} }
+    ]);
+    const [activeMockupId, setActiveMockupId] = useState('1');
 
     // Background Image State
     const [bgImage, setBgImage] = useState<string | null>(null);
@@ -200,10 +239,18 @@ function MockupPageContent() {
 
                 if (data && !error) {
                     loadProject(id, data.data);
-                    if (data.data.mockupScene) {
+                    if (data.data.mockupScenes && data.data.mockupScenes.length > 0) {
+                        setMockupsList(data.data.mockupScenes);
+                        const first = data.data.mockupScenes[0];
+                        setActiveMockupId(first.id);
+                        setBgImage(first.bgImage);
+                        setIncludedWalls(first.includedWalls);
+                        setWallCorners(first.wallCorners);
+                    } else if (data.data.mockupScene) {
                         setBgImage(data.data.mockupScene.bgImage || null);
                         setIncludedWalls(data.data.mockupScene.includedWalls || []);
                         setWallCorners(data.data.mockupScene.wallCorners || {});
+                        setMockupsList([{ id: '1', name: 'Mockup 1', bgImage: data.data.mockupScene.bgImage || null, includedWalls: data.data.mockupScene.includedWalls || [], wallCorners: data.data.mockupScene.wallCorners || {} }]);
                     } else if (data.data.mockups) {
                         // legacy migration
                         const firstId = Object.keys(data.data.mockups)[0];
@@ -211,6 +258,7 @@ function MockupPageContent() {
                             setBgImage(data.data.mockups[firstId].bgImage);
                             setIncludedWalls([firstId]);
                             setWallCorners({ [firstId]: data.data.mockups[firstId].corners });
+                            setMockupsList([{ id: '1', name: 'Mockup 1', bgImage: data.data.mockups[firstId].bgImage, includedWalls: [firstId], wallCorners: { [firstId]: data.data.mockups[firstId].corners } }]);
                         }
                     }
                 }
@@ -792,7 +840,10 @@ function MockupPageContent() {
                 }
             });
 
-            currentData.mockupScene = { bgImage, includedWalls, wallCorners };
+            // Save active mockup state into the list before saving
+            const finalMockups = mockupsList.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m);
+            
+            currentData.mockupScenes = finalMockups;
             currentData.materialColors = customColors;
 
             const { error: saveError } = await supabase.from("projects").update({ data: currentData }).eq("id", id);
@@ -816,6 +867,75 @@ function MockupPageContent() {
             { x: 0, y: dims.height }
         ];
         return solveHomography(src, corners);
+    };
+
+    // --- Mockup Manager Actions ---
+    const handleAddMockup = () => {
+        const newId = Date.now().toString();
+        const newMockup = { id: newId, name: `Mockup ${mockupsList.length + 1}`, bgImage: null, includedWalls: [], wallCorners: {} };
+        
+        // Save current state first
+        setMockupsList(prev => [...prev.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m), newMockup]);
+        
+        setActiveMockupId(newId);
+        setBgImage(null);
+        setIncludedWalls([]);
+        setWallCorners({});
+        setCornersPast([]);
+        setCornersFuture([]);
+    };
+
+    const handleDuplicateMockup = (idToDup: string) => {
+        const newId = Date.now().toString();
+        // ensure current state is synced
+        const syncedList = mockupsList.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m);
+        const source = syncedList.find(m => m.id === idToDup);
+        if (!source) return;
+
+        const duplicated = { ...source, id: newId, name: `${source.name} (Copy)` };
+        setMockupsList([...syncedList, duplicated]);
+        
+        setActiveMockupId(newId);
+        setBgImage(duplicated.bgImage);
+        setIncludedWalls([...duplicated.includedWalls]);
+        setWallCorners(JSON.parse(JSON.stringify(duplicated.wallCorners)));
+        setCornersPast([]);
+        setCornersFuture([]);
+    };
+
+    const handleRemoveMockup = (idToRemove: string) => {
+        if (mockupsList.length <= 1) return;
+        const newList = mockupsList.filter(m => m.id !== idToRemove);
+        setMockupsList(newList);
+        if (activeMockupId === idToRemove) {
+            const next = newList[0];
+            setActiveMockupId(next.id);
+            setBgImage(next.bgImage);
+            setIncludedWalls(next.includedWalls);
+            setWallCorners(next.wallCorners);
+            setCornersPast([]);
+            setCornersFuture([]);
+        }
+    };
+
+    const handleSetActiveMockup = (newId: string) => {
+        if (newId === activeMockupId) return;
+        // save current
+        const syncedList = mockupsList.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m);
+        setMockupsList(syncedList);
+
+        // load new
+        const target = syncedList.find(m => m.id === newId) || syncedList[0];
+        setActiveMockupId(target.id);
+        setBgImage(target.bgImage);
+        setIncludedWalls(target.includedWalls);
+        setWallCorners(target.wallCorners);
+        setCornersPast([]);
+        setCornersFuture([]);
+    };
+
+    const handleUpdateMockupName = (idToUpdate: string, newName: string) => {
+        setMockupsList(prev => prev.map(m => m.id === idToUpdate ? { ...m, name: newName } : m));
     };
 
     if (loadingProject) {
@@ -900,6 +1020,17 @@ function MockupPageContent() {
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
+                {/* Left Sidebar: Mockup Manager */}
+                <MockupManager 
+                    mockups={mockupsList}
+                    activeMockupId={activeMockupId}
+                    addMockup={handleAddMockup}
+                    removeMockup={handleRemoveMockup}
+                    setActiveMockup={handleSetActiveMockup}
+                    updateMockupName={handleUpdateMockupName}
+                    duplicateMockup={handleDuplicateMockup}
+                />
+                
                 {/* Main Mockup Area */}
                 <div
                     ref={containerRef}
