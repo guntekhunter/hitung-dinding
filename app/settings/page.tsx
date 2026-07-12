@@ -11,6 +11,7 @@ export default function SettingsPage() {
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [companyName, setCompanyName] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,8 +20,13 @@ export default function SettingsPage() {
         if (!user) {
             router.push("/login");
         }
-        if (company?.logo_url) {
-            setPreviewUrl(company.logo_url);
+        if (company) {
+            if (company.logo_url) {
+                setPreviewUrl(company.logo_url);
+            }
+            if (company.name) {
+                setCompanyName(company.name);
+            }
         }
     }, [user, company, router]);
 
@@ -97,7 +103,7 @@ export default function SettingsPage() {
 
     const handleSave = async () => {
         if (!company) return;
-        if (!previewUrl) return;
+        if (!previewUrl && !companyName) return;
 
         setIsSaving(true);
         setErrorMsg("");
@@ -108,8 +114,10 @@ export default function SettingsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    userId: user.id,
                     companyId: company.id,
                     logoUrl: previewUrl,
+                    name: companyName,
                 }),
             });
 
@@ -118,9 +126,9 @@ export default function SettingsPage() {
                 throw new Error(errorData.error || "Failed to update logo via API");
             }
 
-            // Update auth store with new logo URL
-            setSession(user!, { ...company, logo_url: previewUrl });
-            setSuccessMsg("Company logo updated successfully!");
+            // Update auth store with new logo URL and company name
+            setSession(user!, { ...company, logo_url: previewUrl, name: companyName });
+            setSuccessMsg("Company settings updated successfully!");
         } catch (err: any) {
             console.error("Failed to save logo:", err);
             setErrorMsg(err.message || "An error occurred while saving.");
@@ -142,11 +150,24 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">Company Logo</h2>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">Company Information</h2>
                     <p className="text-sm text-slate-500 mb-6">
-                        This logo will appear on the top-left corner of the generated RAB PDF.
+                        Update your company details and logo. The logo will appear on the top-left corner of the generated RAB PDF.
                         For best results, use a wide or square image with a light background.
                     </p>
+
+                    <div className="mb-8">
+                        <label className="block text-sm font-bold text-slate-700 uppercase tracking-widest mb-2">
+                            Company Name
+                        </label>
+                        <input
+                            type="text"
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            placeholder="Enter company name"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all text-slate-700"
+                        />
+                    </div>
 
                     <div className="mb-8 flex flex-col md:flex-row gap-8 items-start">
                         <div className="flex-1 w-full space-y-4">
@@ -200,8 +221,8 @@ export default function SettingsPage() {
                     <div className="border-t border-slate-100 pt-6 mt-6 flex justify-end">
                         <button
                             onClick={handleSave}
-                            disabled={isSaving || !previewUrl}
-                            className={`px-8 py-3 rounded-xl font-bold text-white transition-all shadow-md ${isSaving || !previewUrl
+                            disabled={isSaving || (!previewUrl && !companyName)}
+                            className={`px-8 py-3 rounded-xl font-bold text-white transition-all shadow-md ${isSaving || (!previewUrl && !companyName)
                                 ? "bg-slate-300 cursor-not-allowed"
                                 : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg active:scale-95"
                                 }`}

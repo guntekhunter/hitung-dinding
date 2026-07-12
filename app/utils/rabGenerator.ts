@@ -30,7 +30,8 @@ export const generateRAB = async (
     materialPrices: Record<string, number>,
     products: Product[],
     companyLogoUrl?: string,
-    wallImages?: string[]
+    wallImages?: string[],
+    companyName?: string
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -180,7 +181,8 @@ export const generateRAB = async (
     doc.text("Catatan Lain Lain:", 14, summaryY + 20);
 
     doc.setFont("helvetica", "bold");
-    const termsText = "Bila disepakati, maka formulir ini juga berlaku sebagai kontrak kesepakatan kerja antara pelanggan dengan PEVESINDO Setelah disepakati dan ditandatangani oleh manajer development project dan manajer operasional, satu kopi formulir akan diberikan pada pelanggan.";
+    const displayCompanyName = companyName || "PEVESINDO";
+    const termsText = `Bila disepakati, maka formulir ini juga berlaku sebagai kontrak kesepakatan kerja antara pelanggan dengan ${displayCompanyName} Setelah disepakati dan ditandatangani oleh manajer development project dan manajer operasional, satu kopi formulir akan diberikan pada pelanggan.`;
     const splitTerms = doc.splitTextToSize(termsText, pageWidth - 20);
     doc.setFont("helvetica", "normal");
     doc.text(splitTerms, 14, summaryY + 25);

@@ -883,7 +883,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             await new Promise(r => setTimeout(r, 100));
                         }
 
-                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages);
+                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages, company?.name);
                     } catch (e) { alert("PDF Error: " + e); }
                 }}
             />
