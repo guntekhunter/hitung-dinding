@@ -75,7 +75,7 @@ function solveHomography(src: { x: number, y: number }[], dst: { x: number, y: n
 import { Plus, Copy, Minus } from 'lucide-react';
 
 const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setActiveMockup, updateMockupName, duplicateMockup }: any) => (
-    <div className="w-full md:w-[260px] flex-shrink-0 bg-white border-r border-gray-200 shadow-sm z-10 flex flex-col h-[30vh] md:h-full p-4 overflow-y-auto">
+    <div className="w-full flex-shrink-0 bg-white border-b border-gray-200 flex flex-col p-4 max-h-[40vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold uppercase text-[12px] text-gray-700 tracking-wider">Mockups</h3>
             <button onClick={addMockup} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition">
@@ -1020,18 +1020,6 @@ function MockupPageContent() {
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
-                {/* Left Sidebar: Mockup Manager */}
-                <MockupManager 
-                    mockups={mockupsList}
-                    activeMockupId={activeMockupId}
-                    addMockup={handleAddMockup}
-                    removeMockup={handleRemoveMockup}
-                    setActiveMockup={handleSetActiveMockup}
-                    updateMockupName={handleUpdateMockupName}
-                    duplicateMockup={handleDuplicateMockup}
-                />
-                
-                {/* Main Mockup Area */}
                 <div
                     ref={containerRef}
                     className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
@@ -1132,9 +1120,20 @@ function MockupPageContent() {
                     </div>
                 </div>
 
-                {/* Right Sidebar: Texture Selector */}
-                <div className="w-full md:w-[320px] h-[30vh] md:h-full flex-shrink-0 border-l border-gray-200 shadow-sm z-0">
-                    <TextureSelector />
+                {/* Right Sidebar: Toolbar */}
+                <div className="w-full md:w-[320px] h-[30vh] md:h-full flex flex-col flex-shrink-0 border-l border-gray-200 shadow-sm z-10 bg-white">
+                    <MockupManager 
+                        mockups={mockupsList}
+                        activeMockupId={activeMockupId}
+                        addMockup={handleAddMockup}
+                        removeMockup={handleRemoveMockup}
+                        setActiveMockup={handleSetActiveMockup}
+                        updateMockupName={handleUpdateMockupName}
+                        duplicateMockup={handleDuplicateMockup}
+                    />
+                    <div className="flex-1 min-h-0">
+                        <TextureSelector />
+                    </div>
                 </div>
             </div>
         </main>
