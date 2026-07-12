@@ -127,7 +127,7 @@ export default function SettingsPage() {
             }
 
             // Update auth store with new logo URL and company name
-            setSession(user!, { ...company, logo_url: previewUrl, name: companyName });
+            setSession(user, { ...company, logo_url: previewUrl || "", name: companyName });
             setSuccessMsg("Company settings updated successfully!");
         } catch (err: any) {
             console.error("Failed to save logo:", err);
