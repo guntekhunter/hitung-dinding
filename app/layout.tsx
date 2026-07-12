@@ -29,7 +29,8 @@ const playFair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "Rapi Studio",
-  description: "Hemat waktu dan Jutaan rupiah dengan desain interior PVC yang lebih mudah & cepat, dibanding bayar interior desainer",
+  description:
+    "Hemat waktu dan Jutaan rupiah dengan desain interior PVC yang lebih mudah & cepat, dibanding bayar interior desainer",
 };
 
 import type { Viewport } from "next";
