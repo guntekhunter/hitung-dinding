@@ -102,7 +102,7 @@ export default function SettingsPage() {
     };
 
     const handleSave = async () => {
-        if (!company) return;
+        if (!user || !company) return;
         if (!previewUrl && !companyName) return;
 
         setIsSaving(true);
