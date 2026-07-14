@@ -15,7 +15,7 @@ const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setAc
         </div>
         <div className="flex flex-col gap-2">
             {mockups?.map((m: any) => (
-                <div key={m.id} onClick={() => setActiveMockup(m.id)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${activeMockupId === m.id ? 'bg-[#F5F3FF] border-[#7B6DED] shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                <div key={m.id} onClick={() => setActiveMockup(m.id)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${activeMockupId === m.id ? 'bg-[#F5F3FF] border-[#7B6DED] ' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
                     <input
                         value={m.name}
                         onChange={(e) => updateMockupName(m.id, e.target.value)}
@@ -202,70 +202,70 @@ export default function TextureSelector({
                 )}
 
                 <div className="p-4">
-                {isLoadingMaterials ? (
-                    <div className="flex flex-col gap-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md shadow-sm animate-pulse">
-                                <div className="flex items-center justify-between">
-                                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                                    <div className="w-8 h-8 rounded bg-gray-200"></div>
-                                </div>
-                                <div className="flex gap-2 mt-1">
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : usedProducts.length === 0 ? (
-                    <p className="text-sm text-gray-500">No materials used in this project yet.</p>
-                ) : (
-                    <div className="flex flex-col gap-4">
-                        {usedProducts.map(product => {
-                            const displayColor = getDisplayColor(product.id);
-                            const isHex = displayColor && !displayColor.startsWith("data:") && !displayColor.startsWith("http");
-
-                            return (
-                                <div
-                                    key={product.id}
-                                    className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg shadow-sm"
-                                >
+                    {isLoadingMaterials ? (
+                        <div className="flex flex-col gap-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md animate-pulse">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
-                                            {product.name}
-                                        </span>
-                                        <input
-                                            type="color"
-                                            value={isHex ? displayColor : "#cccccc"}
-                                            onChange={e => applyColor(product.id, e.target.value)}
-                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
-                                        />
+                                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                        <div className="w-8 h-8 rounded bg-gray-200"></div>
                                     </div>
-
-                                    {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
-                                        <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
-                                            {materialColorsData[product.id].map(mc => (
-                                                <button
-                                                    key={mc.id}
-                                                    onClick={() => applyColor(product.id, mc.image)}
-                                                    className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${displayColor === mc.image
-                                                        ? 'border-[#7B6DED] scale-105'
-                                                        : 'border-transparent hover:border-gray-300'
-                                                        }`}
-                                                    title="Apply Texture"
-                                                >
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <div className="flex gap-2 mt-1">
+                                        <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                        <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                        <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                    </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    ) : usedProducts.length === 0 ? (
+                        <p className="text-sm text-gray-500">No materials used in this project yet.</p>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {usedProducts.map(product => {
+                                const displayColor = getDisplayColor(product.id);
+                                const isHex = displayColor && !displayColor.startsWith("data:") && !displayColor.startsWith("http");
+
+                                return (
+                                    <div
+                                        key={product.id}
+                                        className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg "
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
+                                                {product.name}
+                                            </span>
+                                            <input
+                                                type="color"
+                                                value={isHex ? displayColor : "#cccccc"}
+                                                onChange={e => applyColor(product.id, e.target.value)}
+                                                className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                            />
+                                        </div>
+
+                                        {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                            <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                                {materialColorsData[product.id].map(mc => (
+                                                    <button
+                                                        key={mc.id}
+                                                        onClick={() => applyColor(product.id, mc.image)}
+                                                        className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${displayColor === mc.image
+                                                            ? 'border-[#7B6DED] scale-105'
+                                                            : 'border-transparent hover:border-gray-300'
+                                                            }`}
+                                                        title="Apply Texture"
+                                                    >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
