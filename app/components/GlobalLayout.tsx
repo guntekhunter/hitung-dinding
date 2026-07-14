@@ -12,7 +12,7 @@ export default function GlobalLayout({ children }: { children: React.ReactNode }
     }
 
     return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row font-mona-sans">
             <Sidebar />
             <div className="flex-1 bg-white h-screen overflow-y-auto pt-[60px] md:pt-0">
                 {children}
