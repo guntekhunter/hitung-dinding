@@ -24,7 +24,7 @@ export default function Home() {
     "Supplier Wall Panel",
   ];
   return (
-    <div className="text-[#303030] font-mona-sans tracking-tight">
+    <div className="text-[#303030] font-mona-sans tracking-tight bg-white">
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5]">
         <Image
           src="/logo.svg"
