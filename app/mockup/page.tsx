@@ -480,32 +480,32 @@ function MockupPageContent() {
                 minY = 3000;
                 maxX = 0;
                 maxY = 0;
-            }
 
-            includedWalls.forEach(wallId => {
-                const corners = wallCorners[wallId];
-                if (corners) {
-                    corners.forEach(c => {
-                        if (c.x < minX) minX = c.x;
-                        if (c.y < minY) minY = c.y;
-                        if (c.x > maxX) maxX = c.x;
-                        if (c.y > maxY) maxY = c.y;
-                    });
+                includedWalls.forEach(wallId => {
+                    const corners = wallCorners[wallId];
+                    if (corners) {
+                        corners.forEach(c => {
+                            if (c.x < minX) minX = c.x;
+                            if (c.y < minY) minY = c.y;
+                            if (c.x > maxX) maxX = c.x;
+                            if (c.y > maxY) maxY = c.y;
+                        });
+                    }
+                });
+
+                if (maxX < minX) {
+                    minX = 0; minY = 0; maxX = 500; maxY = 500;
+                } else {
+                    minX -= 50;
+                    minY -= 50;
+                    maxX += 50;
+                    maxY += 50;
                 }
-            });
-
-            if (!bgImage && maxX < minX) {
-                minX = 0; minY = 0; maxX = 500; maxY = 500;
-            } else {
-                minX -= 50;
-                minY -= 50;
-                maxX += 50;
-                maxY += 50;
+                
+                // Clamp to valid range
+                minX = Math.max(0, minX);
+                minY = Math.max(0, minY);
             }
-
-            // Clamp to valid range
-            minX = Math.max(0, minX);
-            minY = Math.max(0, minY);
 
             const exportWidth = maxX - minX;
             const exportHeight = maxY - minY;
