@@ -9,11 +9,11 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
-import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy } from 'lucide-react';
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy, ImagePlus } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
-const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset, undo, past = [], isMobile }: any) => {
+const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset, undo, past = [], isMobile, onMockupClick }: any) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     return (
@@ -129,6 +129,14 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
                         title="Delete"
                     >
                         <Trash2 className="w-[1rem]" />
+                    </button>
+                    {/* mockup */}
+                    <button
+                        onClick={onMockupClick}
+                        className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
+                        title="Mockup"
+                    >
+                        <ImagePlus className="w-[1rem]" />
                     </button>
                 </div>
             </div>
@@ -335,7 +343,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 if (!isClosed || isSaving) return;
-                
+
                 if (customerInfo.name && customerInfo.surveyorName) {
                     handleSaveProject();
                 } else {
@@ -376,7 +384,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         const triggerCalculation = async () => {
             const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
             if (walls.length === 0 || (activeWall && !activeWall.isClosed)) return;
-            
+
             setIsCalculating(true);
             try {
                 // Offload heavy geometry and material math to the background worker
@@ -413,8 +421,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             triggerCalculation();
         }, 400);
 
-        return () => { 
-            isCurrent = false; 
+        return () => {
+            isCurrent = false;
             clearTimeout(timeoutId);
         };
         // We only re-calculate when the physical geometry or material settings change
@@ -621,6 +629,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 undo={undo}
                 past={past}
                 isMobile={isMobile}
+                onMockupClick={() => {
+                    if (projectId) {
+                        router.push(`/mockup?id=${projectId}`);
+                    } else {
+                        alert("Silahkan simpan project terlebih dahulu!");
+                    }
+                }}
             />
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 md:pb-8">

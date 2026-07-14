@@ -72,7 +72,7 @@ function solveHomography(src: { x: number, y: number }[], dst: { x: number, y: n
     return `matrix3d(${H.join(',')})`;
 }
 
-import { Plus, Copy, Minus } from 'lucide-react';
+import { Plus, Copy, Minus, ImagePlus, Save, Download, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 
 const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setActiveMockup, updateMockupName, duplicateMockup }: any) => (
     <div className="w-full flex-shrink-0 bg-white border-b border-gray-200 flex flex-col p-4 max-h-[40vh] overflow-y-auto">
@@ -113,7 +113,7 @@ function MockupPageContent() {
     const router = useRouter();
 
     const { loadProject, fetchProducts, walls, activeWallId, setActiveWall, setIsColoringPreview } = useCanvasStore();
-    
+
     // Always start with loading = true to prevent hydration mismatch between server and client
     // (searchParams is empty on server during static generation, but populated on client)
     const [loadingProject, setLoadingProject] = useState(true);
@@ -650,7 +650,7 @@ function MockupPageContent() {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
+
                 // Clean up the object URL to free memory
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
             }, 'image/png');
@@ -842,7 +842,7 @@ function MockupPageContent() {
 
             // Save active mockup state into the list before saving
             const finalMockups = mockupsList.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m);
-            
+
             currentData.mockupScenes = finalMockups;
             currentData.materialColors = customColors;
 
@@ -873,10 +873,10 @@ function MockupPageContent() {
     const handleAddMockup = () => {
         const newId = Date.now().toString();
         const newMockup = { id: newId, name: `Mockup ${mockupsList.length + 1}`, bgImage: null, includedWalls: [], wallCorners: {} };
-        
+
         // Save current state first
         setMockupsList(prev => [...prev.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m), newMockup]);
-        
+
         setActiveMockupId(newId);
         setBgImage(null);
         setIncludedWalls([]);
@@ -894,7 +894,7 @@ function MockupPageContent() {
 
         const duplicated = { ...source, id: newId, name: `${source.name} (Copy)` };
         setMockupsList([...syncedList, duplicated]);
-        
+
         setActiveMockupId(newId);
         setBgImage(duplicated.bgImage);
         setIncludedWalls([...duplicated.includedWalls]);
@@ -965,27 +965,6 @@ function MockupPageContent() {
                     <h1 className="text-lg font-medium text-gray-800 hidden md:flex">Perspective Mockup</h1>
                 </div>
                 <div className="flex items-center gap-2 md:gap-3">
-                    <button
-                        onClick={handleSaveMockup}
-                        title="Save Mockup"
-                        className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-50 transition shadow-sm active:scale-95"
-                    >
-                        <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-                        <span className="hidden md:inline">Save</span>
-                    </button>
-                    <button
-                        onClick={handleDownload}
-                        title="Download Mockup"
-                        className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
-                    >
-                        <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        <span className="hidden md:inline">Download PNG</span>
-                    </button>
-                    <label title="Upload Background" className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <svg className={`w-4 h-4 md:mr-2 shrink-0 ${isUploading ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        <span className="hidden md:inline">{isUploading ? 'Uploading...' : 'Background'}</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
-                    </label>
                     <div className="h-6 w-px bg-gray-300 hidden md:block"></div>
                     <label className="text-sm font-medium text-gray-600 hidden md:block">Walls:</label>
                     <div className="relative" ref={wallDropdownRef}>
@@ -1038,15 +1017,15 @@ function MockupPageContent() {
                         >
                             {/* Background Image Layer - Separated to prevent mobile 3D transform clipping bugs */}
                             {bgImage ? (
-                                <img 
-                                    src={bgImage} 
-                                    alt="Background" 
+                                <img
+                                    src={bgImage}
+                                    alt="Background"
                                     className="absolute top-0 left-0 pointer-events-none"
                                     style={{ width: `${canvasDims.width}px`, height: `${canvasDims.height}px`, objectFit: 'fill', transform: 'translateZ(-1px)' }}
                                     crossOrigin="anonymous"
                                 />
                             ) : (
-                                <div 
+                                <div
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
                                         backgroundImage: `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
@@ -1122,7 +1101,34 @@ function MockupPageContent() {
 
                 {/* Right Sidebar: Toolbar */}
                 <div className="w-full md:w-[320px] h-[30vh] md:h-full flex flex-col flex-shrink-0 border-l border-gray-200 shadow-sm z-10 bg-white">
-                    <MockupManager 
+                    <div className="flex justify-end p-4 gap-2">
+                        <button
+                            onClick={handleSaveMockup}
+                            title="Save Mockup"
+                            className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-50 transition active:scale-95"
+                        >
+                            <Save size={16} />
+                        </button>
+                        <button
+                            onClick={handleDownload}
+                            title="Download Mockup"
+                            className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
+                        >
+                            <Download size={16} />
+                        </button>
+                        <label title="Upload Background" className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <ImageIcon size={16} className={isUploading ? 'animate-pulse' : ''} />
+                            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                        </label>
+                        <button
+                            onClick={() => router.push('/')}
+                            className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-50 transition active:scale-95"
+                            title="Kembali ke Editor"
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                    </div>
+                    <MockupManager
                         mockups={mockupsList}
                         activeMockupId={activeMockupId}
                         addMockup={handleAddMockup}
@@ -1131,6 +1137,7 @@ function MockupPageContent() {
                         updateMockupName={handleUpdateMockupName}
                         duplicateMockup={handleDuplicateMockup}
                     />
+
                     <div className="flex-1 min-h-0">
                         <TextureSelector />
                     </div>
