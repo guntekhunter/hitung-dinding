@@ -74,36 +74,7 @@ function solveHomography(src: { x: number, y: number }[], dst: { x: number, y: n
 
 import { Plus, Copy, Minus, ImagePlus, Save, Download, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 
-const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setActiveMockup, updateMockupName, duplicateMockup }: any) => (
-    <div className="w-full flex-shrink-0 bg-white border-b border-gray-200 flex flex-col p-4 max-h-[40vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold uppercase text-[12px] text-gray-700 tracking-wider">Mockups</h3>
-            <button onClick={addMockup} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition">
-                <Plus size={16} />
-            </button>
-        </div>
-        <div className="flex flex-col gap-2">
-            {mockups.map((m: any) => (
-                <div key={m.id} onClick={() => setActiveMockup(m.id)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${activeMockupId === m.id ? 'bg-[#F5F3FF] border-[#7B6DED] shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
-                    <input
-                        value={m.name}
-                        onChange={(e) => updateMockupName(m.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 bg-transparent border-none text-sm focus:outline-none text-gray-800 font-medium"
-                    />
-                    <button onClick={(e) => { e.stopPropagation(); duplicateMockup(m.id); }} className="p-1 text-gray-400 hover:text-[#7B6DED] transition">
-                        <Copy size={14} />
-                    </button>
-                    {mockups.length > 1 && (
-                        <button onClick={(e) => { e.stopPropagation(); removeMockup(m.id); }} className="p-1 text-gray-400 hover:text-red-500 transition">
-                            <Minus size={14} />
-                        </button>
-                    )}
-                </div>
-            ))}
-        </div>
-    </div>
-);
+
 
 function MockupPageContent() {
     const wallEditorRef = useRef<any>(null);
@@ -1100,7 +1071,7 @@ function MockupPageContent() {
                 </div>
 
                 {/* Right Sidebar: Toolbar */}
-                <div className="w-full md:w-[320px] h-[30vh] md:h-full flex flex-col flex-shrink-0 border-l border-gray-200 shadow-sm z-10 bg-white">
+                <div className="w-full md:w-[320px] h-[60vh] md:h-full flex flex-col flex-shrink-0 border-t md:border-t-0 md:border-l border-gray-200 shadow-sm z-10 bg-white">
                     <div className="flex justify-end p-4 gap-2">
                         <button
                             onClick={handleSaveMockup}
@@ -1128,18 +1099,18 @@ function MockupPageContent() {
                             <ArrowLeft size={16} />
                         </button>
                     </div>
-                    <MockupManager
-                        mockups={mockupsList}
-                        activeMockupId={activeMockupId}
-                        addMockup={handleAddMockup}
-                        removeMockup={handleRemoveMockup}
-                        setActiveMockup={handleSetActiveMockup}
-                        updateMockupName={handleUpdateMockupName}
-                        duplicateMockup={handleDuplicateMockup}
-                    />
+
 
                     <div className="flex-1 min-h-0">
-                        <TextureSelector />
+                        <TextureSelector
+                            mockupsList={mockupsList}
+                            activeMockupId={activeMockupId}
+                            handleAddMockup={handleAddMockup}
+                            handleRemoveMockup={handleRemoveMockup}
+                            handleSetActiveMockup={handleSetActiveMockup}
+                            handleUpdateMockupName={handleUpdateMockupName}
+                            handleDuplicateMockup={handleDuplicateMockup}
+                        />
                     </div>
                 </div>
             </div>
