@@ -178,7 +178,7 @@ export default function TextureSelector({
                                 <p className={`text-xs font-semibold truncate ${selectedDesignAreaId ? 'text-[#7B6DED]' : 'text-green-700'
                                     }`}>
                                     {selectedDesignAreaId
-                                        ? '🎯 One rectangle selected'
+                                        ? 'One rectangle selected'
                                         : `${selectedWallName} — active`}
                                 </p>
                                 <p className={`text-[10px] mt-0.5 ${selectedDesignAreaId ? 'text-[#7B6DED]/70' : 'text-green-600'

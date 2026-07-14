@@ -928,7 +928,7 @@ function MockupPageContent() {
     }
 
     return (
-        <main className="font-mona-sans flex flex-col h-[calc(100vh-60px)] md:h-screen overflow-hidden bg-slate-50">
+        <main className="flex flex-col h-[calc(100vh-60px)] md:h-screen overflow-hidden bg-slate-50">
             <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
                 <div
                     ref={containerRef}
