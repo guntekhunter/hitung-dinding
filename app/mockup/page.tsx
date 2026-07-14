@@ -157,18 +157,25 @@ function MockupPageContent() {
 
         includedWalls.forEach(wallId => {
             const wData = walls.find(w => w.id === wallId);
-            if (wData && wData.points.length >= 3 && !newDims[wallId]) {
-                const xs = wData.points.map(p => p.x);
-                const ys = wData.points.map(p => p.y);
-                const minX = Math.min(...xs);
-                const minY = Math.min(...ys);
-                const maxX = Math.max(...xs);
-                const maxY = Math.max(...ys);
+            if (wData && wData.points.length >= 3) {
+                let w, h;
+                if (!newDims[wallId]) {
+                    const xs = wData.points.map(p => p.x);
+                    const ys = wData.points.map(p => p.y);
+                    const minX = Math.min(...xs);
+                    const minY = Math.min(...ys);
+                    const maxX = Math.max(...xs);
+                    const maxY = Math.max(...ys);
 
-                const w = Math.max(10, maxX - minX);
-                const h = Math.max(10, maxY - minY);
+                    w = Math.max(10, maxX - minX);
+                    h = Math.max(10, maxY - minY);
 
-                newDims[wallId] = { width: w, height: h, minX, minY };
+                    newDims[wallId] = { width: w, height: h, minX, minY };
+                    changed = true;
+                } else {
+                    w = newDims[wallId].width;
+                    h = newDims[wallId].height;
+                }
 
                 if (!updatedCorners[wallId]) {
                     const scale = Math.min(800 / w, 500 / h, 1);
@@ -186,8 +193,8 @@ function MockupPageContent() {
                         { x: startX + displayW, y: startY + displayH },
                         { x: startX, y: startY + displayH }
                     ];
+                    changed = true;
                 }
-                changed = true;
             }
         });
 
@@ -257,9 +264,9 @@ function MockupPageContent() {
             let x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
             let y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
 
-            // Clamp points within canvas dimensions so they don't get lost
-            x = Math.max(0, Math.min(x, canvasDims.width));
-            y = Math.max(0, Math.min(y, canvasDims.height));
+            // Allow points to go outside the canvas dimensions for better perspective matching
+            // x = Math.max(0, Math.min(x, canvasDims.width));
+            // y = Math.max(0, Math.min(y, canvasDims.height));
 
             setWallCorners(prev => {
                 const newCorners = { ...prev };
