@@ -9,7 +9,8 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
-import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy, ImagePlus } from 'lucide-react';
+import { optimizeCeiling, CeilingInput, TrapConfig } from "../utils/ceilingOptimizer";
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy, ImagePlus, LayoutTemplate } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
@@ -179,33 +180,7 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
                         onClick={(e) => e.stopPropagation()}
                         className="flex-1 bg-transparent border-none text-[.8rem] focus:outline-none"
                     />
-                    {wall.type === 'ceiling' && (
-                        <>
-                            <select
-                                value={wall.ceilingPanelLength || 4}
-                                onChange={(e) => setCeilingPanelLength(wall.id, Number(e.target.value))}
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-[10px] bg-white border border-gray-200 rounded px-1 outline-none"
-                            >
-                                <option value={3}>3m</option>
-                                <option value={4}>4m</option>
-                                <option value={6}>6m</option>
-                            </select>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCeilingPanelDirection(
-                                        wall.id, 
-                                        wall.ceilingPanelDirection === 'horizontal' ? 'vertical' : 'horizontal'
-                                    );
-                                }}
-                                className="text-[10px] bg-white border border-gray-200 rounded px-2 font-bold hover:bg-gray-100"
-                                title="Ubah Arah Panel"
-                            >
-                                {wall.ceilingPanelDirection === 'horizontal' ? '↔' : '↕'}
-                            </button>
-                        </>
-                    )}
+                    {/* Ceiling settings moved to CeilingSettingsManager */}
                     <button
                         onClick={(e) => { e.stopPropagation(); duplicateWall(wall.id); }}
                         className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
@@ -226,6 +201,99 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
         </div>
     </div>
 ));
+
+const CeilingSettingsManager = memo(({ activeWall, setCeilingPanelWidth, setCeilingPanelLength, setCeilingPanelDirection, setCeilingTraps }: any) => {
+    if (!activeWall || activeWall.type !== 'ceiling') return null;
+    
+    const panelWidth = activeWall.ceilingPanelWidth || 20;
+    const panelLength = activeWall.ceilingPanelLength || 400; // in cm
+    const direction = activeWall.ceilingPanelDirection || 'horizontal';
+    const traps: TrapConfig[] = activeWall.ceilingTraps || [];
+
+    const addTrap = () => {
+        setCeilingTraps(activeWall.id, [...traps, { width: 40, dropHeight: 15, gap: 40 }]);
+    };
+
+    const updateTrap = (index: number, field: keyof TrapConfig, value: number) => {
+        const newTraps = [...traps];
+        newTraps[index] = { ...newTraps[index], [field]: value };
+        setCeilingTraps(activeWall.id, newTraps);
+    };
+
+    const removeTrap = (index: number) => {
+        setCeilingTraps(activeWall.id, traps.filter((_, i) => i !== index));
+    };
+
+    return (
+        <div className="space-y-[1rem] mt-4">
+            <hr className="border-[#E8E8E8]" />
+            <h3 className="font-medium uppercase text-[10px] tracking-widest text-[#303030]">Panel Settings</h3>
+            
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="block text-[10px] text-gray-500 mb-1">Panel Width (cm)</label>
+                        <input type="number" value={panelWidth} onChange={(e) => setCeilingPanelWidth(activeWall.id, Number(e.target.value))} className="w-full border border-gray-200 rounded px-2 py-1 text-[10px]" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] text-gray-500 mb-1">Panel Length (cm)</label>
+                        <select value={panelLength} onChange={(e) => setCeilingPanelLength(activeWall.id, Number(e.target.value))} className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] bg-white">
+                            <option value={300}>300 cm (3m)</option>
+                            <option value={400}>400 cm (4m)</option>
+                            <option value={600}>600 cm (6m)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Installation Direction</label>
+                    <div className="flex gap-2 bg-gray-50 p-1 rounded border border-gray-200">
+                        <button
+                            onClick={() => setCeilingPanelDirection(activeWall.id, 'horizontal')}
+                            className={`flex-1 py-1 text-[10px] rounded transition-all ${direction === 'horizontal' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500'}`}
+                        >
+                            Horizontal
+                        </button>
+                        <button
+                            onClick={() => setCeilingPanelDirection(activeWall.id, 'vertical')}
+                            className={`flex-1 py-1 text-[10px] rounded transition-all ${direction === 'vertical' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500'}`}
+                        >
+                            Vertical
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-4">
+                <h3 className="font-medium uppercase text-[10px] tracking-widest text-[#303030]">Trap Levels</h3>
+                <button onClick={addTrap} className="p-1 bg-[#F5F5F5] rounded hover:bg-[#E2E2E2] transition-colors"><Plus className="w-3 h-3 text-[#303030]" /></button>
+            </div>
+
+            <div className="space-y-2">
+                {traps.map((trap, index) => (
+                    <div key={index} className="p-2 border border-gray-200 bg-[#FBFBFB] rounded relative">
+                        <button onClick={() => removeTrap(index)} className="absolute top-1 right-1 p-1 text-red-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                        <h4 className="text-[10px] font-bold text-[#303030] mb-2">Trap Level {index + 1}</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            <div>
+                                <label className="block text-[9px] text-gray-500 mb-0.5">Width (cm)</label>
+                                <input type="number" value={trap.width} onChange={(e) => updateTrap(index, 'width', Number(e.target.value))} className="w-full border border-gray-200 rounded px-1 py-0.5 text-[10px]" />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] text-gray-500 mb-0.5">Drop (cm)</label>
+                                <input type="number" value={trap.dropHeight} onChange={(e) => updateTrap(index, 'dropHeight', Number(e.target.value))} className="w-full border border-gray-200 rounded px-1 py-0.5 text-[10px]" />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] text-gray-500 mb-0.5">Gap (cm)</label>
+                                <input type="number" value={trap.gap} onChange={(e) => updateTrap(index, 'gap', Number(e.target.value))} className="w-full border border-gray-200 rounded px-1 py-0.5 text-[10px]" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
 
 const SaveProjectModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo, onSave, isSaving }: any) => {
     if (!isOpen) return null;
@@ -482,7 +550,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const totalProductCounts = (calcResults?.totalProductCounts || {}) as Record<string, number>;
 
     const ceilingPanels = useMemo(() => {
-        const panels: Record<string, { length: number, count: number, area: number }> = {};
+        const panels: Record<string, { length: number, count: number, area: number, optimization?: any }> = {};
         walls.forEach(w => {
             if (w.type === 'ceiling' && w.isClosed) {
                 let area = 0;
@@ -493,57 +561,29 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 }
                 area = Math.abs(area / 2) / (SCALE * SCALE);
 
-                // Calculate bounding box for realistic panel layout
+                // Calculate bounding box in cm for realistic panel layout
                 const xs = w.points.map(p => p.x);
                 const ys = w.points.map(p => p.y);
-                const widthM = (Math.max(...xs) - Math.min(...xs)) / SCALE;
-                const heightM = (Math.max(...ys) - Math.min(...ys)) / SCALE;
+                const widthCm = ((Math.max(...xs) - Math.min(...xs)) / SCALE) * 100;
+                const lengthCm = ((Math.max(...ys) - Math.min(...ys)) / SCALE) * 100;
 
-                const direction = w.ceilingPanelDirection || 'vertical';
-                const stripLength = direction === 'vertical' ? heightM : widthM;
-                const numStrips = Math.ceil((direction === 'vertical' ? widthM : heightM) / 0.2);
+                const input: CeilingInput = {
+                    roomWidth: widthCm,
+                    roomLength: lengthCm,
+                    panelWidth: w.ceilingPanelWidth || 20,
+                    panelLength: (w.ceilingPanelLength && w.ceilingPanelLength > 10) ? w.ceilingPanelLength : (w.ceilingPanelLength || 4) * 100, // Handle old < 10 values
+                    direction: w.ceilingPanelDirection || 'horizontal',
+                    traps: w.ceilingTraps || []
+                };
 
-                const panelLength = w.ceilingPanelLength || 4;
-
-                let totalPanelsUsed = 0;
-                let leftovers: number[] = [];
-
-                for (let i = 0; i < numStrips; i++) {
-                    let remainingStrip = stripLength;
-
-                    // Use full panels for the bulk of the strip if it exceeds panel length
-                    while (remainingStrip >= panelLength) {
-                        totalPanelsUsed++;
-                        remainingStrip -= panelLength;
-                    }
-
-                    // For the remaining piece (less than panelLength)
-                    if (remainingStrip > 0) {
-                        leftovers.sort((a, b) => a - b);
-                        let foundIndex = -1;
-                        for (let j = 0; j < leftovers.length; j++) {
-                            if (leftovers[j] >= remainingStrip) {
-                                foundIndex = j;
-                                break;
-                            }
-                        }
-
-                        if (foundIndex !== -1) {
-                            // Reuse existing leftover
-                            leftovers[foundIndex] -= remainingStrip;
-                        } else {
-                            // Need a new panel
-                            totalPanelsUsed++;
-                            leftovers.push(panelLength - remainingStrip);
-                        }
-                    }
-                }
-
+                const optimization = optimizeCeiling(input);
                 const wasteMult = (1 + wastePercentage / 100);
+
                 panels[w.id] = {
-                    length: panelLength,
-                    count: Math.ceil(totalPanelsUsed * wasteMult),
-                    area: area
+                    length: input.panelLength / 100, // display as meters
+                    count: Math.ceil(optimization.totalPanels * wasteMult),
+                    area: area,
+                    optimization // keep raw data if needed
                 };
             }
         });
@@ -774,8 +814,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     setActiveWall={setActiveWall}
                     updateWallName={updateWallName}
                     duplicateWall={duplicateWall}
-                    setCeilingPanelLength={setCeilingPanelLength}
-                    setCeilingPanelDirection={setCeilingPanelDirection}
+                />
+                <CeilingSettingsManager
+                    activeWall={walls.find((w: any) => w.id === activeWallId)}
+                    setCeilingPanelWidth={useCanvasStore((state) => state.setCeilingPanelWidth)}
+                    setCeilingPanelLength={useCanvasStore((state) => state.setCeilingPanelLength)}
+                    setCeilingPanelDirection={useCanvasStore((state) => state.setCeilingPanelDirection)}
+                    setCeilingTraps={useCanvasStore((state) => state.setCeilingTraps)}
                 />
                 <hr className="border-[#E8E8E8]" />
                 {/* Actions & Modes */}

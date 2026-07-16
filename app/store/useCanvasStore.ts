@@ -49,6 +49,12 @@ export type ListElement = {
     createdAt?: number;
 };
 
+export interface TrapConfig {
+    width: number;
+    dropHeight: number;
+    gap: number;
+}
+
 export type Wall = {
     id: string;
     name: string;
@@ -59,8 +65,10 @@ export type Wall = {
     lists: ListElement[];
     isWallLocked: boolean;
     type?: 'wall' | 'ceiling';
+    ceilingPanelWidth?: number;
     ceilingPanelLength?: number;
     ceilingPanelDirection?: 'horizontal' | 'vertical';
+    ceilingTraps?: TrapConfig[];
 };
 
 type HistoryEntry = {
@@ -117,6 +125,8 @@ type CanvasState = {
     setActiveWall: (id: string) => void;
     updateWallName: (id: string, name: string) => void;
     setCeilingPanelLength: (id: string, length: number) => void;
+    setCeilingPanelWidth: (id: string, width: number) => void;
+    setCeilingTraps: (id: string, traps: TrapConfig[]) => void;
     setCeilingPanelDirection: (id: string, direction: 'horizontal' | 'vertical') => void;
 
     // Wall specific actions
@@ -362,7 +372,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             isWallLocked: false,
             type: type,
             ceilingPanelLength: type === 'ceiling' ? 4 : undefined,
+            ceilingPanelWidth: type === 'ceiling' ? 20 : undefined,
             ceilingPanelDirection: type === 'ceiling' ? 'vertical' : undefined,
+            ceilingTraps: type === 'ceiling' ? [] : undefined,
         };
         get()._saveHistory();
         set({
@@ -416,12 +428,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         }));
     },
 
-    setCeilingPanelLength: (id, length) => {
+    setCeilingPanelLength: (id, length) =>
         set((state) => ({
-            walls: state.walls.map(w => w.id === id ? { ...w, ceilingPanelLength: length } : w)
-        }));
-    },
-
+            walls: state.walls.map((w) => (w.id === id ? { ...w, ceilingPanelLength: length } : w)),
+        })),
+    setCeilingPanelWidth: (id, width) =>
+        set((state) => ({
+            walls: state.walls.map((w) => (w.id === id ? { ...w, ceilingPanelWidth: width } : w)),
+        })),
+    setCeilingTraps: (id, traps) =>
+        set((state) => ({
+            walls: state.walls.map((w) => (w.id === id ? { ...w, ceilingTraps: traps } : w)),
+        })),
     setCeilingPanelDirection: (id, direction) => {
         set((state) => ({
             walls: state.walls.map(w => w.id === id ? { ...w, ceilingPanelDirection: direction } : w)
