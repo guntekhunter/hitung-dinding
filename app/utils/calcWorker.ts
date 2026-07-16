@@ -1,8 +1,6 @@
 // app/utils/calcWorker.ts
 import { getPolygonRectIntersectionArea, subtractRect, Rect, Point } from "../function/geometry";
 
-// We copy the necessary types here or import them if the worker setup allows
-// To keep it simple and robust for a worker, we'll define minimal interfaces
 interface WorkerWall {
     id: string;
     points: Point[];
@@ -28,36 +26,49 @@ const normalizeRect = (r: { x: number; y: number; width: number; height: number 
     height: Math.abs(r.height)
 });
 
+/**
+ * For area products (e.g. wall panels), count strips by width.
+ * Each area contributes fractional strip count = area.width / panelWidth.
+ * We aggregate fractional strips globally (keyed by height), then ceil per height bucket.
+ * This lets edge-cut offcuts be shared across separate design areas of the same height.
+ *
+ * For length products (e.g. skirting), track each discrete segment length.
+ * The cut simulation in the message handler reuses leftover pieces.
+ */
 const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
     const productAreas: Record<string, number> = {};
+    const productLengths: Record<string, number> = {};
+
+    // Area products: { pid -> { heightKey -> fractionalStripCount } }
+    const productFractionalStrips: Record<string, Record<number, number>> = {};
+    // Length products: { pid -> number[] } discrete cut lengths
     const productRequiredCuts: Record<string, number[]> = {};
-    
-    const addCuts = (pid: string, len: number, count: number = 1) => {
-        if (!productRequiredCuts[pid]) productRequiredCuts[pid] = [];
-        for (let i = 0; i < count; i++) {
-            productRequiredCuts[pid].push(len);
-        }
+
+    const addAreaStrips = (pid: string, heightM: number, fractional: number) => {
+        const key = Math.round(heightM * 1000) / 1000;
+        if (!productFractionalStrips[pid]) productFractionalStrips[pid] = {};
+        productFractionalStrips[pid][key] = (productFractionalStrips[pid][key] || 0) + fractional;
     };
 
     const uniqueAreaProductIds = Array.from(new Set(wall.designAreas.map(da => da.productId)));
-    
+
     uniqueAreaProductIds.forEach(pid => {
         const product = products.find(p => p.id === pid);
         if (!product) return;
 
         if (product.countType === 'area') {
+            const boardW = product.width || 0.15;
+
             let materialRects = wall.designAreas
                 .filter((da: any) => da.productId === pid)
                 .map((da: any) => normalizeRect(da));
-                
+
             let nonOverlappingMaterialRects: Rect[] = [];
             materialRects.forEach(rect => {
                 let pieces = [rect];
                 nonOverlappingMaterialRects.forEach(other => {
                     let nextPieces: Rect[] = [];
-                    pieces.forEach(p => {
-                        nextPieces.push(...subtractRect(p, other));
-                    });
+                    pieces.forEach(p => { nextPieces.push(...subtractRect(p, other)); });
                     pieces = nextPieces;
                 });
                 nonOverlappingMaterialRects.push(...pieces);
@@ -66,126 +77,147 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
             let finalRects = nonOverlappingMaterialRects;
             wall.openings.map(op => normalizeRect(op)).forEach(opening => {
                 let nextFinal: Rect[] = [];
-                finalRects.forEach(r => {
-                    nextFinal.push(...subtractRect(r, opening));
-                });
+                finalRects.forEach(r => { nextFinal.push(...subtractRect(r, opening)); });
                 finalRects = nextFinal;
             });
 
-            const boardW = product.width || 0.15;
             let totalAreaM2 = 0;
-
             finalRects.forEach(r => {
                 totalAreaM2 += getPolygonRectIntersectionArea(wall.points, r);
-                
-                // Cut Logic Simulation
+                // Track fractional strip count (aggregated globally for cross-area reuse)
                 const rWM = r.width / SCALE;
                 const rHM = r.height / SCALE;
-                const numStrips = Math.ceil(rWM / boardW);
-                // For area panels, they are laid vertically, so height is the strip length
-                addCuts(pid, rHM, numStrips);
+                addAreaStrips(pid, rHM, rWM / boardW);
             });
-            productAreas[pid] = totalAreaM2 / (SCALE * SCALE);
+            productAreas[pid] = (productAreas[pid] || 0) + totalAreaM2 / (SCALE * SCALE);
+
         } else {
+            // length-type: perimeter per design area
             wall.designAreas.filter(da => da.productId === pid).forEach(da => {
                 const wM = Math.abs(da.width) / SCALE;
                 const hM = Math.abs(da.height) / SCALE;
-                productAreas[pid] = (productAreas[pid] || 0) + (wM * 2 + hM * 2);
-                
-                // Cut Logic: Perimeter
-                addCuts(pid, wM, 2);
-                addCuts(pid, hM, 2);
+                const peri = wM * 2 + hM * 2;
+                productAreas[pid] = (productAreas[pid] || 0) + peri;
+                productLengths[pid] = (productLengths[pid] || 0) + peri;
+                if (!productRequiredCuts[pid]) productRequiredCuts[pid] = [];
+                productRequiredCuts[pid].push(wM, wM, hM, hM);
             });
         }
     });
 
     wall.lists.forEach((list: any) => {
         const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
-        addCuts(list.productId, lengthM, 1);
+        productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
+        if (!productRequiredCuts[list.productId]) productRequiredCuts[list.productId] = [];
+        productRequiredCuts[list.productId].push(lengthM);
     });
 
     const totalDesignArea = Object.values(productAreas).reduce((a, b) => a + b, 0);
-    return { productAreas, productRequiredCuts, totalDesignArea };
+    return { productAreas, productLengths, productFractionalStrips, productRequiredCuts, totalDesignArea };
 };
 
 self.onmessage = (e: MessageEvent) => {
     const { type, data, requestId } = e.data;
 
     if (type === "warmup") {
-        self.postMessage({
-            requestId,
-            success: true,
-        });
+        self.postMessage({ requestId, success: true });
         return;
     }
 
     if (type === 'CALCULATE_PROJECT_METRICS') {
         const { walls, products, wastePercentage } = data;
-        
-        const allRequiredCuts: Record<string, number[]> = {};
+
+        // Aggregate fractional strips across all walls (per product, per height bucket)
+        const allFractionalStrips: Record<string, Record<number, number>> = {};
+        // Aggregate discrete cut lengths for length products
+        const allLengthCuts: Record<string, number[]> = {};
         const wallMetricsResults: any[] = [];
 
         walls.forEach((wall: WorkerWall) => {
             const metrics = calculateWallMetrics(wall, products);
             wallMetricsResults.push(metrics);
 
+            Object.entries(metrics.productFractionalStrips).forEach(([pid, heightMap]) => {
+                if (!allFractionalStrips[pid]) allFractionalStrips[pid] = {};
+                Object.entries(heightMap).forEach(([hKey, frac]) => {
+                    const h = parseFloat(hKey);
+                    allFractionalStrips[pid][h] = (allFractionalStrips[pid][h] || 0) + (frac as number);
+                });
+            });
+
             Object.entries(metrics.productRequiredCuts).forEach(([pid, cuts]) => {
-                if (!allRequiredCuts[pid]) allRequiredCuts[pid] = [];
-                allRequiredCuts[pid].push(...cuts);
+                if (!allLengthCuts[pid]) allLengthCuts[pid] = [];
+                allLengthCuts[pid].push(...(cuts as number[]));
             });
         });
 
         const productTotalCounts: Record<string, number> = {};
+        const wasteMult = (1 + wastePercentage / 100);
 
         products.forEach((product: WorkerProduct) => {
-            const cuts = allRequiredCuts[product.id] || [];
-            if (cuts.length === 0) return;
+            if (product.countType === 'area') {
+                const heightMap = allFractionalStrips[product.id] || {};
+                const panelHeight = product.height || 2.9;
 
-            const unitLen = product.countType === 'area' ? (product.height || 2.9) : (product.unitLength || 2.9);
-            const wasteMult = (1 + wastePercentage / 100);
+                // Build the discrete list of strip heights needed
+                // Each height bucket: ceil(fractional total) = integer strips needed
+                const strips: number[] = [];
+                Object.entries(heightMap).forEach(([hKey, frac]) => {
+                    const h = parseFloat(hKey);
+                    const count = Math.ceil(frac as number);
+                    for (let i = 0; i < count; i++) strips.push(h);
+                });
 
-            let totalPanelsUsed = 0;
-            let leftovers: number[] = [];
+                if (strips.length === 0) return;
 
-            cuts.forEach(cutLen => {
-                let remaining = cutLen;
+                // How many usable strips come from one panel?
+                // Any leftover height < strip height is discarded (cannot be reused).
+                // stripsPerPanel = floor(panelHeight / stripH)
+                // totalPanels    = ceil(totalStrips / stripsPerPanel)
+                const panelsByBucket: number[] = [];
+                Object.entries(heightMap).forEach(([hKey, frac]) => {
+                    const stripH = parseFloat(hKey);
+                    const totalStrips = Math.ceil(frac as number);
+                    const stripsPerPanel = Math.max(1, Math.floor(panelHeight / stripH));
+                    panelsByBucket.push(Math.ceil(totalStrips / stripsPerPanel));
+                });
 
-                // Bulk full panels
-                while (remaining >= unitLen) {
-                    totalPanelsUsed++;
-                    remaining -= unitLen;
-                }
+                const totalPanels = panelsByBucket.reduce((a, b) => a + b, 0);
+                productTotalCounts[product.id] = Math.ceil(totalPanels * wasteMult);
 
-                // Leftover piece
-                if (remaining > 0) {
+            } else if (product.countType === 'length') {
+                // Cut-simulation for length products with leftover reuse
+                const cuts = allLengthCuts[product.id] || [];
+                if (cuts.length === 0) return;
+                const unitLen = product.unitLength || 2.9;
+
+                cuts.sort((a, b) => b - a);
+                let totalUnits = 0;
+                let leftovers: number[] = [];
+
+                cuts.forEach(cutLen => {
+                    let remaining = cutLen;
+                    while (remaining >= unitLen) { totalUnits++; remaining -= unitLen; }
+                    if (remaining < 0.001) return;
+
                     leftovers.sort((a, b) => a - b);
-                    let foundIndex = -1;
-                    for (let j = 0; j < leftovers.length; j++) {
-                        if (leftovers[j] >= remaining) {
-                            foundIndex = j;
-                            break;
-                        }
-                    }
-
-                    if (foundIndex !== -1) {
-                        leftovers[foundIndex] -= remaining;
+                    const idx = leftovers.findIndex(l => l >= remaining);
+                    if (idx !== -1) {
+                        leftovers[idx] -= remaining;
                     } else {
-                        totalPanelsUsed++;
+                        totalUnits++;
                         leftovers.push(unitLen - remaining);
                     }
-                }
-            });
+                });
 
-            productTotalCounts[product.id] = Math.ceil(totalPanelsUsed * wasteMult);
+                productTotalCounts[product.id] = Math.ceil(totalUnits * wasteMult);
+            }
         });
 
-        self.postMessage({ 
-            type: 'PROJECT_METRICS_RESULT', 
-            results: {
-                wallMetrics: wallMetricsResults,
-                totalProductCounts: productTotalCounts
-            }, 
-            requestId 
+        self.postMessage({
+            type: 'PROJECT_METRICS_RESULT',
+            results: { wallMetrics: wallMetricsResults, totalProductCounts: productTotalCounts },
+            requestId
         });
     }
 };
