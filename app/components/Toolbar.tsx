@@ -492,12 +492,57 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     area -= w.points[j].x * w.points[i].y;
                 }
                 area = Math.abs(area / 2) / (SCALE * SCALE);
+
+                // Calculate bounding box for realistic panel layout
+                const xs = w.points.map(p => p.x);
+                const ys = w.points.map(p => p.y);
+                const widthM = (Math.max(...xs) - Math.min(...xs)) / SCALE;
+                const heightM = (Math.max(...ys) - Math.min(...ys)) / SCALE;
+
+                const direction = w.ceilingPanelDirection || 'vertical';
+                const stripLength = direction === 'vertical' ? heightM : widthM;
+                const numStrips = Math.ceil((direction === 'vertical' ? widthM : heightM) / 0.2);
+
                 const panelLength = w.ceilingPanelLength || 4;
-                const panelArea = 0.2 * panelLength;
+
+                let totalPanelsUsed = 0;
+                let leftovers: number[] = [];
+
+                for (let i = 0; i < numStrips; i++) {
+                    let remainingStrip = stripLength;
+
+                    // Use full panels for the bulk of the strip if it exceeds panel length
+                    while (remainingStrip >= panelLength) {
+                        totalPanelsUsed++;
+                        remainingStrip -= panelLength;
+                    }
+
+                    // For the remaining piece (less than panelLength)
+                    if (remainingStrip > 0) {
+                        leftovers.sort((a, b) => a - b);
+                        let foundIndex = -1;
+                        for (let j = 0; j < leftovers.length; j++) {
+                            if (leftovers[j] >= remainingStrip) {
+                                foundIndex = j;
+                                break;
+                            }
+                        }
+
+                        if (foundIndex !== -1) {
+                            // Reuse existing leftover
+                            leftovers[foundIndex] -= remainingStrip;
+                        } else {
+                            // Need a new panel
+                            totalPanelsUsed++;
+                            leftovers.push(panelLength - remainingStrip);
+                        }
+                    }
+                }
+
                 const wasteMult = (1 + wastePercentage / 100);
                 panels[w.id] = {
                     length: panelLength,
-                    count: Math.ceil((area / panelArea) * wasteMult - 0.0001),
+                    count: Math.ceil(totalPanelsUsed * wasteMult),
                     area: area
                 };
             }

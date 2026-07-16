@@ -30,8 +30,15 @@ const normalizeRect = (r: { x: number; y: number; width: number; height: number 
 
 const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
     const productAreas: Record<string, number> = {};
-    const productLengths: Record<string, number> = {};
+    const productRequiredCuts: Record<string, number[]> = {};
     
+    const addCuts = (pid: string, len: number, count: number = 1) => {
+        if (!productRequiredCuts[pid]) productRequiredCuts[pid] = [];
+        for (let i = 0; i < count; i++) {
+            productRequiredCuts[pid].push(len);
+        }
+    };
+
     const uniqueAreaProductIds = Array.from(new Set(wall.designAreas.map(da => da.productId)));
     
     uniqueAreaProductIds.forEach(pid => {
@@ -65,9 +72,18 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
                 finalRects = nextFinal;
             });
 
+            const boardW = product.width || 0.15;
             let totalAreaM2 = 0;
+
             finalRects.forEach(r => {
                 totalAreaM2 += getPolygonRectIntersectionArea(wall.points, r);
+                
+                // Cut Logic Simulation
+                const rWM = r.width / SCALE;
+                const rHM = r.height / SCALE;
+                const numStrips = Math.ceil(rWM / boardW);
+                // For area panels, they are laid vertically, so height is the strip length
+                addCuts(pid, rHM, numStrips);
             });
             productAreas[pid] = totalAreaM2 / (SCALE * SCALE);
         } else {
@@ -75,17 +91,21 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
                 const wM = Math.abs(da.width) / SCALE;
                 const hM = Math.abs(da.height) / SCALE;
                 productAreas[pid] = (productAreas[pid] || 0) + (wM * 2 + hM * 2);
+                
+                // Cut Logic: Perimeter
+                addCuts(pid, wM, 2);
+                addCuts(pid, hM, 2);
             });
         }
     });
 
     wall.lists.forEach((list: any) => {
         const lengthM = Math.hypot(list.x2 - list.x1, list.y2 - list.y1) / SCALE;
-        productLengths[list.productId] = (productLengths[list.productId] || 0) + lengthM;
+        addCuts(list.productId, lengthM, 1);
     });
 
     const totalDesignArea = Object.values(productAreas).reduce((a, b) => a + b, 0);
-    return { productAreas, productLengths, totalDesignArea };
+    return { productAreas, productRequiredCuts, totalDesignArea };
 };
 
 self.onmessage = (e: MessageEvent) => {
@@ -102,46 +122,61 @@ self.onmessage = (e: MessageEvent) => {
     if (type === 'CALCULATE_PROJECT_METRICS') {
         const { walls, products, wastePercentage } = data;
         
-        const productAreaSum: Record<string, number> = {};
-        const productLengthSum: Record<string, number> = {};
-        const productTotalCounts: Record<string, number> = {};
+        const allRequiredCuts: Record<string, number[]> = {};
         const wallMetricsResults: any[] = [];
 
         walls.forEach((wall: WorkerWall) => {
             const metrics = calculateWallMetrics(wall, products);
             wallMetricsResults.push(metrics);
 
-            Object.entries(metrics.productAreas).forEach(([pid, area]) => {
-                const product = products.find((p: any) => p.id === pid);
-                if (product?.countType === 'area') {
-                    productAreaSum[pid] = (productAreaSum[pid] || 0) + area;
-                } else if (product?.countType === 'length') {
-                    productLengthSum[pid] = (productLengthSum[pid] || 0) + area;
-                }
-            });
-            Object.entries(metrics.productLengths).forEach(([pid, len]) => {
-                productLengthSum[pid] = (productLengthSum[pid] || 0) + len;
+            Object.entries(metrics.productRequiredCuts).forEach(([pid, cuts]) => {
+                if (!allRequiredCuts[pid]) allRequiredCuts[pid] = [];
+                allRequiredCuts[pid].push(...cuts);
             });
         });
 
+        const productTotalCounts: Record<string, number> = {};
+
         products.forEach((product: WorkerProduct) => {
+            const cuts = allRequiredCuts[product.id] || [];
+            if (cuts.length === 0) return;
+
+            const unitLen = product.countType === 'area' ? (product.height || 2.9) : (product.unitLength || 2.9);
             const wasteMult = (1 + wastePercentage / 100);
-            
-            if (product.countType === 'area') {
-                const totalAreaM2 = productAreaSum[product.id] || 0;
-                if (totalAreaM2 > 0) {
-                    const boardW = product.width || 0.15;
-                    const boardH = product.height || 2.9;
-                    const boardAreaM2 = boardW * boardH;
-                    productTotalCounts[product.id] = Math.ceil((totalAreaM2 / boardAreaM2) * wasteMult - 0.0001);
+
+            let totalPanelsUsed = 0;
+            let leftovers: number[] = [];
+
+            cuts.forEach(cutLen => {
+                let remaining = cutLen;
+
+                // Bulk full panels
+                while (remaining >= unitLen) {
+                    totalPanelsUsed++;
+                    remaining -= unitLen;
                 }
-            } else if (product.countType === 'length') {
-                const totalLengthM = productLengthSum[product.id] || 0;
-                if (totalLengthM > 0) {
-                    const unitLen = product.unitLength || 2.9;
-                    productTotalCounts[product.id] = Math.ceil((totalLengthM / unitLen) * wasteMult - 0.0001);
+
+                // Leftover piece
+                if (remaining > 0) {
+                    leftovers.sort((a, b) => a - b);
+                    let foundIndex = -1;
+                    for (let j = 0; j < leftovers.length; j++) {
+                        if (leftovers[j] >= remaining) {
+                            foundIndex = j;
+                            break;
+                        }
+                    }
+
+                    if (foundIndex !== -1) {
+                        leftovers[foundIndex] -= remaining;
+                    } else {
+                        totalPanelsUsed++;
+                        leftovers.push(unitLen - remaining);
+                    }
                 }
-            }
+            });
+
+            productTotalCounts[product.id] = Math.ceil(totalPanelsUsed * wasteMult);
         });
 
         self.postMessage({ 
