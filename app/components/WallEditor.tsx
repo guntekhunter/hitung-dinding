@@ -1542,6 +1542,49 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         listening={false}
                     />
 
+                    {isClosed && activeWall?.type === 'ceiling' && (
+                        <Group clipFunc={clipFunc}>
+                            {(() => {
+                                const lines = [];
+                                const PANEL_WIDTH = 0.2 * SCALE;
+                                const direction = activeWall.ceilingPanelDirection || 'vertical';
+                                
+                                if (direction === 'vertical') {
+                                    const startX = bounds.minX;
+                                    const numPanels = Math.ceil(bounds.width / PANEL_WIDTH);
+                                    for (let i = 1; i <= numPanels; i++) {
+                                        const x = startX + i * PANEL_WIDTH;
+                                        lines.push(
+                                            <Line
+                                                key={`ceiling-panel-v-${i}`}
+                                                points={[x, bounds.minY, x, bounds.minY + bounds.height]}
+                                                stroke="#cbd5e1"
+                                                strokeWidth={1 / zoom}
+                                                listening={false}
+                                            />
+                                        );
+                                    }
+                                } else {
+                                    const startY = bounds.minY;
+                                    const numPanels = Math.ceil(bounds.height / PANEL_WIDTH);
+                                    for (let i = 1; i <= numPanels; i++) {
+                                        const y = startY + i * PANEL_WIDTH;
+                                        lines.push(
+                                            <Line
+                                                key={`ceiling-panel-h-${i}`}
+                                                points={[bounds.minX, y, bounds.minX + bounds.width, y]}
+                                                stroke="#cbd5e1"
+                                                strokeWidth={1 / zoom}
+                                                listening={false}
+                                            />
+                                        );
+                                    }
+                                }
+                                return lines;
+                            })()}
+                        </Group>
+                    )}
+
                     {isClosed && renderedAreas}
 
                     {/* Measurements & Dimensions */}

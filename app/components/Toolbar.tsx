@@ -144,16 +144,24 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
     );
 });
 
-const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName, duplicateWall }: any) => (
+const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName, duplicateWall, setCeilingPanelLength, setCeilingPanelDirection }: any) => (
     <div className="space-y-[1rem]">
         <div className="flex justify-between items-center space-x-[2rem]">
-            <h3 className="font-medium uppercase text-[10px] tracking-widest">Dinding</h3>
-            <button
-                onClick={addWall}
-                className="px-2 py-1 rounded-md font-bold hover:bg-gray-200"
-            >
-                <Plus className="w-[1rem]" />
-            </button>
+            <h3 className="font-medium uppercase text-[10px] tracking-widest">Dinding / Plafon</h3>
+            <div className="flex gap-2">
+                <button
+                    onClick={() => addWall('wall')}
+                    className="px-2 py-1 rounded-md font-bold hover:bg-gray-200 flex items-center gap-1 text-[10px]"
+                >
+                    <Plus className="w-[10px]" /> Dinding
+                </button>
+                <button
+                    onClick={() => addWall('ceiling')}
+                    className="px-2 py-1 rounded-md font-bold hover:bg-gray-200 flex items-center gap-1 text-[10px]"
+                >
+                    <Plus className="w-[10px]" /> Plafon
+                </button>
+            </div>
         </div>
         <div className="space-y-2">
             {walls.map((wall: any) => (
@@ -171,6 +179,33 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
                         onClick={(e) => e.stopPropagation()}
                         className="flex-1 bg-transparent border-none text-[.8rem] focus:outline-none"
                     />
+                    {wall.type === 'ceiling' && (
+                        <>
+                            <select
+                                value={wall.ceilingPanelLength || 4}
+                                onChange={(e) => setCeilingPanelLength(wall.id, Number(e.target.value))}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[10px] bg-white border border-gray-200 rounded px-1 outline-none"
+                            >
+                                <option value={3}>3m</option>
+                                <option value={4}>4m</option>
+                                <option value={6}>6m</option>
+                            </select>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCeilingPanelDirection(
+                                        wall.id, 
+                                        wall.ceilingPanelDirection === 'horizontal' ? 'vertical' : 'horizontal'
+                                    );
+                                }}
+                                className="text-[10px] bg-white border border-gray-200 rounded px-2 font-bold hover:bg-gray-100"
+                                title="Ubah Arah Panel"
+                            >
+                                {wall.ceilingPanelDirection === 'horizontal' ? '↔' : '↕'}
+                            </button>
+                        </>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); duplicateWall(wall.id); }}
                         className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
@@ -369,7 +404,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         materialPrices, setMaterialPrice,
         projectId, setProjectId,
         products, isLoadingProducts, fetchProducts,
-        toggleWallLock, clearDesignAreas
+        toggleWallLock, clearDesignAreas, setCeilingPanelLength, setCeilingPanelDirection
     } = useCanvasStore();
 
     useEffect(() => {
@@ -446,14 +481,44 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const wallMetrics = (calcResults?.wallMetrics || []) as any[];
     const totalProductCounts = (calcResults?.totalProductCounts || {}) as Record<string, number>;
 
+    const ceilingPanels = useMemo(() => {
+        const panels: Record<string, { length: number, count: number, area: number }> = {};
+        walls.forEach(w => {
+            if (w.type === 'ceiling' && w.isClosed) {
+                let area = 0;
+                for (let i = 0; i < w.points.length; i++) {
+                    const j = (i + 1) % w.points.length;
+                    area += w.points[i].x * w.points[j].y;
+                    area -= w.points[j].x * w.points[i].y;
+                }
+                area = Math.abs(area / 2) / (SCALE * SCALE);
+                const panelLength = w.ceilingPanelLength || 4;
+                const panelArea = 0.2 * panelLength;
+                const wasteMult = (1 + wastePercentage / 100);
+                panels[w.id] = {
+                    length: panelLength,
+                    count: Math.ceil((area / panelArea) * wasteMult - 0.0001),
+                    area: area
+                };
+            }
+        });
+        return panels;
+    }, [walls, wastePercentage]);
+
     const totals = useMemo(() => {
         if (!calcResults) return { totalArea: 0, totalDesignArea: 0, grandTotalPrice: 0 };
 
-        const grandTotal = products.reduce((sum, product) => {
+        let grandTotal = products.reduce((sum, product) => {
             const count = totalProductCounts[product.id] || 0;
             const price = materialPrices[product.id] ?? product.price ?? 0;
             return sum + (count * price);
         }, 0);
+
+        Object.keys(ceilingPanels).forEach(wallId => {
+            const p = ceilingPanels[wallId];
+            const price = materialPrices[`ceiling-${wallId}`] || 0;
+            grandTotal += p.count * price;
+        });
 
         const totalDesignArea = wallMetrics.reduce((sum: number, m: any) => {
             const areas = Object.values(m.productAreas || {}) as number[];
@@ -496,6 +561,23 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         totalPrice: subtotal
                     });
 
+                    grandTotal += subtotal;
+                }
+            });
+
+            walls.forEach(w => {
+                if (w.type === 'ceiling' && ceilingPanels[w.id]) {
+                    const p = ceilingPanels[w.id];
+                    const price = materialPrices[`ceiling-${w.id}`] || 0;
+                    const subtotal = p.count * price;
+                    materialsList.push({
+                        id: `ceiling-${w.id}`,
+                        name: `PVC Ceiling Panel ${p.length}m (${w.name})`,
+                        quantity: p.count,
+                        unit: 'Lembar',
+                        unitPrice: price,
+                        totalPrice: subtotal
+                    });
                     grandTotal += subtotal;
                 }
             });
@@ -647,6 +729,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     setActiveWall={setActiveWall}
                     updateWallName={updateWallName}
                     duplicateWall={duplicateWall}
+                    setCeilingPanelLength={setCeilingPanelLength}
+                    setCeilingPanelDirection={setCeilingPanelDirection}
                 />
                 <hr className="border-[#E8E8E8]" />
                 {/* Actions & Modes */}
@@ -766,6 +850,39 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                 </div>
                                             </div>
                                         );
+                                    })}
+                                    {walls.map(w => {
+                                        if (w.type === 'ceiling' && ceilingPanels[w.id]) {
+                                            const p = ceilingPanels[w.id];
+                                            const productId = `ceiling-${w.id}`;
+                                            const price = materialPrices[productId] || 0;
+                                            return (
+                                                <div key={productId} className="flex flex-col gap-1.5">
+                                                    <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                                        <span>PVC Ceiling Panel {p.length}m ({w.name})</span>
+                                                        <span className="font-bold">{p.count} Lembar</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                        <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                        <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                            <span>Rp</span>
+                                                            <input
+                                                                type="number"
+                                                                value={price === 0 ? '' : price}
+                                                                onChange={(e) => setMaterialPrice(productId, Number(e.target.value))}
+                                                                className="w-24 bg-transparent outline-none font-medium p-0"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                        <span>Subtotal</span>
+                                                        <span className="font-bold">Rp {(p.count * price).toLocaleString('id-ID')}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
                                     })}
                                 </div>
 
