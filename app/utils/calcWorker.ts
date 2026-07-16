@@ -170,16 +170,40 @@ self.onmessage = (e: MessageEvent) => {
 
                 if (strips.length === 0) return;
 
-                // How many usable strips come from one panel?
-                // Any leftover height < strip height is discarded (cannot be reused).
-                // stripsPerPanel = floor(panelHeight / stripH)
-                // totalPanels    = ceil(totalStrips / stripsPerPanel)
+                // Per height bucket, calculate panels needed correctly for both cases:
+                // Case A — wall height <= panel height: one panel covers multiple strip heights
+                //   stripsPerPanel = floor(panelH / stripH), panels = ceil(totalStrips / stripsPerPanel)
+                //
+                // Case B — wall height > panel height: each strip column needs multiple panels
+                //   fullRows       = floor(stripH / panelH)  → panels consumed in full rows
+                //   gapH           = stripH - fullRows * panelH
+                //   If gapH > 0:   one panel can provide floor(panelH / gapH) gap pieces
+                //                  gapPanels = ceil(totalStrips / gapPiecesPerPanel)
+                //   total = totalStrips * fullRows + gapPanels
                 const panelsByBucket: number[] = [];
                 Object.entries(heightMap).forEach(([hKey, frac]) => {
                     const stripH = parseFloat(hKey);
                     const totalStrips = Math.ceil(frac as number);
-                    const stripsPerPanel = Math.max(1, Math.floor(panelHeight / stripH));
-                    panelsByBucket.push(Math.ceil(totalStrips / stripsPerPanel));
+
+                    if (stripH <= panelHeight) {
+                        // Case A: panel taller than (or equal to) wall
+                        const stripsPerPanel = Math.max(1, Math.floor(panelHeight / stripH));
+                        panelsByBucket.push(Math.ceil(totalStrips / stripsPerPanel));
+                    } else {
+                        // Case B: wall taller than panel
+                        const fullRows = Math.floor(stripH / panelHeight);
+                        const gapH = stripH - fullRows * panelHeight;
+                        const panelsForFullRows = totalStrips * fullRows;
+
+                        if (gapH > 0.001) {
+                            // Gap pieces are small — many fit from one panel, so share across strips
+                            const gapPiecesPerPanel = Math.max(1, Math.floor(panelHeight / gapH));
+                            const gapPanels = Math.ceil(totalStrips / gapPiecesPerPanel);
+                            panelsByBucket.push(panelsForFullRows + gapPanels);
+                        } else {
+                            panelsByBucket.push(panelsForFullRows);
+                        }
+                    }
                 });
 
                 const totalPanels = panelsByBucket.reduce((a, b) => a + b, 0);
