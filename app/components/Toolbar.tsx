@@ -210,86 +210,131 @@ const CeilingSettingsManager = memo(({ activeWall, setCeilingPanelWidth, setCeil
     const direction = activeWall.ceilingPanelDirection || 'horizontal';
     const traps: TrapConfig[] = activeWall.ceilingTraps || [];
 
-    const addTrap = () => {
-        setCeilingTraps(activeWall.id, [...traps, { width: 40, dropHeight: 15, gap: 40 }]);
+    const model = traps.length === 0 ? 'FLAT' : traps.length === 1 ? 'DROP1' : 'DROP2';
+
+    const handleModelChange = (newModel: string) => {
+        if (newModel === 'FLAT') {
+            setCeilingTraps(activeWall.id, []);
+        } else if (newModel === 'DROP1') {
+            setCeilingTraps(activeWall.id, [{ width: traps[0]?.width || 60, dropHeight: traps[0]?.dropHeight || 15, gap: 0 }]);
+        } else if (newModel === 'DROP2') {
+            setCeilingTraps(activeWall.id, [
+                { width: traps[0]?.width || 60, dropHeight: traps[0]?.dropHeight || 15, gap: 0 },
+                { width: traps[1]?.width || 40, dropHeight: traps[0]?.dropHeight || 15, gap: 0 }
+            ]);
+        }
     };
 
-    const updateTrap = (index: number, field: keyof TrapConfig, value: number) => {
+    const updateTrapWidth = (index: number, width: number) => {
         const newTraps = [...traps];
-        newTraps[index] = { ...newTraps[index], [field]: value };
-        setCeilingTraps(activeWall.id, newTraps);
+        if (newTraps[index]) {
+            newTraps[index] = { ...newTraps[index], width };
+            setCeilingTraps(activeWall.id, newTraps);
+        }
     };
 
-    const removeTrap = (index: number) => {
-        setCeilingTraps(activeWall.id, traps.filter((_, i) => i !== index));
+    const updateDropHeight = (dropHeight: number) => {
+        const newTraps = traps.map(t => ({ ...t, dropHeight }));
+        setCeilingTraps(activeWall.id, newTraps);
     };
 
     return (
         <div className="space-y-[1rem] mt-4">
             <hr className="border-[#E8E8E8]" />
-            <h3 className="font-medium uppercase text-[10px] tracking-widest text-[#303030]">Panel Settings</h3>
+            <h3 className="font-medium uppercase text-[10px] tracking-widest text-[#303030]">Pengaturan: Ruangan</h3>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
+                {/* Arah Panel */}
                 <div className="grid grid-cols-2 gap-2">
                     <div>
-                        <label className="block text-[10px] text-gray-500 mb-1">Panel Width (cm)</label>
-                        <input type="number" value={panelWidth} onChange={(e) => setCeilingPanelWidth(activeWall.id, Number(e.target.value))} className="w-full border border-gray-200 rounded px-2 py-1 text-[10px]" />
+                        <label className="block text-[10px] text-gray-500 mb-1">Arah Panel</label>
+                        <div className="flex gap-2 bg-gray-50 p-1 rounded border border-gray-200">
+                            <button
+                                onClick={() => setCeilingPanelDirection(activeWall.id, 'horizontal')}
+                                className={`flex-1 py-1.5 text-[10px] rounded transition-all ${direction === 'horizontal' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                            >
+                                Horizontal
+                            </button>
+                            <button
+                                onClick={() => setCeilingPanelDirection(activeWall.id, 'vertical')}
+                                className={`flex-1 py-1.5 text-[10px] rounded transition-all ${direction === 'vertical' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                            >
+                                Vertical
+                            </button>
+                        </div>
                     </div>
                     <div>
-                        <label className="block text-[10px] text-gray-500 mb-1">Panel Length (cm)</label>
-                        <select value={panelLength} onChange={(e) => setCeilingPanelLength(activeWall.id, Number(e.target.value))} className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] bg-white">
-                            <option value={300}>300 cm (3m)</option>
+                        <label className="block text-[10px] text-gray-500 mb-1">Panjang Papan (cm)</label>
+                        <select value={panelLength} onChange={(e) => setCeilingPanelLength(activeWall.id, Number(e.target.value))} className="w-full h-[32px] border border-gray-200 rounded px-2 text-[10px] bg-white outline-none focus:border-indigo-400">
                             <option value={400}>400 cm (4m)</option>
                             <option value={600}>600 cm (6m)</option>
                         </select>
                     </div>
                 </div>
 
+                {/* Model Plafon */}
                 <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">Installation Direction</label>
+                    <label className="block text-[10px] text-gray-500 mb-1">Model Plafon</label>
                     <div className="flex gap-2 bg-gray-50 p-1 rounded border border-gray-200">
                         <button
-                            onClick={() => setCeilingPanelDirection(activeWall.id, 'horizontal')}
-                            className={`flex-1 py-1 text-[10px] rounded transition-all ${direction === 'horizontal' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500'}`}
+                            onClick={() => handleModelChange('FLAT')}
+                            className={`flex-1 py-1.5 text-[10px] rounded transition-all ${model === 'FLAT' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
                         >
-                            Horizontal
+                            FLAT
                         </button>
                         <button
-                            onClick={() => setCeilingPanelDirection(activeWall.id, 'vertical')}
-                            className={`flex-1 py-1 text-[10px] rounded transition-all ${direction === 'vertical' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500'}`}
+                            onClick={() => handleModelChange('DROP1')}
+                            className={`flex-1 py-1.5 text-[10px] rounded transition-all ${model === 'DROP1' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
                         >
-                            Vertical
+                            DROP1
+                        </button>
+                        <button
+                            onClick={() => handleModelChange('DROP2')}
+                            className={`flex-1 py-1.5 text-[10px] rounded transition-all ${model === 'DROP2' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            DROP2
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <div className="flex justify-between items-center mt-4">
-                <h3 className="font-medium uppercase text-[10px] tracking-widest text-[#303030]">Trap Levels</h3>
-                <button onClick={addTrap} className="p-1 bg-[#F5F5F5] rounded hover:bg-[#E2E2E2] transition-colors"><Plus className="w-3 h-3 text-[#303030]" /></button>
-            </div>
-
-            <div className="space-y-2">
-                {traps.map((trap, index) => (
-                    <div key={index} className="p-2 border border-gray-200 bg-[#FBFBFB] rounded relative">
-                        <button onClick={() => removeTrap(index)} className="absolute top-1 right-1 p-1 text-red-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
-                        <h4 className="text-[10px] font-bold text-[#303030] mb-2">Trap Level {index + 1}</h4>
-                        <div className="grid grid-cols-3 gap-2">
-                            <div>
-                                <label className="block text-[9px] text-gray-500 mb-0.5">Width (cm)</label>
-                                <input type="number" value={trap.width} onChange={(e) => updateTrap(index, 'width', Number(e.target.value))} className="w-full border border-gray-200 rounded px-1 py-0.5 text-[10px]" />
-                            </div>
-                            <div>
-                                <label className="block text-[9px] text-gray-500 mb-0.5">Drop (cm)</label>
-                                <input type="number" value={trap.dropHeight} onChange={(e) => updateTrap(index, 'dropHeight', Number(e.target.value))} className="w-full border border-gray-200 rounded px-1 py-0.5 text-[10px]" />
-                            </div>
-                            <div>
-                                <label className="block text-[9px] text-gray-500 mb-0.5">Gap (cm)</label>
-                                <input type="number" value={trap.gap} onChange={(e) => updateTrap(index, 'gap', Number(e.target.value))} className="w-full border border-gray-200 rounded px-1 py-0.5 text-[10px]" />
-                            </div>
+                {/* Trap Thickness */}
+                {model !== 'FLAT' && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Tebal Trap 1</label>
+                            <input 
+                                type="number" 
+                                value={traps[0]?.width || 60} 
+                                onChange={(e) => updateTrapWidth(0, Number(e.target.value))} 
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400" 
+                            />
                         </div>
+                        {model === 'DROP2' && (
+                            <div>
+                                <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Tebal Trap 2</label>
+                                <input 
+                                    type="number" 
+                                    value={traps[1]?.width || 40} 
+                                    onChange={(e) => updateTrapWidth(1, Number(e.target.value))} 
+                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400" 
+                                />
+                            </div>
+                        )}
                     </div>
-                ))}
+                )}
+
+                {/* Drop Height */}
+                {model !== 'FLAT' && (
+                    <div>
+                        <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Tinggi Drop</label>
+                        <input 
+                            type="number" 
+                            value={traps[0]?.dropHeight || 15} 
+                            onChange={(e) => updateDropHeight(Number(e.target.value))} 
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400" 
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
