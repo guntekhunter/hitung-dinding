@@ -645,7 +645,12 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         Object.keys(ceilingPanels).forEach(wallId => {
             const p = ceilingPanels[wallId];
             const price = materialPrices[`ceiling-${wallId}`] || 0;
+            const lisDindingPrice = materialPrices[`lisDinding-${wallId}`] || 0;
+            const lisSikuPrice = materialPrices[`lisSiku-${wallId}`] || 0;
+            
             grandTotal += p.count * price;
+            grandTotal += (p.optimization?.lisDindingSticks || 0) * lisDindingPrice;
+            grandTotal += (p.optimization?.lisSikuSticks || 0) * lisSikuPrice;
         });
 
         const totalDesignArea = wallMetrics.reduce((sum: number, m: any) => {
@@ -697,6 +702,9 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 if (w.type === 'ceiling' && ceilingPanels[w.id]) {
                     const p = ceilingPanels[w.id];
                     const price = materialPrices[`ceiling-${w.id}`] || 0;
+                    const lisDindingPrice = materialPrices[`lisDinding-${w.id}`] || 0;
+                    const lisSikuPrice = materialPrices[`lisSiku-${w.id}`] || 0;
+                    
                     const subtotal = p.count * price;
                     materialsList.push({
                         id: `ceiling-${w.id}`,
@@ -707,6 +715,32 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         totalPrice: subtotal
                     });
                     grandTotal += subtotal;
+
+                    if (p.optimization?.lisDindingSticks > 0) {
+                        const lisDindingSubtotal = p.optimization.lisDindingSticks * lisDindingPrice;
+                        materialsList.push({
+                            id: `lisDinding-${w.id}`,
+                            name: `Lis Dinding (4m) - ${w.name}`,
+                            quantity: p.optimization.lisDindingSticks,
+                            unit: 'Batang',
+                            unitPrice: lisDindingPrice,
+                            totalPrice: lisDindingSubtotal
+                        });
+                        grandTotal += lisDindingSubtotal;
+                    }
+
+                    if (p.optimization?.lisSikuSticks > 0) {
+                        const lisSikuSubtotal = p.optimization.lisSikuSticks * lisSikuPrice;
+                        materialsList.push({
+                            id: `lisSiku-${w.id}`,
+                            name: `Lis Siku / Drop (4m) - ${w.name}`,
+                            quantity: p.optimization.lisSikuSticks,
+                            unit: 'Batang',
+                            unitPrice: lisSikuPrice,
+                            totalPrice: lisSikuSubtotal
+                        });
+                        grandTotal += lisSikuSubtotal;
+                    }
                 }
             });
 
@@ -989,8 +1023,16 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                             const p = ceilingPanels[w.id];
                                             const productId = `ceiling-${w.id}`;
                                             const price = materialPrices[productId] || 0;
+                                            const lisDindingId = `lisDinding-${w.id}`;
+                                            const lisSikuId = `lisSiku-${w.id}`;
+                                            const lisDindingPrice = materialPrices[lisDindingId] || 0;
+                                            const lisSikuPrice = materialPrices[lisSikuId] || 0;
+                                            const lisDindingCount = p.optimization?.lisDindingSticks || 0;
+                                            const lisSikuCount = p.optimization?.lisSikuSticks || 0;
+
                                             return (
                                                 <div key={productId} className="flex flex-col gap-1.5">
+                                                    {/* PVC Panel */}
                                                     <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
                                                         <span>PVC Ceiling Panel {p.length}m ({w.name})</span>
                                                         <span className="font-bold">{p.count} Lembar</span>
@@ -1012,6 +1054,60 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                         <span>Subtotal</span>
                                                         <span className="font-bold">Rp {(p.count * price).toLocaleString('id-ID')}</span>
                                                     </div>
+
+                                                    {/* Lis Dinding */}
+                                                    {lisDindingCount > 0 && (
+                                                        <>
+                                                            <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
+                                                                <span>Lis Dinding 4m ({w.name})</span>
+                                                                <span className="font-bold">{lisDindingCount} Batang</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                                <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                                    <span>Rp</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={lisDindingPrice === 0 ? '' : lisDindingPrice}
+                                                                        onChange={(e) => setMaterialPrice(lisDindingId, Number(e.target.value))}
+                                                                        className="w-24 bg-transparent outline-none font-medium p-0"
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                                <span>Subtotal</span>
+                                                                <span className="font-bold">Rp {(lisDindingCount * lisDindingPrice).toLocaleString('id-ID')}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+
+                                                    {/* Lis Siku */}
+                                                    {lisSikuCount > 0 && (
+                                                        <>
+                                                            <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
+                                                                <span>Lis Siku / Drop 4m ({w.name})</span>
+                                                                <span className="font-bold">{lisSikuCount} Batang</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                                <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                                    <span>Rp</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={lisSikuPrice === 0 ? '' : lisSikuPrice}
+                                                                        onChange={(e) => setMaterialPrice(lisSikuId, Number(e.target.value))}
+                                                                        className="w-24 bg-transparent outline-none font-medium p-0"
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                                <span>Subtotal</span>
+                                                                <span className="font-bold">Rp {(lisSikuCount * lisSikuPrice).toLocaleString('id-ID')}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             );
                                         }
@@ -1245,7 +1341,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             await new Promise(r => setTimeout(r, 100));
                         }
 
-                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages, company?.name);
+                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages, company?.name, ceilingPanels);
                     } catch (e) { alert("PDF Error: " + e); }
                 }}
             />
