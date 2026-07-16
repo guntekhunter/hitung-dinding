@@ -944,12 +944,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 )}
                                 <hr className="border-[#E8E8E8]" />
 
-                                <div className="space-y-4">
+                                                <div className="space-y-4">
                                     <h3 className="font-medium uppercase text-[10px] tracking-widest">Detail Kebutuhan</h3>
                                     {walls.map((wall, wallIdx) => {
                                         const metrics = wallMetrics[wallIdx];
                                         if (!metrics) return null;
-                                        const wallHasContent = Object.values(metrics.productAreas).some((a: any) => a > 0) || Object.values(metrics.productLengths).some((l: any) => l > 0);
+
+                                        const isCeiling = wall.type === 'ceiling';
+                                        const ceilingData = isCeiling ? ceilingPanels[wall.id] : null;
+                                        const wallHasContent = Object.values(metrics.productAreas || {}).some((a: any) => a > 0)
+                                            || Object.values(metrics.productLengths || {}).some((l: any) => l > 0)
+                                            || (ceilingData && ceilingData.count > 0);
 
                                         return (
                                             <div key={wall.id} className="bg-white rounded-xl border border-[#E5E5E5] flex">
@@ -966,7 +971,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
                                                                 const val = product.countType === 'length' ? length : area;
                                                                 const unit = product.countType === 'length' ? 'm' : 'm²';
-                                                                const formattedVal = val.toFixed(2).replace(/\.00$/, ''); // Matches whole numbers like in the mockup
+                                                                const formattedVal = val.toFixed(2).replace(/\.00$/, '');
 
                                                                 return (
                                                                     <div key={product.id} className="flex justify-between items-center py-4 border-b border-[#E5E5E5] last:border-0">
@@ -980,6 +985,24 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                                     </div>
                                                                 );
                                                             })}
+
+                                                            {/* Ceiling panel row */}
+                                                            {ceilingData && ceilingData.count > 0 && (
+                                                                <div className="flex justify-between items-center py-4 border-t border-[#E5E5E5]">
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="text-[#A3A3A3] text-[.8rem]">
+                                                                            PVC Plafon — {ceilingData.length}m
+                                                                            ({wall.ceilingPanelDirection === 'horizontal' ? 'Horizontal' : 'Vertikal'})
+                                                                        </span>
+                                                                        <span className="text-[#303030] text-[.8rem] font-bold">
+                                                                            {ceilingData.area.toFixed(2)} m²
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-[#303030] text-[.8rem] font-bold">
+                                                                        {ceilingData.count} Pcs
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="py-4 text-[.8rem] text-[#A3A3A3]">Tidak ada material</div>
@@ -989,6 +1012,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                         );
                                     })}
                                 </div>
+
                             </div>
 
                             {/* Center-aligned overlay for non-logged in users */}
