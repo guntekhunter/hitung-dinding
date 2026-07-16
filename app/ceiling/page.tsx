@@ -176,7 +176,7 @@ export default function CeilingCalculator() {
             <h2 className="text-sm font-bold uppercase tracking-wider text-gray-800 mb-6">Cut List & Optimization Visualizer</h2>
             
             <div className="space-y-6">
-              {optimization.panels.map((panel) => (
+              {optimization.panels.map((panel: any) => (
                 <div key={panel.id} className="relative">
                   <div className="flex justify-between items-end mb-2">
                     <span className="text-xs font-bold text-gray-700">Panel {panel.id}</span>
@@ -185,7 +185,7 @@ export default function CeilingCalculator() {
                   
                   {/* Panel Bar */}
                   <div className="h-10 bg-gray-200 rounded-md overflow-hidden flex w-full ring-1 ring-inset ring-black/10">
-                    {panel.cuts.map((cut, cutIdx) => {
+                    {panel.cuts.map((cut: any, cutIdx: number) => {
                       const widthPct = (cut.length / panel.originalLength) * 100;
                       return (
                         <div 

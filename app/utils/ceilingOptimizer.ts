@@ -1,175 +1,301 @@
+/**
+ * PVC Ceiling Optimizer - Based on kalkulator-bahan algorithm
+ * Uses scanline polygon intersection + FFD bin packing
+ */
+
 export interface TrapConfig {
-  width: number;
-  dropHeight: number;
-  gap: number;
+  width: number;   // cm
+  dropHeight: number; // cm
+  gap: number;     // cm
 }
 
 export interface CeilingInput {
-  roomWidth: number; // in cm
-  roomLength: number; // in cm
-  panelWidth: number; // in cm (default 20)
-  panelLength: number; // in cm (default 400 or 600)
-  direction: 'horizontal' | 'vertical'; // horizontal = parallel to width, vertical = parallel to length
+  roomWidth: number;   // cm (X axis)
+  roomLength: number;  // cm (Y axis)
+  panelWidth: number;  // cm (default 20)
+  panelLength: number; // cm (400 or 600)
+  direction: 'horizontal' | 'vertical';
   traps: TrapConfig[];
 }
 
-export interface Cut {
-  length: number;
-  isReuse: boolean;
-  sourceOffcutIndex?: number;
-}
-
-export interface PanelResult {
-  id: number;
-  originalLength: number;
-  cuts: Cut[];
-  remaining: number;
-}
-
 export interface OptimizationResult {
+  panels: any;
   totalPanels: number;
   totalWasteCm: number;
   wastePercentage: number;
-  panels: PanelResult[];
+  totalSurfaceAreaSqM: number;
+  outerPanels: number;
+  innerPanels: number;
+  panelsByGroup: Record<string, number>;
+  lengthByGroup: Record<string, number>;
+  lisDindingSticks: number;
+  lisSikuSticks: number;
+  luasFlatSqM: number;
+  luasDropSqM: number;
+  wasteOuter: number;
+  wasteInner: number;
 }
 
-function getSurfaces(input: CeilingInput) {
-  const surfaces: { w: number; l: number; label: string }[] = [];
-  let currentW = input.roomWidth;
-  let currentL = input.roomLength;
+interface Rect { x: number; y: number; w: number; h: number; }
 
-  input.traps.forEach((trap, i) => {
-    // 1. Horizontal Trap surface (the outer level)
-    if (trap.width > 0) {
-      surfaces.push({ w: currentW, l: trap.width, label: `Trap ${i + 1} H-Surface (Top/Bottom)` });
-      surfaces.push({ w: currentW, l: trap.width, label: `Trap ${i + 1} H-Surface (Top/Bottom)` });
-      const sideL = currentL - 2 * trap.width;
-      if (sideL > 0) {
-        surfaces.push({ w: trap.width, l: sideL, label: `Trap ${i + 1} H-Surface (Left/Right)` });
-        surfaces.push({ w: trap.width, l: sideL, label: `Trap ${i + 1} H-Surface (Left/Right)` });
+// Scanline intersection: find where a horizontal/vertical line intersects a rectangle
+function getRectsIntersections(rects: Rect[], pos: number, isHorizontal: boolean): number[] {
+  const inters: number[] = [];
+  for (const r of rects) {
+    if (isHorizontal) {
+      // Horizontal scanline at y=pos, find x intersections
+      if (pos >= r.y && pos < r.y + r.h) {
+        inters.push(r.x, r.x + r.w);
       }
-      currentW -= 2 * trap.width;
-      currentL -= 2 * trap.width;
-    }
-
-    // 2. Vertical Drop
-    if (currentW > 0 && currentL > 0 && trap.dropHeight > 0) {
-      surfaces.push({ w: currentW, l: trap.dropHeight, label: `Trap ${i + 1} V-Drop (Top/Bottom)` });
-      surfaces.push({ w: currentW, l: trap.dropHeight, label: `Trap ${i + 1} V-Drop (Top/Bottom)` });
-      surfaces.push({ w: trap.dropHeight, l: currentL, label: `Trap ${i + 1} V-Drop (Left/Right)` });
-      surfaces.push({ w: trap.dropHeight, l: currentL, label: `Trap ${i + 1} V-Drop (Left/Right)` });
-    }
-
-    // 3. Gap to next trap (Inner horizontal surface before the next trap drops)
-    if (trap.gap > 0 && currentW > 0 && currentL > 0) {
-      surfaces.push({ w: currentW, l: trap.gap, label: `Trap ${i + 1} Gap (Top/Bottom)` });
-      surfaces.push({ w: currentW, l: trap.gap, label: `Trap ${i + 1} Gap (Top/Bottom)` });
-      const gapSideL = currentL - 2 * trap.gap;
-      if (gapSideL > 0) {
-        surfaces.push({ w: trap.gap, l: gapSideL, label: `Trap ${i + 1} Gap (Left/Right)` });
-        surfaces.push({ w: trap.gap, l: gapSideL, label: `Trap ${i + 1} Gap (Left/Right)` });
-      }
-      currentW -= 2 * trap.gap;
-      currentL -= 2 * trap.gap;
-    }
-  });
-
-  if (currentW > 0 && currentL > 0) {
-    surfaces.push({ w: currentW, l: currentL, label: 'Main Ceiling' });
-  }
-
-  return surfaces;
-}
-
-export function optimizeCeiling(input: CeilingInput): OptimizationResult {
-  const surfaces = getSurfaces(input);
-  const pieces: number[] = [];
-
-  // Convert surfaces to strips
-  surfaces.forEach(surf => {
-    let pieceLength = 0;
-    let crossLength = 0;
-
-    if (input.direction === 'horizontal') {
-      pieceLength = surf.w;
-      crossLength = surf.l;
     } else {
-      pieceLength = surf.l;
-      crossLength = surf.w;
+      // Vertical scanline at x=pos, find y intersections
+      if (pos >= r.x && pos < r.x + r.w) {
+        inters.push(r.y, r.y + r.h);
+      }
     }
-
-    const numStrips = Math.ceil(crossLength / input.panelWidth);
-    for (let i = 0; i < numStrips; i++) {
-      pieces.push(pieceLength);
-    }
-  });
-
-  // Sort descending (Largest pieces first)
-  pieces.sort((a, b) => b - a);
-
-  const panels: PanelResult[] = [];
-  let panelCount = 0;
-  
-  interface Offcut {
-    length: number;
-    panelId: number;
   }
-  let inventory: Offcut[] = [];
+  return inters.sort((a, b) => a - b);
+}
 
-  pieces.forEach(piece => {
-    // Best fit: smallest offcut that is >= piece
-    let bestIdx = -1;
-    let bestFitRemainder = Infinity;
+/**
+ * Get required strip cuts for a rectangular area, excluding inner rectangles.
+ * Mimics the reference project's getRequiredCuts with processIntersections.
+ */
+function getRequiredCuts(
+  rect: Rect,
+  excludeRects: Rect[],
+  direction: 'horizontal' | 'vertical',
+  panelWidth: number
+): number[] {
+  const cuts: number[] = [];
+  const step = panelWidth;
 
-    for (let i = 0; i < inventory.length; i++) {
-      const offcut = inventory[i];
-      if (offcut.length >= piece) {
-        const remainder = offcut.length - piece;
-        if (remainder < bestFitRemainder) {
-          bestFitRemainder = remainder;
-          bestIdx = i;
+  if (direction === 'horizontal') {
+    // Strips run along X, stacked along Y
+    for (let y = rect.y + step / 2; y < rect.y + rect.h; y += step) {
+      // Main segment: full width of rect
+      const mainStart = rect.x;
+      const mainEnd = rect.x + rect.w;
+
+      // Get exclusion segments at this Y
+      const excludeInters = getRectsIntersections(excludeRects, y, true);
+
+      let currentStart = mainStart;
+      for (let j = 0; j < excludeInters.length; j += 2) {
+        const exStart = excludeInters[j];
+        const exEnd = excludeInters[j + 1];
+        if (exEnd === undefined) continue;
+
+        if (exStart > currentStart && exStart < mainEnd) {
+          const len = exStart - currentStart;
+          if (len > 0.01) cuts.push(parseFloat(len.toFixed(2)));
+          currentStart = exEnd;
+        } else if (exStart <= currentStart && exEnd > currentStart) {
+          currentStart = Math.max(currentStart, exEnd);
         }
       }
+      if (currentStart < mainEnd) {
+        const len = mainEnd - currentStart;
+        if (len > 0.01) cuts.push(parseFloat(len.toFixed(2)));
+      }
     }
+  } else {
+    // Strips run along Y, stacked along X
+    for (let x = rect.x + step / 2; x < rect.x + rect.w; x += step) {
+      const mainStart = rect.y;
+      const mainEnd = rect.y + rect.h;
 
-    if (bestIdx !== -1) {
-      // Reuse offcut
-      const bestOffcut = inventory[bestIdx];
-      inventory.splice(bestIdx, 1);
+      const excludeInters = getRectsIntersections(excludeRects, x, false);
 
-      const panel = panels.find(p => p.id === bestOffcut.panelId)!;
-      panel.cuts.push({ length: piece, isReuse: true, sourceOffcutIndex: panel.cuts.length });
-      panel.remaining -= piece;
+      let currentStart = mainStart;
+      for (let j = 0; j < excludeInters.length; j += 2) {
+        const exStart = excludeInters[j];
+        const exEnd = excludeInters[j + 1];
+        if (exEnd === undefined) continue;
 
-      if (bestFitRemainder > 0) {
-        inventory.push({ length: bestFitRemainder, panelId: bestOffcut.panelId });
+        if (exStart > currentStart && exStart < mainEnd) {
+          const len = exStart - currentStart;
+          if (len > 0.01) cuts.push(parseFloat(len.toFixed(2)));
+          currentStart = exEnd;
+        } else if (exStart <= currentStart && exEnd > currentStart) {
+          currentStart = Math.max(currentStart, exEnd);
+        }
       }
-    } else {
-      // Need a new panel
-      panelCount++;
-      const remainder = input.panelLength - piece;
-      const newPanel: PanelResult = {
-        id: panelCount,
-        originalLength: input.panelLength,
-        cuts: [{ length: piece, isReuse: false }],
-        remaining: remainder
-      };
-      panels.push(newPanel);
-
-      if (remainder > 0) {
-        inventory.push({ length: remainder, panelId: panelCount });
+      if (currentStart < mainEnd) {
+        const len = mainEnd - currentStart;
+        if (len > 0.01) cuts.push(parseFloat(len.toFixed(2)));
       }
+    }
+  }
+
+  return cuts;
+}
+
+/**
+ * FFD bin packing (from reference materialOptimizer.ts)
+ */
+function ffdBinPack(cuts: number[], binLength: number): number {
+  const sorted = [...cuts].sort((a, b) => b - a);
+  const bins: number[] = []; // remaining capacity per bin
+
+  sorted.forEach(cut => {
+    // First fit: find first bin that can hold this cut
+    let placed = false;
+    for (let i = 0; i < bins.length; i++) {
+      if (bins[i] >= cut) {
+        bins[i] = parseFloat((bins[i] - cut).toFixed(4));
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      bins.push(parseFloat((binLength - cut).toFixed(4)));
     }
   });
 
-  const totalWasteCm = inventory.reduce((sum, offcut) => sum + offcut.length, 0);
-  const totalMaterialCm = panelCount * input.panelLength;
-  const wastePercentage = totalMaterialCm > 0 ? (totalWasteCm / totalMaterialCm) * 100 : 0;
+  return bins.length;
+}
+
+/**
+ * Main optimization function.
+ * Mirrors the reference project's calculateMaterials for drop1 ceilings.
+ */
+export function optimizeCeiling(input: CeilingInput): OptimizationResult {
+  const { roomWidth, roomLength, panelWidth, panelLength, direction, traps } = input;
+
+  // Room rectangle (outer boundary)
+  const roomRect: Rect = { x: 0, y: 0, w: roomWidth, h: roomLength };
+
+  // Calculate inset for the inner ceiling area
+  let totalInset = 0;
+  traps.forEach(t => {
+    totalInset += t.width + t.gap;
+  });
+
+  // Inner rectangle (after all trap insets)
+  const innerRect: Rect = {
+    x: totalInset,
+    y: totalInset,
+    w: roomWidth - 2 * totalInset,
+    h: roomLength - 2 * totalInset
+  };
+
+  const hasTraps = traps.length > 0 && totalInset > 0;
+  const innerValid = innerRect.w > 0 && innerRect.h > 0;
+
+  // ========== OUTER CUTS (Trap area = room minus inner) ==========
+  const outerCuts: number[] = [];
+  if (hasTraps && innerValid) {
+    outerCuts.push(...getRequiredCuts(roomRect, [innerRect], direction, panelWidth));
+  } else if (!hasTraps) {
+    // No traps: everything is "inner" (flat ceiling)
+  } else {
+    // Inner is too small, whole room is outer
+    outerCuts.push(...getRequiredCuts(roomRect, [], direction, panelWidth));
+  }
+
+  // ========== INNER CUTS (Plafon Utama) ==========
+  const innerCuts: number[] = [];
+  if (hasTraps && innerValid) {
+    innerCuts.push(...getRequiredCuts(innerRect, [], direction, panelWidth));
+  } else if (!hasTraps) {
+    // Flat ceiling: everything is inner
+    innerCuts.push(...getRequiredCuts(roomRect, [], direction, panelWidth));
+  }
+
+  // ========== VERTICAL DROP CUTS ==========
+  // Each trap has a vertical drop surface around the inner perimeter
+  let currentInsetForDrop = 0;
+  let lisSikuMeters = 0;
+  traps.forEach(trap => {
+    currentInsetForDrop += trap.width;
+    const dropW = roomWidth - 2 * currentInsetForDrop;
+    const dropH = roomLength - 2 * currentInsetForDrop;
+
+    if (dropW > 0 && dropH > 0 && trap.dropHeight > 0) {
+      const perimeterCm = 2 * (dropW + dropH);
+      lisSikuMeters += perimeterCm / 100;
+      const numStrips = Math.ceil(perimeterCm / panelWidth);
+      for (let i = 0; i < numStrips; i++) {
+        innerCuts.push(trap.dropHeight); // drop cuts belong to inner (Bagian Dalam)
+      }
+    }
+    currentInsetForDrop += trap.gap;
+  });
+
+  const lisDindingMeters = 2 * (roomWidth + roomLength) / 100;
+  const lisDindingSticks = Math.ceil(lisDindingMeters / 4);
+  const lisSikuSticks = Math.ceil(lisSikuMeters / 4);
+
+  // ========== AREA CALCULATION ==========
+  let luasFlatSqM = (roomWidth * roomLength) / 10000;
+  let luasDropSqM = 0;
+
+  let insetForArea = 0;
+  traps.forEach(trap => {
+    insetForArea += trap.width;
+    const dw = roomWidth - 2 * insetForArea;
+    const dh = roomLength - 2 * insetForArea;
+    if (dw > 0 && dh > 0 && trap.dropHeight > 0) {
+      luasDropSqM += (2 * (dw + dh) * trap.dropHeight) / 10000;
+    }
+    insetForArea += trap.gap;
+  });
+  
+  const totalSurfaceAreaSqM = luasFlatSqM + luasDropSqM;
+
+  // ========== OPTIMIZE EACH POOL ==========
+  // Convert all cuts to meters before packing to perfectly match reference app float packing
+  const outerCutsM = outerCuts.map(c => parseFloat((c / 100).toFixed(4)));
+  const innerCutsM = innerCuts.map(c => parseFloat((c / 100).toFixed(4)));
+  const panelLengthM = panelLength / 100;
+
+  const outerPanels = ffdBinPack(outerCutsM, panelLengthM);
+  const innerPanels = ffdBinPack(innerCutsM, panelLengthM);
+  const totalPanels = outerPanels + innerPanels;
+
+  const totalMaterialM = totalPanels * panelLengthM;
+  const totalUsedM = [...outerCutsM, ...innerCutsM].reduce((a, b) => a + b, 0);
+  const totalWasteCm = (totalMaterialM - totalUsedM) * 100;
+  const wastePercentage = totalMaterialM > 0 ? ((totalMaterialM - totalUsedM) / totalMaterialM) * 100 : 0;
+
+  // Build per-group breakdown
+  const panelsByGroup: Record<string, number> = {};
+  const lengthByGroup: Record<string, number> = {};
+
+  if (hasTraps) {
+    panelsByGroup['Trap 1'] = outerPanels;
+    lengthByGroup['Trap 1'] = outerCuts.reduce((a, b) => a + b, 0);
+    panelsByGroup['Plafon Utama'] = innerPanels;
+    lengthByGroup['Plafon Utama'] = innerCuts.reduce((a, b) => a + b, 0);
+  } else {
+    panelsByGroup['Plafon Utama'] = innerPanels;
+    lengthByGroup['Plafon Utama'] = innerCuts.reduce((a, b) => a + b, 0);
+  }
+
+  const outerMaterialM = outerPanels * panelLengthM;
+  const outerUsedM = outerCutsM.reduce((a, b) => a + b, 0);
+  const wasteOuter = (outerMaterialM > 0) ? ((outerMaterialM - outerUsedM) / outerMaterialM) * 100 : 0;
+
+  const innerMaterialM = innerPanels * panelLengthM;
+  const innerUsedM = innerCutsM.reduce((a, b) => a + b, 0);
+  const wasteInner = (innerMaterialM > 0) ? ((innerMaterialM - innerUsedM) / innerMaterialM) * 100 : 0;
 
   return {
-    totalPanels: panelCount,
+    panels: [], // Added to satisfy the interface requirement from page.tsx
+    totalPanels,
     totalWasteCm,
     wastePercentage,
-    panels
+    totalSurfaceAreaSqM,
+    outerPanels,
+    innerPanels,
+    panelsByGroup,
+    lengthByGroup,
+    lisDindingSticks,
+    lisSikuSticks,
+    luasFlatSqM,
+    luasDropSqM,
+    wasteOuter,
+    wasteInner
   };
 }

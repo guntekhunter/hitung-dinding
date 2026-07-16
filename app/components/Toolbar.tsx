@@ -550,28 +550,24 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const totalProductCounts = (calcResults?.totalProductCounts || {}) as Record<string, number>;
 
     const ceilingPanels = useMemo(() => {
-        const panels: Record<string, { length: number, count: number, area: number, optimization?: any }> = {};
+        const panels: Record<string, { length: number, count: number, area: number, optimization?: any, breakdown: Record<string, number>, panelLength: number }> = {};
         walls.forEach(w => {
             if (w.type === 'ceiling' && w.isClosed) {
-                let area = 0;
-                for (let i = 0; i < w.points.length; i++) {
-                    const j = (i + 1) % w.points.length;
-                    area += w.points[i].x * w.points[j].y;
-                    area -= w.points[j].x * w.points[i].y;
-                }
-                area = Math.abs(area / 2) / (SCALE * SCALE);
-
-                // Calculate bounding box in cm for realistic panel layout
+                // Calculate bounding box in cm
                 const xs = w.points.map(p => p.x);
                 const ys = w.points.map(p => p.y);
                 const widthCm = ((Math.max(...xs) - Math.min(...xs)) / SCALE) * 100;
                 const lengthCm = ((Math.max(...ys) - Math.min(...ys)) / SCALE) * 100;
 
+                const panelLengthCm = (w.ceilingPanelLength && w.ceilingPanelLength > 10)
+                    ? w.ceilingPanelLength
+                    : (w.ceilingPanelLength || 4) * 100;
+
                 const input: CeilingInput = {
                     roomWidth: widthCm,
                     roomLength: lengthCm,
                     panelWidth: w.ceilingPanelWidth || 20,
-                    panelLength: (w.ceilingPanelLength && w.ceilingPanelLength > 10) ? w.ceilingPanelLength : (w.ceilingPanelLength || 4) * 100, // Handle old < 10 values
+                    panelLength: panelLengthCm,
                     direction: w.ceilingPanelDirection || 'horizontal',
                     traps: w.ceilingTraps || []
                 };
@@ -580,10 +576,12 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 const wasteMult = (1 + wastePercentage / 100);
 
                 panels[w.id] = {
-                    length: input.panelLength / 100, // display as meters
+                    length: panelLengthCm / 100,
                     count: Math.ceil(optimization.totalPanels * wasteMult),
-                    area: area,
-                    optimization // keep raw data if needed
+                    area: optimization.totalSurfaceAreaSqM,
+                    optimization,
+                    breakdown: optimization.panelsByGroup,
+                    panelLength: panelLengthCm / 100
                 };
             }
         });
@@ -1031,22 +1029,72 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                                 );
                                                             })}
 
-                                                            {/* Ceiling panel row */}
-                                                            {ceilingData && ceilingData.count > 0 && (
-                                                                <div className="flex justify-between items-center py-4 border-t border-[#E5E5E5]">
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <span className="text-[#A3A3A3] text-[.8rem]">
-                                                                            PVC Plafon — {ceilingData.length}m
-                                                                            ({wall.ceilingPanelDirection === 'horizontal' ? 'Horizontal' : 'Vertikal'})
-                                                                        </span>
-                                                                        <span className="text-[#303030] text-[.8rem] font-bold">
-                                                                            {ceilingData.area.toFixed(2)} m²
-                                                                        </span>
+                                                            {/* Ceiling panel breakdown rows per group */}
+                                                            {ceilingData && ceilingData.optimization && (
+                                                                <>
+                                                                    <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Luas Flat</span>
+                                                                        </div>
+                                                                        <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.luasFlatSqM.toFixed(2)} m²</div>
                                                                     </div>
-                                                                    <div className="text-[#303030] text-[.8rem] font-bold">
-                                                                        {ceilingData.count} Pcs
+                                                                    {ceilingData.optimization.luasDropSqM > 0 && (
+                                                                        <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Luas Drop</span>
+                                                                            </div>
+                                                                            <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.luasDropSqM.toFixed(2)} m²</div>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Lis Dinding (4m)</span>
+                                                                        </div>
+                                                                        <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.lisDindingSticks} btg</div>
                                                                     </div>
-                                                                </div>
+                                                                    {ceilingData.optimization.lisSikuSticks > 0 && (
+                                                                        <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Lis Siku / Drop (4m)</span>
+                                                                            </div>
+                                                                            <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.lisSikuSticks} btg</div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Bagian Luar (Flat Utama) */}
+                                                                    <div className="py-3 border-t border-[#E5E5E5]">
+                                                                        <div className="flex justify-between items-center mb-2">
+                                                                            <span className="text-[#00A2E8] font-bold text-[10px]">BAGIAN LUAR (FLAT UTAMA)</span>
+                                                                            <span className="text-[#FF9900] font-bold text-[10px]">{(100 - ceilingData.optimization.wasteOuter).toFixed(1)}% Efisien</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center mb-1">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Papan {ceilingData.panelLength}m</span>
+                                                                            <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.outerPanels} btg</div>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Total Sampah (Waste)</span>
+                                                                            <div className="text-[#E74C3C] text-[.8rem] font-bold">{(ceilingData.optimization.outerPanels * ceilingData.panelLength * (ceilingData.optimization.wasteOuter / 100)).toFixed(2)}m</div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Bagian Dalam (Drop/Trap) */}
+                                                                    {ceilingData.optimization.innerPanels > 0 && (
+                                                                        <div className="py-3 border-t border-[#E5E5E5]">
+                                                                            <div className="flex justify-between items-center mb-2">
+                                                                                <span className="text-[#FF9900] font-bold text-[10px]">BAGIAN DALAM (DROP/TRAP)</span>
+                                                                                <span className="text-[#2ECC71] font-bold text-[10px]">{(100 - ceilingData.optimization.wasteInner).toFixed(1)}% Efisien</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center mb-1">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Papan {ceilingData.panelLength}m</span>
+                                                                                <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.innerPanels} btg</div>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Total Sampah (Waste)</span>
+                                                                                <div className="text-[#E74C3C] text-[.8rem] font-bold">{(ceilingData.optimization.innerPanels * ceilingData.panelLength * (ceilingData.optimization.wasteInner / 100)).toFixed(2)}m</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
                                                     ) : (
