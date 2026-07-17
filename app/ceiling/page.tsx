@@ -42,7 +42,7 @@ export default function CeilingCalculator() {
   return (
     <div className="min-h-screen bg-[#F5F5F5] font-sans">
       <div className="bg-white border-b border-[#E5E5E5] px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
-        <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <Link href="/wall-editor" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
         <div>

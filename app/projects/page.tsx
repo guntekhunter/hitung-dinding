@@ -81,7 +81,7 @@ export default function ProjectsPage() {
             }
             
             loadProject(projectId, data.data);
-            router.push("/");
+            router.push("/wall-editor");
         } catch (error) {
             console.error("Failed to load full project data:", error);
             alert("Failed to load project data. Please try again.");
@@ -98,7 +98,7 @@ export default function ProjectsPage() {
                         <button
                             onClick={() => {
                                 useCanvasStore.getState().reset();
-                                router.push("/");
+                                router.push("/wall-editor");
                             }}
                             className="px-4 py-2 bg-[#7B6DED] text-white rounded-md font-medium hover:bg-[#A29AF7] transition active:scale-95 text-[14px]">
                             + New Project

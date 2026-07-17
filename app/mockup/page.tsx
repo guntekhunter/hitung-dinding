@@ -1060,7 +1060,7 @@ function MockupPageContent() {
                             <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                         </label>
                         <button
-                            onClick={() => router.push('/')}
+                            onClick={() => router.push('/wall-editor')}
                             className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-50 transition active:scale-95"
                             title="Kembali ke Editor"
                         >
