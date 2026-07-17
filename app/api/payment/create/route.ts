@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createSignature } from "@/lib/duitku";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const DUITKU_BASE_URL = "https://passport.duitku.com/webapi/api/merchant";
+const DUITKU_BASE_URL =
+  process.env.DUITKU_BASE_URL ?? "https://passport.duitku.com/webapi/api/merchant";
 const PLAN_PRICE = 97000; // Rp 97.000
 
 export async function POST(req: Request) {
