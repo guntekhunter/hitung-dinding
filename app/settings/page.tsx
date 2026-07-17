@@ -144,7 +144,7 @@ export default function SettingsPage() {
             <div className="w-full max-w-2xl">
                 <div className="mb-6 flex justify-between items-center">
                     <h3 className="font-bold text-[2rem]">Pengaturan Perusahaan</h3>
-                    <Link href="/" className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold hover:bg-indigo-200 transition-colors">
+                    <Link href="/wall-editor" className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold hover:bg-indigo-200 transition-colors">
                         ← Back to Editor
                     </Link>
                 </div>

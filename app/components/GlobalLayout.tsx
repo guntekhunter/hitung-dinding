@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar";
 
 export default function GlobalLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const isExcluded = ["/", "/register", "/login", "/coloring", "/home", "/payment", "/mockup"].includes(pathname);
+    const isExcluded = ["/", "/register", "/login", "/coloring", "/home", "/payment", "/mockup", "/wall-editor"].includes(pathname);
 
     if (isExcluded) {
         return <>{children}</>;

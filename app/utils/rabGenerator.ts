@@ -31,7 +31,8 @@ export const generateRAB = async (
     products: Product[],
     companyLogoUrl?: string,
     wallImages?: string[],
-    companyName?: string
+    companyName?: string,
+    ceilingPanels?: Record<string, any>
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -81,10 +82,18 @@ export const generateRAB = async (
         const heightM = (ys.length > 0 ? (Math.max(...ys) - Math.min(...ys)) / SCALE : 0);
         const ukuranText = `${(widthM || 0).toFixed(2)} x ${(heightM || 0).toFixed(2)}`;
 
-        // List materials used in this room
-        const roomMaterials = products.filter(p => (metrics.productAreas[p.id] || 0) > 0 || (metrics.productLengths[p.id] || 0) > 0);
-        const materialText = roomMaterials.map(m => m.name).join(", ");
-        const areaText = `${(metrics.totalDesignArea || 0).toFixed(2)} m²`;
+        let materialText = "";
+        let areaText = "";
+
+        if (wall.type === 'ceiling' && ceilingPanels && ceilingPanels[wall.id]) {
+            const p = ceilingPanels[wall.id];
+            materialText = `PVC Panel ${p.length}m, Lis Dinding, Lis Siku`;
+            areaText = `${(p.area || 0).toFixed(2)} m²`;
+        } else {
+            const roomMaterials = products.filter(p => (metrics.productAreas[p.id] || 0) > 0 || (metrics.productLengths[p.id] || 0) > 0);
+            materialText = roomMaterials.map(m => m.name).join(", ");
+            areaText = `${(metrics.totalDesignArea || 0).toFixed(2)} m²`;
+        }
 
         wallRows.push([
             (index + 1).toString(),
@@ -135,6 +144,54 @@ export const generateRAB = async (
             formatIDR(subtotal).replace("Rp ", "")
         ]);
     });
+
+    if (ceilingPanels) {
+        walls.forEach(w => {
+            if (w.type === 'ceiling' && ceilingPanels[w.id]) {
+                const p = ceilingPanels[w.id];
+                const price = materialPrices[`ceiling-${w.id}`] || 0;
+                const subtotal = p.count * price;
+                grandTotalCount += subtotal;
+
+                materialRows.push([
+                    (materialRows.length + 1).toString(),
+                    `PVC Ceiling Panel ${p.length}m (${w.name})`,
+                    p.count.toString(),
+                    'Lembar',
+                    formatIDR(price).replace("Rp ", ""),
+                    formatIDR(subtotal).replace("Rp ", "")
+                ]);
+
+                if (p.optimization?.lisDindingSticks > 0) {
+                    const lisDindingPrice = materialPrices[`lisDinding-${w.id}`] || 0;
+                    const lisDindingSubtotal = p.optimization.lisDindingSticks * lisDindingPrice;
+                    grandTotalCount += lisDindingSubtotal;
+                    materialRows.push([
+                        (materialRows.length + 1).toString(),
+                        `Lis Dinding (4m) - ${w.name}`,
+                        p.optimization.lisDindingSticks.toString(),
+                        'Batang',
+                        formatIDR(lisDindingPrice).replace("Rp ", ""),
+                        formatIDR(lisDindingSubtotal).replace("Rp ", "")
+                    ]);
+                }
+
+                if (p.optimization?.lisSikuSticks > 0) {
+                    const lisSikuPrice = materialPrices[`lisSiku-${w.id}`] || 0;
+                    const lisSikuSubtotal = p.optimization.lisSikuSticks * lisSikuPrice;
+                    grandTotalCount += lisSikuSubtotal;
+                    materialRows.push([
+                        (materialRows.length + 1).toString(),
+                        `Lis Siku / Drop (4m) - ${w.name}`,
+                        p.optimization.lisSikuSticks.toString(),
+                        'Batang',
+                        formatIDR(lisSikuPrice).replace("Rp ", ""),
+                        formatIDR(lisSikuSubtotal).replace("Rp ", "")
+                    ]);
+                }
+            }
+        });
+    }
 
     autoTable(doc, {
         startY: afterWallY + 3,
