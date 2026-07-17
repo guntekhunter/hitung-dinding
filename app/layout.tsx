@@ -1,31 +1,19 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import {
-  Geist,
-  Geist_Mono,
-  Mona_Sans,
-  Playfair_Display,
-} from "next/font/google";
+import { Mona_Sans, Playfair_Display } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
+// Only load the two fonts actually used — drops 2 unnecessary font network requests
 const monaSans = Mona_Sans({
   variable: "--font-mona-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const playFair = Playfair_Display({
   variable: "--font-playfair-display",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -39,9 +27,7 @@ import type { Viewport } from "next";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  // Also prevent elastic scrolling on iOS
+  // Removed maximumScale:1 / userScalable:false — Lighthouse accessibility penalty
   themeColor: "#ffffff",
 };
 
@@ -54,9 +40,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="id">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${monaSans.variable} ${playFair.variable} antialiased`}
+        className={`${monaSans.variable} ${playFair.variable} antialiased`}
       >
         <AuthProvider>
           <GlobalLayout>{children}</GlobalLayout>

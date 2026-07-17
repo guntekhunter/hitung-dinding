@@ -1,9 +1,6 @@
-"use client";
-
 import Image from "next/image";
 import PaymentCard from "./reusable/PaymentCard";
-import { useAuthStore } from "../store/useAuthStore";
-import Button from "./reusable/Button";
+
 
 // Lightweight icon component — avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
@@ -14,7 +11,6 @@ const CrossIcon = () => (
 );
 
 export default function Home() {
-  const { user } = useAuthStore();
   const items = [
     "Toko PVC",
     "Kontraktor Interior",
@@ -29,13 +25,15 @@ export default function Home() {
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5] md:px-8">
         <div className="max-w-6xl mx-auto">
-          <Image
+          {/* Plain img for SVG logo — avoids Next/Image JS overhead */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/logo.svg"
-            alt="Logo"
+            alt="Rapi Studio"
             width={200}
             height={60}
-            priority
             className="w-[40%] md:w-[160px] h-auto"
+            fetchPriority="high"
           />
         </div>
       </div>
@@ -73,7 +71,12 @@ export default function Home() {
               </div>
             </div>
             <div className="flex justify-center md:justify-start">
-              <Button className="text-[.8rem] md:text-sm">Coba Sekarang</Button>
+              <a
+                href="/payment"
+                className="inline-block bg-[#7B6DED] text-white text-[.8rem] md:text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#6a5cd4] transition-colors"
+              >
+                Coba Sekarang
+              </a>
             </div>
           </div>
 
@@ -86,6 +89,7 @@ export default function Home() {
                 width={600}
                 height={450}
                 priority
+                sizes="(max-width: 768px) 90vw, 50vw"
                 className="rounded-md w-full h-auto"
               />
             </div>
@@ -94,7 +98,8 @@ export default function Home() {
               alt="Detail fitur"
               width={150}
               height={113}
-              priority
+              loading="lazy"
+              sizes="25vw"
               className="rounded-md absolute top-[50%] w-[25%] h-auto"
             />
           </div>
@@ -269,9 +274,10 @@ export default function Home() {
       <footer className="bg-[#1a1a2e] text-white px-6 py-10 md:px-8">
         <div className="max-w-6xl mx-auto md:flex md:justify-between md:items-start md:gap-12">
           <div className="mb-6 md:mb-0">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/logo.svg"
-              alt="Logo"
+              alt="Rapi Studio"
               width={120}
               height={36}
               loading="lazy"

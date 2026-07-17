@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../store/useAuthStore";
@@ -7,7 +9,10 @@ import { getCurrentUser, getUserCompany } from "../utils/auth";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
     const { setSession, clearSession } = useAuthStore();
-    const [isLoading, setIsLoading] = useState(true);
+    const pathname = usePathname();
+    // Landing page doesn't need auth — skip the blocking spinner
+    const isPublicLanding = pathname === "/";
+    const [isLoading, setIsLoading] = useState(!isPublicLanding);
 
     useEffect(() => {
         let isMounted = true;
@@ -120,7 +125,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    if (isLoading) {
+    if (isLoading && !isPublicLanding) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <div className="flex flex-col items-center gap-4">
