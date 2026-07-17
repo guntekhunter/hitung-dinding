@@ -1542,6 +1542,76 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         listening={false}
                     />
 
+                    {isClosed && activeWall?.type === 'ceiling' && (
+                        <Group clipFunc={clipFunc}>
+                            {(() => {
+                                const elements = [];
+                                const PANEL_WIDTH = (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
+                                const direction = activeWall.ceilingPanelDirection || 'horizontal';
+                                
+                                if (direction === 'vertical') {
+                                    const startX = bounds.minX;
+                                    const numPanels = Math.ceil(bounds.width / PANEL_WIDTH);
+                                    for (let i = 1; i <= numPanels; i++) {
+                                        const x = startX + i * PANEL_WIDTH;
+                                        elements.push(
+                                            <Line
+                                                key={`ceiling-panel-v-${i}`}
+                                                points={[x, bounds.minY, x, bounds.minY + bounds.height]}
+                                                stroke="#cbd5e1"
+                                                strokeWidth={1 / zoom}
+                                                listening={false}
+                                            />
+                                        );
+                                    }
+                                } else {
+                                    const startY = bounds.minY;
+                                    const numPanels = Math.ceil(bounds.height / PANEL_WIDTH);
+                                    for (let i = 1; i <= numPanels; i++) {
+                                        const y = startY + i * PANEL_WIDTH;
+                                        elements.push(
+                                            <Line
+                                                key={`ceiling-panel-h-${i}`}
+                                                points={[bounds.minX, y, bounds.minX + bounds.width, y]}
+                                                stroke="#cbd5e1"
+                                                strokeWidth={1 / zoom}
+                                                listening={false}
+                                            />
+                                        );
+                                    }
+                                }
+
+                                // Draw Traps
+                                const traps = activeWall.ceilingTraps || [];
+                                let currentInset = 0;
+                                traps.forEach((trap: any, i: number) => {
+                                    currentInset += (trap.width / 100) * SCALE;
+                                    const tw = bounds.width - 2 * currentInset;
+                                    const th = bounds.height - 2 * currentInset;
+                                    
+                                    if (tw > 0 && th > 0) {
+                                        elements.push(
+                                            <Rect
+                                                key={`trap-${i}-drop`}
+                                                x={bounds.minX + currentInset}
+                                                y={bounds.minY + currentInset}
+                                                width={tw}
+                                                height={th}
+                                                stroke="#3b82f6" // blue-500
+                                                strokeWidth={3 / zoom}
+                                                dash={[10 / zoom, 10 / zoom]}
+                                                listening={false}
+                                            />
+                                        );
+                                    }
+                                    currentInset += (trap.gap / 100) * SCALE;
+                                });
+
+                                return elements;
+                            })()}
+                        </Group>
+                    )}
+
                     {isClosed && renderedAreas}
 
                     {/* Measurements & Dimensions */}

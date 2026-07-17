@@ -72,38 +72,9 @@ function solveHomography(src: { x: number, y: number }[], dst: { x: number, y: n
     return `matrix3d(${H.join(',')})`;
 }
 
-import { Plus, Copy, Minus } from 'lucide-react';
+import { Plus, Copy, Minus, ImagePlus, Save, Download, Image as ImageIcon, ArrowLeft, Folder } from 'lucide-react';
 
-const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setActiveMockup, updateMockupName, duplicateMockup }: any) => (
-    <div className="w-full flex-shrink-0 bg-white border-b border-gray-200 flex flex-col p-4 max-h-[40vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold uppercase text-[12px] text-gray-700 tracking-wider">Mockups</h3>
-            <button onClick={addMockup} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition">
-                <Plus size={16} />
-            </button>
-        </div>
-        <div className="flex flex-col gap-2">
-            {mockups.map((m: any) => (
-                <div key={m.id} onClick={() => setActiveMockup(m.id)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${activeMockupId === m.id ? 'bg-[#F5F3FF] border-[#7B6DED] shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
-                    <input
-                        value={m.name}
-                        onChange={(e) => updateMockupName(m.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 bg-transparent border-none text-sm focus:outline-none text-gray-800 font-medium"
-                    />
-                    <button onClick={(e) => { e.stopPropagation(); duplicateMockup(m.id); }} className="p-1 text-gray-400 hover:text-[#7B6DED] transition">
-                        <Copy size={14} />
-                    </button>
-                    {mockups.length > 1 && (
-                        <button onClick={(e) => { e.stopPropagation(); removeMockup(m.id); }} className="p-1 text-gray-400 hover:text-red-500 transition">
-                            <Minus size={14} />
-                        </button>
-                    )}
-                </div>
-            ))}
-        </div>
-    </div>
-);
+
 
 function MockupPageContent() {
     const wallEditorRef = useRef<any>(null);
@@ -113,7 +84,7 @@ function MockupPageContent() {
     const router = useRouter();
 
     const { loadProject, fetchProducts, walls, activeWallId, setActiveWall, setIsColoringPreview } = useCanvasStore();
-    
+
     // Always start with loading = true to prevent hydration mismatch between server and client
     // (searchParams is empty on server during static generation, but populated on client)
     const [loadingProject, setLoadingProject] = useState(true);
@@ -186,18 +157,25 @@ function MockupPageContent() {
 
         includedWalls.forEach(wallId => {
             const wData = walls.find(w => w.id === wallId);
-            if (wData && wData.points.length >= 3 && !newDims[wallId]) {
-                const xs = wData.points.map(p => p.x);
-                const ys = wData.points.map(p => p.y);
-                const minX = Math.min(...xs);
-                const minY = Math.min(...ys);
-                const maxX = Math.max(...xs);
-                const maxY = Math.max(...ys);
+            if (wData && wData.points.length >= 3) {
+                let w, h;
+                if (!newDims[wallId]) {
+                    const xs = wData.points.map(p => p.x);
+                    const ys = wData.points.map(p => p.y);
+                    const minX = Math.min(...xs);
+                    const minY = Math.min(...ys);
+                    const maxX = Math.max(...xs);
+                    const maxY = Math.max(...ys);
 
-                const w = Math.max(10, maxX - minX);
-                const h = Math.max(10, maxY - minY);
+                    w = Math.max(10, maxX - minX);
+                    h = Math.max(10, maxY - minY);
 
-                newDims[wallId] = { width: w, height: h, minX, minY };
+                    newDims[wallId] = { width: w, height: h, minX, minY };
+                    changed = true;
+                } else {
+                    w = newDims[wallId].width;
+                    h = newDims[wallId].height;
+                }
 
                 if (!updatedCorners[wallId]) {
                     const scale = Math.min(800 / w, 500 / h, 1);
@@ -215,8 +193,8 @@ function MockupPageContent() {
                         { x: startX + displayW, y: startY + displayH },
                         { x: startX, y: startY + displayH }
                     ];
+                    changed = true;
                 }
-                changed = true;
             }
         });
 
@@ -286,9 +264,9 @@ function MockupPageContent() {
             let x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
             let y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
 
-            // Clamp points within canvas dimensions so they don't get lost
-            x = Math.max(0, Math.min(x, canvasDims.width));
-            y = Math.max(0, Math.min(y, canvasDims.height));
+            // Allow points to go outside the canvas dimensions for better perspective matching
+            // x = Math.max(0, Math.min(x, canvasDims.width));
+            // y = Math.max(0, Math.min(y, canvasDims.height));
 
             setWallCorners(prev => {
                 const newCorners = { ...prev };
@@ -502,32 +480,32 @@ function MockupPageContent() {
                 minY = 3000;
                 maxX = 0;
                 maxY = 0;
-            }
 
-            includedWalls.forEach(wallId => {
-                const corners = wallCorners[wallId];
-                if (corners) {
-                    corners.forEach(c => {
-                        if (c.x < minX) minX = c.x;
-                        if (c.y < minY) minY = c.y;
-                        if (c.x > maxX) maxX = c.x;
-                        if (c.y > maxY) maxY = c.y;
-                    });
+                includedWalls.forEach(wallId => {
+                    const corners = wallCorners[wallId];
+                    if (corners) {
+                        corners.forEach(c => {
+                            if (c.x < minX) minX = c.x;
+                            if (c.y < minY) minY = c.y;
+                            if (c.x > maxX) maxX = c.x;
+                            if (c.y > maxY) maxY = c.y;
+                        });
+                    }
+                });
+
+                if (maxX < minX) {
+                    minX = 0; minY = 0; maxX = 500; maxY = 500;
+                } else {
+                    minX -= 50;
+                    minY -= 50;
+                    maxX += 50;
+                    maxY += 50;
                 }
-            });
 
-            if (!bgImage && maxX < minX) {
-                minX = 0; minY = 0; maxX = 500; maxY = 500;
-            } else {
-                minX -= 50;
-                minY -= 50;
-                maxX += 50;
-                maxY += 50;
+                // Clamp to valid range
+                minX = Math.max(0, minX);
+                minY = Math.max(0, minY);
             }
-
-            // Clamp to valid range
-            minX = Math.max(0, minX);
-            minY = Math.max(0, minY);
 
             const exportWidth = maxX - minX;
             const exportHeight = maxY - minY;
@@ -650,7 +628,7 @@ function MockupPageContent() {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
+
                 // Clean up the object URL to free memory
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
             }, 'image/png');
@@ -842,7 +820,7 @@ function MockupPageContent() {
 
             // Save active mockup state into the list before saving
             const finalMockups = mockupsList.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m);
-            
+
             currentData.mockupScenes = finalMockups;
             currentData.materialColors = customColors;
 
@@ -873,10 +851,10 @@ function MockupPageContent() {
     const handleAddMockup = () => {
         const newId = Date.now().toString();
         const newMockup = { id: newId, name: `Mockup ${mockupsList.length + 1}`, bgImage: null, includedWalls: [], wallCorners: {} };
-        
+
         // Save current state first
         setMockupsList(prev => [...prev.map(m => m.id === activeMockupId ? { ...m, bgImage, includedWalls, wallCorners } : m), newMockup]);
-        
+
         setActiveMockupId(newId);
         setBgImage(null);
         setIncludedWalls([]);
@@ -894,7 +872,7 @@ function MockupPageContent() {
 
         const duplicated = { ...source, id: newId, name: `${source.name} (Copy)` };
         setMockupsList([...syncedList, duplicated]);
-        
+
         setActiveMockupId(newId);
         setBgImage(duplicated.bgImage);
         setIncludedWalls([...duplicated.includedWalls]);
@@ -951,74 +929,6 @@ function MockupPageContent() {
 
     return (
         <main className="flex flex-col h-[calc(100vh-60px)] md:h-screen overflow-hidden bg-slate-50">
-            {/* Top Header & Dropdown */}
-            <div className="relative h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0 shadow-sm z-[200]">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => router.push('/projects')}
-                        className="p-2 hover:bg-gray-100 rounded-full transition"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    <h1 className="text-lg font-medium text-gray-800 hidden md:flex">Perspective Mockup</h1>
-                </div>
-                <div className="flex items-center gap-2 md:gap-3">
-                    <button
-                        onClick={handleSaveMockup}
-                        title="Save Mockup"
-                        className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-50 transition shadow-sm active:scale-95"
-                    >
-                        <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-                        <span className="hidden md:inline">Save</span>
-                    </button>
-                    <button
-                        onClick={handleDownload}
-                        title="Download Mockup"
-                        className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] w-9 h-9 md:w-auto md:px-4 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
-                    >
-                        <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        <span className="hidden md:inline">Download PNG</span>
-                    </button>
-                    <label title="Upload Background" className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-lg flex items-center justify-center hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <svg className={`w-4 h-4 md:mr-2 shrink-0 ${isUploading ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        <span className="hidden md:inline">{isUploading ? 'Uploading...' : 'Background'}</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
-                    </label>
-                    <div className="h-6 w-px bg-gray-300 hidden md:block"></div>
-                    <label className="text-sm font-medium text-gray-600 hidden md:block">Walls:</label>
-                    <div className="relative" ref={wallDropdownRef}>
-                        <button
-                            title="Select Walls"
-                            onClick={() => setWallDropdownOpen(prev => !prev)}
-                            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#7B6DED] focus:border-[#7B6DED] flex items-center justify-center p-2 outline-none min-w-[2.25rem] md:min-w-[120px] md:justify-between"
-                        >
-                            <span className="flex items-center">
-                                <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                <span className="hidden md:inline">{includedWalls.length} selected</span>
-                                <span className="md:hidden ml-1 font-semibold">{includedWalls.length}</span>
-                            </span>
-                            <svg className={`w-4 h-4 ml-2 shrink-0 transition-transform ${wallDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                        {wallDropdownOpen && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[250]">
-                                <ul className="py-1">
-                                    {walls.map((wall) => (
-                                        <li key={wall.id} className="px-4 py-2 hover:bg-gray-100 active:bg-gray-200 flex items-center cursor-pointer" onClick={() => {
-                                            setIncludedWalls(prev => prev.includes(wall.id) ? prev.filter(id => id !== wall.id) : [...prev, wall.id]);
-                                        }}>
-                                            <input type="checkbox" checked={includedWalls.includes(wall.id)} readOnly className="mr-2 rounded text-[#7B6DED] focus:ring-[#7B6DED]" />
-                                            <span className="text-sm text-gray-700">{wall.name}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
             <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
                 <div
                     ref={containerRef}
@@ -1038,15 +948,15 @@ function MockupPageContent() {
                         >
                             {/* Background Image Layer - Separated to prevent mobile 3D transform clipping bugs */}
                             {bgImage ? (
-                                <img 
-                                    src={bgImage} 
-                                    alt="Background" 
+                                <img
+                                    src={bgImage}
+                                    alt="Background"
                                     className="absolute top-0 left-0 pointer-events-none"
                                     style={{ width: `${canvasDims.width}px`, height: `${canvasDims.height}px`, objectFit: 'fill', transform: 'translateZ(-1px)' }}
                                     crossOrigin="anonymous"
                                 />
                             ) : (
-                                <div 
+                                <div
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
                                         backgroundImage: `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
@@ -1121,18 +1031,84 @@ function MockupPageContent() {
                 </div>
 
                 {/* Right Sidebar: Toolbar */}
-                <div className="w-full md:w-[320px] h-[30vh] md:h-full flex flex-col flex-shrink-0 border-l border-gray-200 shadow-sm z-10 bg-white">
-                    <MockupManager 
-                        mockups={mockupsList}
-                        activeMockupId={activeMockupId}
-                        addMockup={handleAddMockup}
-                        removeMockup={handleRemoveMockup}
-                        setActiveMockup={handleSetActiveMockup}
-                        updateMockupName={handleUpdateMockupName}
-                        duplicateMockup={handleDuplicateMockup}
-                    />
+                <div className="w-full md:w-[320px] h-[45vh] md:h-full flex flex-col flex-shrink-0 border-t md:border-t-0 md:border-l border-gray-200 shadow-sm z-10 bg-white">
+
+                    <div className="flex justify-end p-4 gap-2">
+                        <button
+                            onClick={() => router.push('/projects')}
+                            title="Proyek"
+                            className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-50 transition active:scale-95"
+                        >
+                            <Folder size={16} />
+                        </button>
+                        <button
+                            onClick={handleSaveMockup}
+                            title="Save Mockup"
+                            className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-50 transition active:scale-95"
+                        >
+                            <Save size={16} />
+                        </button>
+                        <button
+                            onClick={handleDownload}
+                            title="Download Mockup"
+                            className="text-sm font-medium text-white cursor-pointer bg-[#7B6DED] w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#6A5ED4] transition shadow-sm active:scale-95"
+                        >
+                            <Download size={16} />
+                        </button>
+                        <label title="Upload Background" className={`text-sm font-medium text-gray-600 cursor-pointer bg-gray-100 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-200 transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <ImageIcon size={16} className={isUploading ? 'animate-pulse' : ''} />
+                            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                        </label>
+                        <button
+                            onClick={() => router.push('/wall-editor')}
+                            className="text-sm font-medium text-gray-700 cursor-pointer bg-white border border-gray-300 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-50 transition active:scale-95"
+                            title="Kembali ke Editor"
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                    </div>
+                    <div className="flex justify-end p-4 gap-2" >
+                        <div className="relative" ref={wallDropdownRef}>
+                            <button
+                                title="Select Walls"
+                                onClick={() => setWallDropdownOpen(prev => !prev)}
+                                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#7B6DED] focus:border-[#7B6DED] flex items-center justify-center p-2 outline-none min-w-[2.25rem] md:min-w-[120px] md:justify-between"
+                            >
+                                <span className="flex items-center">
+                                    <svg className="w-4 h-4 md:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    <span className="hidden md:inline">{includedWalls.length} selected</span>
+                                    <span className="md:hidden ml-1 font-semibold">{includedWalls.length}</span>
+                                </span>
+                                <svg className={`w-4 h-4 ml-2 shrink-0 transition-transform ${wallDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            {wallDropdownOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[250]">
+                                    <ul className="py-1">
+                                        {walls.map((wall) => (
+                                            <li key={wall.id} className="px-4 py-2 hover:bg-gray-100 active:bg-gray-200 flex items-center cursor-pointer" onClick={() => {
+                                                setIncludedWalls(prev => prev.includes(wall.id) ? prev.filter(id => id !== wall.id) : [...prev, wall.id]);
+                                            }}>
+                                                <input type="checkbox" checked={includedWalls.includes(wall.id)} readOnly className="mr-2 rounded text-[#7B6DED] focus:ring-[#7B6DED]" />
+                                                <span className="text-sm text-gray-700">{wall.name}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+
                     <div className="flex-1 min-h-0">
-                        <TextureSelector />
+                        <TextureSelector
+                            mockupsList={mockupsList}
+                            activeMockupId={activeMockupId}
+                            handleAddMockup={handleAddMockup}
+                            handleRemoveMockup={handleRemoveMockup}
+                            handleSetActiveMockup={handleSetActiveMockup}
+                            handleUpdateMockupName={handleUpdateMockupName}
+                            handleDuplicateMockup={handleDuplicateMockup}
+                        />
                     </div>
                 </div>
             </div>

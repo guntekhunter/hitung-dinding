@@ -3,8 +3,48 @@
 import React, { useMemo } from "react";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { supabase } from "../../lib/supabase";
+import { Plus, Copy, Minus } from 'lucide-react';
 
-export default function TextureSelector() {
+const MockupManager = ({ mockups, activeMockupId, addMockup, removeMockup, setActiveMockup, updateMockupName, duplicateMockup }: any) => (
+    <div className="w-full flex-shrink-0 bg-white border-b border-gray-200 flex flex-col p-4">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold uppercase text-[12px] text-gray-700 tracking-wider">Mockups</h3>
+            <button onClick={addMockup} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition">
+                <Plus size={16} />
+            </button>
+        </div>
+        <div className="flex flex-col gap-2">
+            {mockups?.map((m: any) => (
+                <div key={m.id} onClick={() => setActiveMockup(m.id)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${activeMockupId === m.id ? 'bg-[#F5F3FF] border-[#7B6DED] ' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                    <input
+                        value={m.name}
+                        onChange={(e) => updateMockupName(m.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-transparent border-none text-sm focus:outline-none text-gray-800 font-medium"
+                    />
+                    <button onClick={(e) => { e.stopPropagation(); duplicateMockup(m.id); }} className="p-1 text-gray-400 hover:text-[#7B6DED] transition">
+                        <Copy size={14} />
+                    </button>
+                    {mockups.length > 1 && (
+                        <button onClick={(e) => { e.stopPropagation(); removeMockup(m.id); }} className="p-1 text-gray-400 hover:text-red-500 transition">
+                            <Minus size={14} />
+                        </button>
+                    )}
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+export default function TextureSelector({
+    mockupsList,
+    activeMockupId,
+    handleAddMockup,
+    handleRemoveMockup,
+    handleSetActiveMockup,
+    handleUpdateMockupName,
+    handleDuplicateMockup
+}: any = {}) {
     const {
         walls, products,
         setProductColor,
@@ -105,123 +145,128 @@ export default function TextureSelector() {
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-white">
-            <div className="p-4 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-800">Material Colors</h2>
-                <p className="text-xs text-gray-500 mt-1">
-                    {selectedWallId
-                        ? `Applying to "${selectedWallName}" only`
-                        : "Click any rectangle to select its wall"}
-                </p>
-            </div>
+        <div className="flex flex-col h-full w-full bg-white overflow-hidden">
+            <div className="flex-1 overflow-y-auto pb-24 md:pb-8">
+                <MockupManager
+                    mockups={mockupsList}
+                    activeMockupId={activeMockupId}
+                    addMockup={handleAddMockup}
+                    removeMockup={handleRemoveMockup}
+                    setActiveMockup={handleSetActiveMockup}
+                    updateMockupName={handleUpdateMockupName}
+                    duplicateMockup={handleDuplicateMockup}
+                />
+                <div className="p-4 border-b border-gray-100">
+                    <h2 className="text-lg font-bold text-gray-800">Material Colors</h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                        {selectedWallId
+                            ? `Applying to "${selectedWallName}" only`
+                            : "Click any rectangle to select its wall"}
+                    </p>
+                </div>
 
-            {/* Selection banner */}
-            {(selectedDesignAreaId || selectedWallId) && (
-                <div className={`mx-4 mt-4 p-3 rounded-xl flex items-center justify-between gap-2 border ${
-                    selectedDesignAreaId
+                {/* Selection banner */}
+                {(selectedDesignAreaId || selectedWallId) && (
+                    <div className={`mx-4 mt-4 p-3 rounded-xl flex items-center justify-between gap-2 border ${selectedDesignAreaId
                         ? 'bg-[#7B6DED]/10 border-[#7B6DED]/30'
                         : 'bg-green-50 border-green-200'
-                }`}>
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                            selectedDesignAreaId ? 'bg-[#7B6DED]' : 'bg-green-500'
-                        }`}></span>
-                        <div className="min-w-0">
-                            <p className={`text-xs font-semibold truncate ${
-                                selectedDesignAreaId ? 'text-[#7B6DED]' : 'text-green-700'
-                            }`}>
-                                {selectedDesignAreaId
-                                    ? '🎯 One rectangle selected'
-                                    : `${selectedWallName} — active`}
-                            </p>
-                            <p className={`text-[10px] mt-0.5 ${
-                                selectedDesignAreaId ? 'text-[#7B6DED]/70' : 'text-green-600'
-                            }`}>
-                                {selectedDesignAreaId
-                                    ? 'Texture applies to this rectangle only'
-                                    : 'Texture applies to this wall only'}
-                            </p>
+                        }`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedDesignAreaId ? 'bg-[#7B6DED]' : 'bg-green-500'
+                                }`}></span>
+                            <div className="min-w-0">
+                                <p className={`text-xs font-semibold truncate ${selectedDesignAreaId ? 'text-[#7B6DED]' : 'text-green-700'
+                                    }`}>
+                                    {selectedDesignAreaId
+                                        ? 'One rectangle selected'
+                                        : `${selectedWallName} — active`}
+                                </p>
+                                <p className={`text-[10px] mt-0.5 ${selectedDesignAreaId ? 'text-[#7B6DED]/70' : 'text-green-600'
+                                    }`}>
+                                    {selectedDesignAreaId
+                                        ? 'Texture applies to this rectangle only'
+                                        : 'Texture applies to this wall only'}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                    <button
-                        onClick={clearWallSelection}
-                        className={`font-bold text-xs rounded-lg px-2 py-1 transition shrink-0 ${
-                            selectedDesignAreaId
+                        <button
+                            onClick={clearWallSelection}
+                            className={`font-bold text-xs rounded-lg px-2 py-1 transition shrink-0 ${selectedDesignAreaId
                                 ? 'text-[#7B6DED] bg-[#7B6DED]/10 hover:bg-[#7B6DED]/20'
                                 : 'text-green-700 bg-green-100 hover:bg-green-200'
-                        }`}
-                    >
-                        Clear
-                    </button>
-                </div>
-            )}
-
-            <div className="p-4 flex-1 overflow-y-auto">
-                {isLoadingMaterials ? (
-                    <div className="flex flex-col gap-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md shadow-sm animate-pulse">
-                                <div className="flex items-center justify-between">
-                                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                                    <div className="w-8 h-8 rounded bg-gray-200"></div>
-                                </div>
-                                <div className="flex gap-2 mt-1">
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : usedProducts.length === 0 ? (
-                    <p className="text-sm text-gray-500">No materials used in this project yet.</p>
-                ) : (
-                    <div className="flex flex-col gap-4">
-                        {usedProducts.map(product => {
-                            const displayColor = getDisplayColor(product.id);
-                            const isHex = displayColor && !displayColor.startsWith("data:") && !displayColor.startsWith("http");
-
-                            return (
-                                <div
-                                    key={product.id}
-                                    className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg shadow-sm"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
-                                            {product.name}
-                                        </span>
-                                        <input
-                                            type="color"
-                                            value={isHex ? displayColor : "#cccccc"}
-                                            onChange={e => applyColor(product.id, e.target.value)}
-                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
-                                        />
-                                    </div>
-
-                                    {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
-                                        <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
-                                            {materialColorsData[product.id].map(mc => (
-                                                <button
-                                                    key={mc.id}
-                                                    onClick={() => applyColor(product.id, mc.image)}
-                                                    className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${
-                                                        displayColor === mc.image
-                                                            ? 'border-[#7B6DED] scale-105'
-                                                            : 'border-transparent hover:border-gray-300'
-                                                    }`}
-                                                    title="Apply Texture"
-                                                >
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                }`}
+                        >
+                            Clear
+                        </button>
                     </div>
                 )}
+
+                <div className="p-4">
+                    {isLoadingMaterials ? (
+                        <div className="flex flex-col gap-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md animate-pulse">
+                                    <div className="flex items-center justify-between">
+                                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                        <div className="w-8 h-8 rounded bg-gray-200"></div>
+                                    </div>
+                                    <div className="flex gap-2 mt-1">
+                                        <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                        <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                        <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : usedProducts.length === 0 ? (
+                        <p className="text-sm text-gray-500">No materials used in this project yet.</p>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {usedProducts.map(product => {
+                                const displayColor = getDisplayColor(product.id);
+                                const isHex = displayColor && !displayColor.startsWith("data:") && !displayColor.startsWith("http");
+
+                                return (
+                                    <div
+                                        key={product.id}
+                                        className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg "
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
+                                                {product.name}
+                                            </span>
+                                            <input
+                                                type="color"
+                                                value={isHex ? displayColor : "#cccccc"}
+                                                onChange={e => applyColor(product.id, e.target.value)}
+                                                className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                            />
+                                        </div>
+
+                                        {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                            <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                                {materialColorsData[product.id].map(mc => (
+                                                    <button
+                                                        key={mc.id}
+                                                        onClick={() => applyColor(product.id, mc.image)}
+                                                        className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${displayColor === mc.image
+                                                            ? 'border-[#7B6DED] scale-105'
+                                                            : 'border-transparent hover:border-gray-300'
+                                                            }`}
+                                                        title="Apply Texture"
+                                                    >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

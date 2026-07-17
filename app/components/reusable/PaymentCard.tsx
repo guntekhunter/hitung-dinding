@@ -1,5 +1,7 @@
+"use client";
+
 import { BadgeCheck, Check, ShieldCheck } from "lucide-react";
-import Button from "./Button";
+import PaymentButton from "./PaymentButton";
 import CountdownTimer from "./CountdownTimer";
 
 interface PaymentCardProps {
@@ -29,7 +31,7 @@ export default function PaymentCard({
   buttonText = "Dapatkan Akses Sekarang",
 }: PaymentCardProps) {
   return (
-    <div className="bg-white rounded-md p-8 max-w-md w-full border-[#D9D9D9] border-[1.2px]">
+    <div className="bg-white rounded-md p-8 max-w-md w-full border-[#D9D9D9] border-[1.2px] font-mona-sans tracking-tight">
       {/* Old Price */}
       <p className="text-center text-3xl font-bold line-through decoration-red-500 decoration-[3px]">
         {oldPrice}
@@ -84,7 +86,11 @@ export default function PaymentCard({
       </div>
 
       {/* CTA */}
-      <Button className="w-full mt-8">{buttonText}</Button>
+      <div className="mt-8">
+        <PaymentButton>
+          {buttonText}
+        </PaymentButton>
+      </div>
 
       <p className="text-xs text-center text-gray-500 mt-3">
         Harga ini hanya berlaku untuk peluncuran Rapi Studio.

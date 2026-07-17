@@ -9,11 +9,12 @@ import { useAuthStore } from "../store/useAuthStore";
 import { logoutUser } from "../utils/auth";
 import { useRouter } from "next/navigation";
 import { callWorker } from "../utils/workerManager";
-import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy } from 'lucide-react';
+import { optimizeCeiling, CeilingInput, TrapConfig } from "../utils/ceilingOptimizer";
+import { ChevronDown, Folder, Lock, Move, Save, Settings, Trash2, Unlock, RotateCcw, Plus, Minus, PenLine, Square, DoorClosed, Grid2x2, Ruler, Scan, FileText, Grid, Undo, Copy, ImagePlus, LayoutTemplate } from 'lucide-react';
 
 // --- Split into smaller memoized components to prevent global re-renders ---
 
-const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset, undo, past = [], isMobile }: any) => {
+const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClosed, toggleWallLock, isWallLocked, interactionMode, setInteractionMode, reset, undo, past = [], isMobile, onMockupClick }: any) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     return (
@@ -130,22 +131,38 @@ const UserHeader = memo(({ user, company, onLogout, onSaveClick, isSaving, isClo
                     >
                         <Trash2 className="w-[1rem]" />
                     </button>
+                    {/* mockup */}
+                    <button
+                        onClick={onMockupClick}
+                        className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
+                        title="Mockup"
+                    >
+                        <ImagePlus className="w-[1rem]" />
+                    </button>
                 </div>
             </div>
         </div>
     );
 });
 
-const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName, duplicateWall }: any) => (
+const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveWall, updateWallName, duplicateWall, setCeilingPanelLength, setCeilingPanelDirection }: any) => (
     <div className="space-y-[1rem]">
         <div className="flex justify-between items-center space-x-[2rem]">
-            <h3 className="font-medium uppercase text-[10px] tracking-widest">Dinding</h3>
-            <button
-                onClick={addWall}
-                className="px-2 py-1 rounded-md font-bold hover:bg-gray-200"
-            >
-                <Plus className="w-[1rem]" />
-            </button>
+            <h3 className="font-medium uppercase text-[10px] tracking-widest">Dinding / Plafon</h3>
+            <div className="flex gap-2">
+                <button
+                    onClick={() => addWall('wall')}
+                    className="px-2 py-1 rounded-md font-bold hover:bg-gray-200 flex items-center gap-1 text-[10px]"
+                >
+                    <Plus className="w-[10px]" /> Dinding
+                </button>
+                <button
+                    onClick={() => addWall('ceiling')}
+                    className="px-2 py-1 rounded-md font-bold hover:bg-gray-200 flex items-center gap-1 text-[10px]"
+                >
+                    <Plus className="w-[10px]" /> Plafon
+                </button>
+            </div>
         </div>
         <div className="space-y-2">
             {walls.map((wall: any) => (
@@ -163,6 +180,7 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
                         onClick={(e) => e.stopPropagation()}
                         className="flex-1 bg-transparent border-none text-[.8rem] focus:outline-none"
                     />
+                    {/* Ceiling settings moved to CeilingSettingsManager */}
                     <button
                         onClick={(e) => { e.stopPropagation(); duplicateWall(wall.id); }}
                         className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
@@ -183,6 +201,144 @@ const WallManager = memo(({ walls, activeWallId, addWall, removeWall, setActiveW
         </div>
     </div>
 ));
+
+const CeilingSettingsManager = memo(({ activeWall, setCeilingPanelWidth, setCeilingPanelLength, setCeilingPanelDirection, setCeilingTraps }: any) => {
+    if (!activeWall || activeWall.type !== 'ceiling') return null;
+    
+    const panelWidth = activeWall.ceilingPanelWidth || 20;
+    const panelLength = activeWall.ceilingPanelLength || 400; // in cm
+    const direction = activeWall.ceilingPanelDirection || 'horizontal';
+    const traps: TrapConfig[] = activeWall.ceilingTraps || [];
+
+    const model = traps.length === 0 ? 'FLAT' : traps.length === 1 ? 'DROP1' : 'DROP2';
+
+    const handleModelChange = (newModel: string) => {
+        if (newModel === 'FLAT') {
+            setCeilingTraps(activeWall.id, []);
+        } else if (newModel === 'DROP1') {
+            setCeilingTraps(activeWall.id, [{ width: traps[0]?.width || 60, dropHeight: traps[0]?.dropHeight || 15, gap: 0 }]);
+        } else if (newModel === 'DROP2') {
+            setCeilingTraps(activeWall.id, [
+                { width: traps[0]?.width || 60, dropHeight: traps[0]?.dropHeight || 15, gap: 0 },
+                { width: traps[1]?.width || 40, dropHeight: traps[0]?.dropHeight || 15, gap: 0 }
+            ]);
+        }
+    };
+
+    const updateTrapWidth = (index: number, width: number) => {
+        const newTraps = [...traps];
+        if (newTraps[index]) {
+            newTraps[index] = { ...newTraps[index], width };
+            setCeilingTraps(activeWall.id, newTraps);
+        }
+    };
+
+    const updateDropHeight = (dropHeight: number) => {
+        const newTraps = traps.map(t => ({ ...t, dropHeight }));
+        setCeilingTraps(activeWall.id, newTraps);
+    };
+
+    return (
+        <div className="space-y-[1rem] mt-4">
+            <hr className="border-[#E8E8E8]" />
+            <h3 className="font-medium uppercase text-[10px] tracking-widest text-[#303030]">Pengaturan: Ruangan</h3>
+            
+            <div className="space-y-4">
+                {/* Arah Panel */}
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="block text-[10px] text-gray-500 mb-1">Arah Panel</label>
+                        <div className="flex gap-2 bg-gray-50 p-1 rounded border border-gray-200">
+                            <button
+                                onClick={() => setCeilingPanelDirection(activeWall.id, 'horizontal')}
+                                className={`flex-1 py-1.5 text-[10px] rounded transition-all ${direction === 'horizontal' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                            >
+                                Horizontal
+                            </button>
+                            <button
+                                onClick={() => setCeilingPanelDirection(activeWall.id, 'vertical')}
+                                className={`flex-1 py-1.5 text-[10px] rounded transition-all ${direction === 'vertical' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                            >
+                                Vertical
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] text-gray-500 mb-1">Panjang Papan (cm)</label>
+                        <select value={panelLength} onChange={(e) => setCeilingPanelLength(activeWall.id, Number(e.target.value))} className="w-full h-[32px] border border-gray-200 rounded px-2 text-[10px] bg-white outline-none focus:border-indigo-400">
+                            <option value={400}>400 cm (4m)</option>
+                            <option value={600}>600 cm (6m)</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Model Plafon */}
+                <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Model Plafon</label>
+                    <div className="flex gap-2 bg-gray-50 p-1 rounded border border-gray-200">
+                        <button
+                            onClick={() => handleModelChange('FLAT')}
+                            className={`flex-1 py-1.5 text-[10px] rounded transition-all ${model === 'FLAT' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            FLAT
+                        </button>
+                        <button
+                            onClick={() => handleModelChange('DROP1')}
+                            className={`flex-1 py-1.5 text-[10px] rounded transition-all ${model === 'DROP1' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            DROP1
+                        </button>
+                        <button
+                            onClick={() => handleModelChange('DROP2')}
+                            className={`flex-1 py-1.5 text-[10px] rounded transition-all ${model === 'DROP2' ? 'bg-white shadow-sm font-bold text-[#303030]' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            DROP2
+                        </button>
+                    </div>
+                </div>
+
+                {/* Trap Thickness */}
+                {model !== 'FLAT' && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Tebal Trap 1</label>
+                            <input 
+                                type="number" 
+                                value={traps[0]?.width || 60} 
+                                onChange={(e) => updateTrapWidth(0, Number(e.target.value))} 
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400" 
+                            />
+                        </div>
+                        {model === 'DROP2' && (
+                            <div>
+                                <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Tebal Trap 2</label>
+                                <input 
+                                    type="number" 
+                                    value={traps[1]?.width || 40} 
+                                    onChange={(e) => updateTrapWidth(1, Number(e.target.value))} 
+                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400" 
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Drop Height */}
+                {model !== 'FLAT' && (
+                    <div>
+                        <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Tinggi Drop</label>
+                        <input 
+                            type="number" 
+                            value={traps[0]?.dropHeight || 15} 
+                            onChange={(e) => updateDropHeight(Number(e.target.value))} 
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400" 
+                        />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
 
 const SaveProjectModal = memo(({ isOpen, onClose, customerInfo, setCustomerInfo, onSave, isSaving }: any) => {
     if (!isOpen) return null;
@@ -335,7 +491,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 if (!isClosed || isSaving) return;
-                
+
                 if (customerInfo.name && customerInfo.surveyorName) {
                     handleSaveProject();
                 } else {
@@ -361,7 +517,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         materialPrices, setMaterialPrice,
         projectId, setProjectId,
         products, isLoadingProducts, fetchProducts,
-        toggleWallLock, clearDesignAreas
+        toggleWallLock, clearDesignAreas, setCeilingPanelLength, setCeilingPanelDirection
     } = useCanvasStore();
 
     useEffect(() => {
@@ -376,7 +532,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         const triggerCalculation = async () => {
             const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
             if (walls.length === 0 || (activeWall && !activeWall.isClosed)) return;
-            
+
             setIsCalculating(true);
             try {
                 // Offload heavy geometry and material math to the background worker
@@ -413,8 +569,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             triggerCalculation();
         }, 400);
 
-        return () => { 
-            isCurrent = false; 
+        return () => {
+            isCurrent = false;
             clearTimeout(timeoutId);
         };
         // We only re-calculate when the physical geometry or material settings change
@@ -438,14 +594,64 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     const wallMetrics = (calcResults?.wallMetrics || []) as any[];
     const totalProductCounts = (calcResults?.totalProductCounts || {}) as Record<string, number>;
 
+    const ceilingPanels = useMemo(() => {
+        const panels: Record<string, { length: number, count: number, area: number, optimization?: any, breakdown: Record<string, number>, panelLength: number }> = {};
+        walls.forEach(w => {
+            if (w.type === 'ceiling' && w.isClosed) {
+                // Calculate bounding box in cm
+                const xs = w.points.map(p => p.x);
+                const ys = w.points.map(p => p.y);
+                const widthCm = ((Math.max(...xs) - Math.min(...xs)) / SCALE) * 100;
+                const lengthCm = ((Math.max(...ys) - Math.min(...ys)) / SCALE) * 100;
+
+                const panelLengthCm = (w.ceilingPanelLength && w.ceilingPanelLength > 10)
+                    ? w.ceilingPanelLength
+                    : (w.ceilingPanelLength || 4) * 100;
+
+                const input: CeilingInput = {
+                    roomWidth: widthCm,
+                    roomLength: lengthCm,
+                    panelWidth: w.ceilingPanelWidth || 20,
+                    panelLength: panelLengthCm,
+                    direction: w.ceilingPanelDirection || 'horizontal',
+                    traps: w.ceilingTraps || []
+                };
+
+                const optimization = optimizeCeiling(input);
+                const wasteMult = (1 + wastePercentage / 100);
+
+                panels[w.id] = {
+                    length: panelLengthCm / 100,
+                    count: Math.ceil(optimization.totalPanels * wasteMult),
+                    area: optimization.totalSurfaceAreaSqM,
+                    optimization,
+                    breakdown: optimization.panelsByGroup,
+                    panelLength: panelLengthCm / 100
+                };
+            }
+        });
+        return panels;
+    }, [walls, wastePercentage]);
+
     const totals = useMemo(() => {
         if (!calcResults) return { totalArea: 0, totalDesignArea: 0, grandTotalPrice: 0 };
 
-        const grandTotal = products.reduce((sum, product) => {
+        let grandTotal = products.reduce((sum, product) => {
             const count = totalProductCounts[product.id] || 0;
             const price = materialPrices[product.id] ?? product.price ?? 0;
             return sum + (count * price);
         }, 0);
+
+        Object.keys(ceilingPanels).forEach(wallId => {
+            const p = ceilingPanels[wallId];
+            const price = materialPrices[`ceiling-${wallId}`] || 0;
+            const lisDindingPrice = materialPrices[`lisDinding-${wallId}`] || 0;
+            const lisSikuPrice = materialPrices[`lisSiku-${wallId}`] || 0;
+            
+            grandTotal += p.count * price;
+            grandTotal += (p.optimization?.lisDindingSticks || 0) * lisDindingPrice;
+            grandTotal += (p.optimization?.lisSikuSticks || 0) * lisSikuPrice;
+        });
 
         const totalDesignArea = wallMetrics.reduce((sum: number, m: any) => {
             const areas = Object.values(m.productAreas || {}) as number[];
@@ -489,6 +695,52 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     });
 
                     grandTotal += subtotal;
+                }
+            });
+
+            walls.forEach(w => {
+                if (w.type === 'ceiling' && ceilingPanels[w.id]) {
+                    const p = ceilingPanels[w.id];
+                    const price = materialPrices[`ceiling-${w.id}`] || 0;
+                    const lisDindingPrice = materialPrices[`lisDinding-${w.id}`] || 0;
+                    const lisSikuPrice = materialPrices[`lisSiku-${w.id}`] || 0;
+                    
+                    const subtotal = p.count * price;
+                    materialsList.push({
+                        id: `ceiling-${w.id}`,
+                        name: `PVC Ceiling Panel ${p.length}m (${w.name})`,
+                        quantity: p.count,
+                        unit: 'Lembar',
+                        unitPrice: price,
+                        totalPrice: subtotal
+                    });
+                    grandTotal += subtotal;
+
+                    if (p.optimization?.lisDindingSticks > 0) {
+                        const lisDindingSubtotal = p.optimization.lisDindingSticks * lisDindingPrice;
+                        materialsList.push({
+                            id: `lisDinding-${w.id}`,
+                            name: `Lis Dinding (4m) - ${w.name}`,
+                            quantity: p.optimization.lisDindingSticks,
+                            unit: 'Batang',
+                            unitPrice: lisDindingPrice,
+                            totalPrice: lisDindingSubtotal
+                        });
+                        grandTotal += lisDindingSubtotal;
+                    }
+
+                    if (p.optimization?.lisSikuSticks > 0) {
+                        const lisSikuSubtotal = p.optimization.lisSikuSticks * lisSikuPrice;
+                        materialsList.push({
+                            id: `lisSiku-${w.id}`,
+                            name: `Lis Siku / Drop (4m) - ${w.name}`,
+                            quantity: p.optimization.lisSikuSticks,
+                            unit: 'Batang',
+                            unitPrice: lisSikuPrice,
+                            totalPrice: lisSikuSubtotal
+                        });
+                        grandTotal += lisSikuSubtotal;
+                    }
                 }
             });
 
@@ -621,6 +873,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 undo={undo}
                 past={past}
                 isMobile={isMobile}
+                onMockupClick={() => {
+                    if (projectId) {
+                        router.push(`/mockup?id=${projectId}`);
+                    } else {
+                        alert("Silahkan simpan project terlebih dahulu!");
+                    }
+                }}
             />
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 md:pb-8">
@@ -632,6 +891,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     setActiveWall={setActiveWall}
                     updateWallName={updateWallName}
                     duplicateWall={duplicateWall}
+                />
+                <CeilingSettingsManager
+                    activeWall={walls.find((w: any) => w.id === activeWallId)}
+                    setCeilingPanelWidth={useCanvasStore((state) => state.setCeilingPanelWidth)}
+                    setCeilingPanelLength={useCanvasStore((state) => state.setCeilingPanelLength)}
+                    setCeilingPanelDirection={useCanvasStore((state) => state.setCeilingPanelDirection)}
+                    setCeilingTraps={useCanvasStore((state) => state.setCeilingTraps)}
                 />
                 <hr className="border-[#E8E8E8]" />
                 {/* Actions & Modes */}
@@ -752,6 +1018,101 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                             </div>
                                         );
                                     })}
+                                    {walls.map(w => {
+                                        if (w.type === 'ceiling' && ceilingPanels[w.id]) {
+                                            const p = ceilingPanels[w.id];
+                                            const productId = `ceiling-${w.id}`;
+                                            const price = materialPrices[productId] || 0;
+                                            const lisDindingId = `lisDinding-${w.id}`;
+                                            const lisSikuId = `lisSiku-${w.id}`;
+                                            const lisDindingPrice = materialPrices[lisDindingId] || 0;
+                                            const lisSikuPrice = materialPrices[lisSikuId] || 0;
+                                            const lisDindingCount = p.optimization?.lisDindingSticks || 0;
+                                            const lisSikuCount = p.optimization?.lisSikuSticks || 0;
+
+                                            return (
+                                                <div key={productId} className="flex flex-col gap-1.5">
+                                                    {/* PVC Panel */}
+                                                    <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                                        <span>PVC Ceiling Panel {p.length}m ({w.name})</span>
+                                                        <span className="font-bold">{p.count} Lembar</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                        <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                        <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                            <span>Rp</span>
+                                                            <input
+                                                                type="number"
+                                                                value={price === 0 ? '' : price}
+                                                                onChange={(e) => setMaterialPrice(productId, Number(e.target.value))}
+                                                                className="w-24 bg-transparent outline-none font-medium p-0"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                        <span>Subtotal</span>
+                                                        <span className="font-bold">Rp {(p.count * price).toLocaleString('id-ID')}</span>
+                                                    </div>
+
+                                                    {/* Lis Dinding */}
+                                                    {lisDindingCount > 0 && (
+                                                        <>
+                                                            <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
+                                                                <span>Lis Dinding 4m ({w.name})</span>
+                                                                <span className="font-bold">{lisDindingCount} Batang</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                                <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                                    <span>Rp</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={lisDindingPrice === 0 ? '' : lisDindingPrice}
+                                                                        onChange={(e) => setMaterialPrice(lisDindingId, Number(e.target.value))}
+                                                                        className="w-24 bg-transparent outline-none font-medium p-0"
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                                <span>Subtotal</span>
+                                                                <span className="font-bold">Rp {(lisDindingCount * lisDindingPrice).toLocaleString('id-ID')}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+
+                                                    {/* Lis Siku */}
+                                                    {lisSikuCount > 0 && (
+                                                        <>
+                                                            <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
+                                                                <span>Lis Siku / Drop 4m ({w.name})</span>
+                                                                <span className="font-bold">{lisSikuCount} Batang</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                                                <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
+                                                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                                                    <span>Rp</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={lisSikuPrice === 0 ? '' : lisSikuPrice}
+                                                                        onChange={(e) => setMaterialPrice(lisSikuId, Number(e.target.value))}
+                                                                        className="w-24 bg-transparent outline-none font-medium p-0"
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                                                <span>Subtotal</span>
+                                                                <span className="font-bold">Rp {(lisSikuCount * lisSikuPrice).toLocaleString('id-ID')}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })}
                                 </div>
 
                                 {totals.grandTotalPrice > 0 && (
@@ -767,12 +1128,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 )}
                                 <hr className="border-[#E8E8E8]" />
 
-                                <div className="space-y-4">
+                                                <div className="space-y-4">
                                     <h3 className="font-medium uppercase text-[10px] tracking-widest">Detail Kebutuhan</h3>
                                     {walls.map((wall, wallIdx) => {
                                         const metrics = wallMetrics[wallIdx];
                                         if (!metrics) return null;
-                                        const wallHasContent = Object.values(metrics.productAreas).some((a: any) => a > 0) || Object.values(metrics.productLengths).some((l: any) => l > 0);
+
+                                        const isCeiling = wall.type === 'ceiling';
+                                        const ceilingData = isCeiling ? ceilingPanels[wall.id] : null;
+                                        const wallHasContent = Object.values(metrics.productAreas || {}).some((a: any) => a > 0)
+                                            || Object.values(metrics.productLengths || {}).some((l: any) => l > 0)
+                                            || (ceilingData && ceilingData.count > 0);
 
                                         return (
                                             <div key={wall.id} className="bg-white rounded-xl border border-[#E5E5E5] flex">
@@ -789,7 +1155,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
                                                                 const val = product.countType === 'length' ? length : area;
                                                                 const unit = product.countType === 'length' ? 'm' : 'm²';
-                                                                const formattedVal = val.toFixed(2).replace(/\.00$/, ''); // Matches whole numbers like in the mockup
+                                                                const formattedVal = val.toFixed(2).replace(/\.00$/, '');
 
                                                                 return (
                                                                     <div key={product.id} className="flex justify-between items-center py-4 border-b border-[#E5E5E5] last:border-0">
@@ -803,6 +1169,74 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                                     </div>
                                                                 );
                                                             })}
+
+                                                            {/* Ceiling panel breakdown rows per group */}
+                                                            {ceilingData && ceilingData.optimization && (
+                                                                <>
+                                                                    <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Luas Flat</span>
+                                                                        </div>
+                                                                        <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.luasFlatSqM.toFixed(2)} m²</div>
+                                                                    </div>
+                                                                    {ceilingData.optimization.luasDropSqM > 0 && (
+                                                                        <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Luas Drop</span>
+                                                                            </div>
+                                                                            <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.luasDropSqM.toFixed(2)} m²</div>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Lis Dinding (4m)</span>
+                                                                        </div>
+                                                                        <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.lisDindingSticks} btg</div>
+                                                                    </div>
+                                                                    {ceilingData.optimization.lisSikuSticks > 0 && (
+                                                                        <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Lis Siku / Drop (4m)</span>
+                                                                            </div>
+                                                                            <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.lisSikuSticks} btg</div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Bagian Luar (Flat Utama) */}
+                                                                    <div className="py-3 border-t border-[#E5E5E5]">
+                                                                        <div className="flex justify-between items-center mb-2">
+                                                                            <span className="text-[#00A2E8] font-bold text-[10px]">BAGIAN LUAR (FLAT UTAMA)</span>
+                                                                            <span className="text-[#FF9900] font-bold text-[10px]">{(100 - ceilingData.optimization.wasteOuter).toFixed(1)}% Efisien</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center mb-1">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Papan {ceilingData.panelLength}m</span>
+                                                                            <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.outerPanels} btg</div>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center">
+                                                                            <span className="text-[#A3A3A3] text-[.8rem]">Total Sampah (Waste)</span>
+                                                                            <div className="text-[#E74C3C] text-[.8rem] font-bold">{(ceilingData.optimization.outerPanels * ceilingData.panelLength * (ceilingData.optimization.wasteOuter / 100)).toFixed(2)}m</div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Bagian Dalam (Drop/Trap) */}
+                                                                    {ceilingData.optimization.innerPanels > 0 && (
+                                                                        <div className="py-3 border-t border-[#E5E5E5]">
+                                                                            <div className="flex justify-between items-center mb-2">
+                                                                                <span className="text-[#FF9900] font-bold text-[10px]">BAGIAN DALAM (DROP/TRAP)</span>
+                                                                                <span className="text-[#2ECC71] font-bold text-[10px]">{(100 - ceilingData.optimization.wasteInner).toFixed(1)}% Efisien</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center mb-1">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Papan {ceilingData.panelLength}m</span>
+                                                                                <div className="text-[#303030] text-[.8rem] font-bold">{ceilingData.optimization.innerPanels} btg</div>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-[#A3A3A3] text-[.8rem]">Total Sampah (Waste)</span>
+                                                                                <div className="text-[#E74C3C] text-[.8rem] font-bold">{(ceilingData.optimization.innerPanels * ceilingData.panelLength * (ceilingData.optimization.wasteInner / 100)).toFixed(2)}m</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="py-4 text-[.8rem] text-[#A3A3A3]">Tidak ada material</div>
@@ -812,6 +1246,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                         );
                                     })}
                                 </div>
+
                             </div>
 
                             {/* Center-aligned overlay for non-logged in users */}
@@ -906,7 +1341,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             await new Promise(r => setTimeout(r, 100));
                         }
 
-                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages, company?.name);
+                        await generateRAB(walls, customerInfo, wastePercentage, wallMetrics, totalProductCounts, materialPrices, products, company?.logo_url, wallImages, company?.name, ceilingPanels);
                     } catch (e) { alert("PDF Error: " + e); }
                 }}
             />

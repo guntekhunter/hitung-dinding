@@ -49,6 +49,12 @@ export type ListElement = {
     createdAt?: number;
 };
 
+export interface TrapConfig {
+    width: number;
+    dropHeight: number;
+    gap: number;
+}
+
 export type Wall = {
     id: string;
     name: string;
@@ -58,6 +64,11 @@ export type Wall = {
     openings: Opening[];
     lists: ListElement[];
     isWallLocked: boolean;
+    type?: 'wall' | 'ceiling';
+    ceilingPanelWidth?: number;
+    ceilingPanelLength?: number;
+    ceilingPanelDirection?: 'horizontal' | 'vertical';
+    ceilingTraps?: TrapConfig[];
 };
 
 type HistoryEntry = {
@@ -108,11 +119,15 @@ type CanvasState = {
     future: HistoryEntry[];
 
     // Actions
-    addWall: () => void;
+    addWall: (type?: 'wall' | 'ceiling') => void;
     duplicateWall: (id: string) => void;
     removeWall: (id: string) => void;
     setActiveWall: (id: string) => void;
     updateWallName: (id: string, name: string) => void;
+    setCeilingPanelLength: (id: string, length: number) => void;
+    setCeilingPanelWidth: (id: string, width: number) => void;
+    setCeilingTraps: (id: string, traps: TrapConfig[]) => void;
+    setCeilingPanelDirection: (id: string, direction: 'horizontal' | 'vertical') => void;
 
     // Wall specific actions
     addPoint: (x: number, y: number) => void;
@@ -203,6 +218,7 @@ const initialWall: Wall = {
     openings: [],
     lists: [],
     isWallLocked: false,
+    type: 'wall',
 };
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -341,18 +357,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     setCustomerInfo: (info) => set({ customerInfo: info }),
 
-    addWall: () => {
+    addWall: (type = 'wall') => {
         const { walls } = get();
-        const id = `wall-${Date.now()}`;
+        const prefix = type === 'ceiling' ? 'Plafon' : 'Wall';
+        const id = `${type}-${Date.now()}`;
         const newWall: Wall = {
             id,
-            name: `Wall ${walls.length + 1}`,
+            name: `${prefix} ${walls.length + 1}`,
             points: [],
             isClosed: false,
             designAreas: [],
             openings: [],
             lists: [],
             isWallLocked: false,
+            type: type,
+            ceilingPanelLength: type === 'ceiling' ? 4 : undefined,
+            ceilingPanelWidth: type === 'ceiling' ? 20 : undefined,
+            ceilingPanelDirection: type === 'ceiling' ? 'vertical' : undefined,
+            ceilingTraps: type === 'ceiling' ? [] : undefined,
         };
         get()._saveHistory();
         set({
@@ -403,6 +425,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     updateWallName: (id, name) => {
         set((state) => ({
             walls: state.walls.map(w => w.id === id ? { ...w, name } : w)
+        }));
+    },
+
+    setCeilingPanelLength: (id, length) =>
+        set((state) => ({
+            walls: state.walls.map((w) => (w.id === id ? { ...w, ceilingPanelLength: length } : w)),
+        })),
+    setCeilingPanelWidth: (id, width) =>
+        set((state) => ({
+            walls: state.walls.map((w) => (w.id === id ? { ...w, ceilingPanelWidth: width } : w)),
+        })),
+    setCeilingTraps: (id, traps) =>
+        set((state) => ({
+            walls: state.walls.map((w) => (w.id === id ? { ...w, ceilingTraps: traps } : w)),
+        })),
+    setCeilingPanelDirection: (id, direction) => {
+        set((state) => ({
+            walls: state.walls.map(w => w.id === id ? { ...w, ceilingPanelDirection: direction } : w)
         }));
     },
 
