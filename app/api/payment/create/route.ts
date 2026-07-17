@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const DUITKU_BASE_URL =
   process.env.DUITKU_BASE_URL ?? "https://passport.duitku.com/webapi/api/merchant";
-const PLAN_PRICE = 97000; // Rp 97.000
+const PLAN_PRICE = 70000; // Rp 70.000
 
 export async function POST(req: Request) {
   try {
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       user_id: null, // akan diisi setelah akun dibuat di callback
       amount: PLAN_PRICE,
       status: "PENDING",
-      payment_method: paymentMethod ?? "VC",
+      payment_method: paymentMethod ?? "QR",
     });
 
     if (insertError) {
@@ -96,9 +96,9 @@ export async function POST(req: Request) {
     const duitkuPayload = {
       merchantCode,
       paymentAmount: PLAN_PRICE,
-      paymentMethod: paymentMethod ?? "VC",
+      paymentMethod: paymentMethod ?? "QR",
       merchantOrderId,
-      productDetails: "Rapi Studio PRO — Akses 1 Tahun",
+      productDetails: "Rapi Studio PRO — Akses 1 Bulan",
       customerVaName: adminName,
       email: email.toLowerCase(),
       phoneNumber: waNumber,
