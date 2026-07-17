@@ -273,7 +273,7 @@ export default function PaymentPage() {
           <div className="flex justify-center gap-8 mt-8">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-full bg-[#ECE9FF] flex items-center justify-center">
-                <ShieldCheck classNameFEA="w-5 h-5 text-[#7B6DED]" />
+                <ShieldCheck className="w-5 h-5 text-[#7B6DED]" />
               </div>
 
               <div>
