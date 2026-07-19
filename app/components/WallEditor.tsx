@@ -486,15 +486,15 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {/* Width below the panel */}
                 <Group y={bottomY}>
                     <Line points={[0, 0, area.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[area.width - tickLen, tickLen, area.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[0, tickLen, 0, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[area.width, tickLen, area.width, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={area.width / 2} y={-12 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
                 {/* Height to the right of the panel */}
                 <Group x={rightX}>
                     <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[-tickLen, area.height - tickLen, tickLen, area.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[-tickLen, 0, tickLen, 0]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[-tickLen, area.height, tickLen, area.height]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={area.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
             </Group>
@@ -518,15 +518,15 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {/* Width above the opening */}
                 <Group y={topY}>
                     <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[opening.width - tickLen, tickLen, opening.width + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[0, tickLen, 0, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[opening.width, tickLen, opening.width, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={4 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
                 {/* Height to the left of the opening */}
                 <Group x={leftX}>
                     <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Line points={[-tickLen, opening.height - tickLen, tickLen, opening.height + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[-tickLen, 0, tickLen, 0]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[-tickLen, opening.height, tickLen, opening.height]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-4 / zoom} y={opening.height / 2} rotation={-90} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
             </Group>
@@ -573,8 +573,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {gapLeft > 2 && (
                     <Group y={midY}>
                         <Line points={[wallMinX, 0, openLeft, 0]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
-                        <Line points={[wallMinX - tickLen, -tickLen, wallMinX + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
-                        <Line points={[openLeft - tickLen, -tickLen, openLeft + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[wallMinX, -tickLen, wallMinX, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[openLeft, -tickLen, openLeft, tickLen]} stroke={lineColor} strokeWidth={swT} />
                         <Text
                             text={`${(gapLeft / SCALE).toFixed(2)}m`}
                             fontSize={9}
@@ -592,8 +592,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {gapRight > 2 && (
                     <Group y={midY}>
                         <Line points={[openRight, 0, wallMaxX, 0]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
-                        <Line points={[openRight - tickLen, -tickLen, openRight + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
-                        <Line points={[wallMaxX - tickLen, -tickLen, wallMaxX + tickLen, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[openRight, -tickLen, openRight, tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[wallMaxX, -tickLen, wallMaxX, tickLen]} stroke={lineColor} strokeWidth={swT} />
                         <Text
                             text={`${(gapRight / SCALE).toFixed(2)}m`}
                             fontSize={9}
@@ -611,8 +611,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {gapTop > 2 && (
                     <Group x={midX}>
                         <Line points={[0, wallMinY, 0, openTop]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
-                        <Line points={[-tickLen, wallMinY - tickLen, tickLen, wallMinY + tickLen]} stroke={lineColor} strokeWidth={swT} />
-                        <Line points={[-tickLen, openTop - tickLen, tickLen, openTop + tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[-tickLen, wallMinY, tickLen, wallMinY]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[-tickLen, openTop, tickLen, openTop]} stroke={lineColor} strokeWidth={swT} />
                         <Text
                             text={`${(gapTop / SCALE).toFixed(2)}m`}
                             fontSize={9}
@@ -629,8 +629,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {gapBottom > 2 && (
                     <Group x={midX}>
                         <Line points={[0, openBottom, 0, wallMaxY]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
-                        <Line points={[-tickLen, openBottom - tickLen, tickLen, openBottom + tickLen]} stroke={lineColor} strokeWidth={swT} />
-                        <Line points={[-tickLen, wallMaxY - tickLen, tickLen, wallMaxY + tickLen]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[-tickLen, openBottom, tickLen, openBottom]} stroke={lineColor} strokeWidth={swT} />
+                        <Line points={[-tickLen, wallMaxY, tickLen, wallMaxY]} stroke={lineColor} strokeWidth={swT} />
                         <Text
                             text={`${(gapBottom / SCALE).toFixed(2)}m`}
                             fontSize={9}
@@ -1064,8 +1064,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     />
                                     <Group y={h + dimOffset}>
                                         <Line points={[0, 0, w, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                                        <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                                        <Line points={[w - tickLen, tickLen, w + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Line points={[0, tickLen, 0, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Line points={[w, tickLen, w, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                                         <Text
                                             text={`${(w / SCALE).toFixed(2)}m`}
                                             fontSize={9}
@@ -1079,8 +1079,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     </Group>
                                     <Group x={w + dimOffset}>
                                         <Line points={[0, 0, 0, h]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                                        <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                                        <Line points={[-tickLen, h - tickLen, tickLen, h + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Line points={[-tickLen, 0, tickLen, 0]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Line points={[-tickLen, h, tickLen, h]} stroke="#64748b" strokeWidth={1 / zoom} />
                                         <Text
                                             text={`${(h / SCALE).toFixed(2)}m`}
                                             fontSize={9}
@@ -1877,16 +1877,16 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 {/* Architectural Ticks */}
                                 <Line
                                     points={[
-                                        dimX1 - Math.cos(angle + Math.PI / 4) * tickLen, dimY1 - Math.sin(angle + Math.PI / 4) * tickLen,
-                                        dimX1 + Math.cos(angle + Math.PI / 4) * tickLen, dimY1 + Math.sin(angle + Math.PI / 4) * tickLen
+                                        dimX1 - Math.cos(angle + Math.PI / 2) * tickLen, dimY1 - Math.sin(angle + Math.PI / 2) * tickLen,
+                                        dimX1 + Math.cos(angle + Math.PI / 2) * tickLen, dimY1 + Math.sin(angle + Math.PI / 2) * tickLen
                                     ]}
                                     stroke="#475569"
                                     strokeWidth={1.5 / zoom}
                                 />
                                 <Line
                                     points={[
-                                        dimX2 - Math.cos(angle + Math.PI / 4) * tickLen, dimY2 - Math.sin(angle + Math.PI / 4) * tickLen,
-                                        dimX2 + Math.cos(angle + Math.PI / 4) * tickLen, dimY2 + Math.sin(angle + Math.PI / 4) * tickLen
+                                        dimX2 - Math.cos(angle + Math.PI / 2) * tickLen, dimY2 - Math.sin(angle + Math.PI / 2) * tickLen,
+                                        dimX2 + Math.cos(angle + Math.PI / 2) * tickLen, dimY2 + Math.sin(angle + Math.PI / 2) * tickLen
                                     ]}
                                     stroke="#475569"
                                     strokeWidth={1.5 / zoom}
