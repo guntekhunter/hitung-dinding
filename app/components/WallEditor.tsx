@@ -1209,66 +1209,122 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const fontSize = 10;
         const tickLen = 4 / zoom;
         const elements: React.ReactNode[] = [];
+        const TEXT_PADDING = 50 / zoom; // Padding to ensure text and lines don't overlap
 
-        // Horizontal labels: place ABOVE the wall (bounds.minY - offset - row * spacing)
-        let hRow = 0;
+        // Horizontal packing
+        const hDims: { start: number, end: number, label: any, rowIndex?: number }[] = [];
         horizontalGroups.forEach((group) => {
-            const midX = (group.start + group.end) / 2;
-            group.labels.forEach((label, idx) => {
-                const yPos = bounds.minY - (spacing * (hRow + 1)) - idx * spacing;
-                const lineY = yPos + 12 / zoom;
-                elements.push(
-                    <Group key={`hdim-${group.start}-${group.end}-${idx}`} listening={false}>
-                        <Line points={[group.start, lineY, group.end, lineY]} stroke="#94a3b8" strokeWidth={1 / zoom} />
-                        <Line points={[group.start - tickLen, lineY + tickLen, group.start + tickLen, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
-                        <Line points={[group.end - tickLen, lineY + tickLen, group.end + tickLen, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
-                        <Text
-                            x={midX}
-                            y={yPos}
-                            text={label.text}
-                            fontSize={fontSize}
-                            fill={label.color}
-                            fontStyle="bold"
-                            align="center"
-                            offsetX={30}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
-                    </Group>
-                );
+            group.labels.forEach(label => {
+                hDims.push({ start: group.start, end: group.end, label });
             });
-            hRow++;
         });
 
-        // Vertical labels: place to the LEFT of the wall (bounds.minX - offset - col * spacing), rotated -90°
-        let vCol = 0;
+        // Sort by length (shorter dimensions closer to wall)
+        hDims.sort((a, b) => (a.end - a.start) - (b.end - b.start));
+
+        const hRows: { start: number, end: number }[][] = [];
+        hDims.forEach(dim => {
+            let placed = false;
+            for (let r = 0; r < hRows.length; r++) {
+                const row = hRows[r];
+                const overlaps = row.some(existing => {
+                    return !(dim.end + TEXT_PADDING < existing.start || dim.start - TEXT_PADDING > existing.end);
+                });
+                if (!overlaps) {
+                    row.push(dim);
+                    dim.rowIndex = r;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                dim.rowIndex = hRows.length;
+                hRows.push([dim]);
+            }
+        });
+
+        hDims.forEach((dim, idx) => {
+            const midX = (dim.start + dim.end) / 2;
+            const rowIdx = dim.rowIndex || 0;
+            const yPos = bounds.minY - (spacing * (rowIdx + 1));
+            const lineY = yPos + 12 / zoom;
+            elements.push(
+                <Group key={`hdim-${dim.start}-${dim.end}-${idx}`} listening={false}>
+                    <Line points={[dim.start, lineY, dim.end, lineY]} stroke="#94a3b8" strokeWidth={1 / zoom} />
+                    <Line points={[dim.start, lineY + tickLen, dim.start, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                    <Line points={[dim.end, lineY + tickLen, dim.end, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                    <Text
+                        x={midX}
+                        y={yPos}
+                        text={dim.label.text}
+                        fontSize={fontSize}
+                        fill={dim.label.color}
+                        fontStyle="bold"
+                        align="center"
+                        offsetX={30}
+                        scaleX={textScale}
+                        scaleY={textScale}
+                    />
+                </Group>
+            );
+        });
+
+        // Vertical packing
+        const vDims: { start: number, end: number, label: any, colIndex?: number }[] = [];
         verticalGroups.forEach((group) => {
-            const midY = (group.start + group.end) / 2;
-            group.labels.forEach((label, idx) => {
-                const xPos = bounds.minX - (spacing * (vCol + 1)) - idx * spacing;
-                const lineX = xPos + 12 / zoom;
-                elements.push(
-                    <Group key={`vdim-${group.start}-${group.end}-${idx}`} listening={false}>
-                        <Line points={[lineX, group.start, lineX, group.end]} stroke="#94a3b8" strokeWidth={1 / zoom} />
-                        <Line points={[lineX - tickLen, group.start + tickLen, lineX + tickLen, group.start - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
-                        <Line points={[lineX - tickLen, group.end + tickLen, lineX + tickLen, group.end - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
-                        <Text
-                            x={xPos}
-                            y={midY}
-                            text={label.text}
-                            fontSize={fontSize}
-                            fill={label.color}
-                            fontStyle="bold"
-                            align="center"
-                            offsetX={30}
-                            rotation={-90}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
-                    </Group>
-                );
+            group.labels.forEach(label => {
+                vDims.push({ start: group.start, end: group.end, label });
             });
-            vCol++;
+        });
+
+        vDims.sort((a, b) => (a.end - a.start) - (b.end - b.start));
+        const vCols: { start: number, end: number }[][] = [];
+        
+        vDims.forEach(dim => {
+            let placed = false;
+            for (let c = 0; c < vCols.length; c++) {
+                const col = vCols[c];
+                const overlaps = col.some(existing => {
+                    return !(dim.end + TEXT_PADDING < existing.start || dim.start - TEXT_PADDING > existing.end);
+                });
+                if (!overlaps) {
+                    col.push(dim);
+                    dim.colIndex = c;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                dim.colIndex = vCols.length;
+                vCols.push([dim]);
+            }
+        });
+
+        vDims.forEach((dim, idx) => {
+            const midY = (dim.start + dim.end) / 2;
+            const colIdx = dim.colIndex || 0;
+            const xPos = bounds.minX - (spacing * (colIdx + 1));
+            const lineX = xPos + 12 / zoom;
+            elements.push(
+                <Group key={`vdim-${dim.start}-${dim.end}-${idx}`} listening={false}>
+                    <Line points={[lineX, dim.start, lineX, dim.end]} stroke="#94a3b8" strokeWidth={1 / zoom} />
+                    <Line points={[lineX - tickLen, dim.start, lineX + tickLen, dim.start]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                    <Line points={[lineX - tickLen, dim.end, lineX + tickLen, dim.end]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                    <Text
+                        x={xPos}
+                        y={midY}
+                        text={dim.label.text}
+                        fontSize={fontSize}
+                        fill={dim.label.color}
+                        fontStyle="bold"
+                        align="center"
+                        offsetX={30}
+                        rotation={-90}
+                        scaleX={textScale}
+                        scaleY={textScale}
+                    />
+                </Group>
+            );
         });
 
         if (elements.length === 0) return null;
