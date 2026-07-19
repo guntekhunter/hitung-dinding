@@ -470,12 +470,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     // 3. Generate the Panels Visual
     const MemoizedAreaDimensions = React.memo(({ area, zoom, textScale, points, isExporting }: any) => {
         if (isExporting) return null;
-        
+
         const absWidth = Math.abs(area.width);
         const absHeight = Math.abs(area.height);
         const dimOffset = 20 / zoom;
         const tickLen = 4 / zoom;
-        
+
         const maxY = points && points.length > 0 ? Math.max(...points.map((p: any) => p.y)) : area.y + area.height;
         const bottomY = maxY - area.y + dimOffset;
         // Height dimension goes to the right of the panel
@@ -503,7 +503,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     const MemoizedOpeningDimensions = React.memo(({ opening, zoom, textScale, isExporting }: any) => {
         if (isExporting) return null;
-        
+
         const absWidth = Math.abs(opening.width);
         const absHeight = Math.abs(opening.height);
         // Place dimensions ABOVE and to the LEFT so they never collide with
@@ -545,18 +545,18 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const wallMinY = Math.min(...ys);
         const wallMaxY = Math.max(...ys);
 
-        const openLeft   = opening.x;
-        const openRight  = opening.x + opening.width;
-        const openTop    = opening.y;
+        const openLeft = opening.x;
+        const openRight = opening.x + opening.width;
+        const openTop = opening.y;
         const openBottom = opening.y + opening.height;
 
-        const gapLeft   = openLeft - wallMinX;
-        const gapRight  = wallMaxX - openRight;
-        const gapTop    = openTop  - wallMinY;
+        const gapLeft = openLeft - wallMinX;
+        const gapRight = wallMaxX - openRight;
+        const gapTop = openTop - wallMinY;
         const gapBottom = wallMaxY - openBottom;
 
-        const tickLen   = 4 / zoom;
-        const labelOff  = 6 / zoom;
+        const tickLen = 4 / zoom;
+        const labelOff = 6 / zoom;
         const lineColor = "#0ea5e9"; // sky-500
         const textColor = "#0369a1"; // sky-700
         const sw = 0.8 / zoom;
@@ -918,21 +918,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     onClick={onClick}
                     onTap={onClick}
                 />
-                {!isExporting && (
-                    <Text
-                        x={midX}
-                        y={midY}
-                        text={`${lengthM}m (${count}btg)`}
-                        fontSize={10}
-                        fill={color}
-                        fontStyle="bold"
-                        offsetX={30}
-                        offsetY={12}
-                        rotation={(angle * 180) / Math.PI}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
-                )}
             </Group>
         );
     });
@@ -1055,65 +1040,65 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         }
                         return null;
                     })}
-                {currentDrawingArea && (
-                    'productId' in currentDrawingArea
-                        ? renderAreaContent(currentDrawingArea)
-                        : renderOpeningContent(currentDrawingArea)
-                )}
-                {currentDrawingList && (
-                    listDrawingType === 'line' ? renderListContent(currentDrawingList) : (() => {
-                        const minX = Math.min(currentDrawingList.x1, currentDrawingList.x2);
-                        const minY = Math.min(currentDrawingList.y1, currentDrawingList.y2);
-                        const w = Math.abs(currentDrawingList.x2 - currentDrawingList.x1);
-                        const h = Math.abs(currentDrawingList.y2 - currentDrawingList.y1);
-                        const dimOffset = 20 / zoom;
-                        const tickLen = 4 / zoom;
-                        return (
-                            <Group x={minX} y={minY}>
-                                <Rect
-                                    width={w}
-                                    height={h}
-                                    stroke="rgba(244, 63, 94, 0.8)"
-                                    strokeWidth={2 / zoom}
-                                    dash={[5 / zoom, 5 / zoom]}
-                                />
-                                <Group y={h + dimOffset}>
-                                    <Line points={[0, 0, w, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                                    <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                                    <Line points={[w - tickLen, tickLen, w + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                                    <Text
-                                        text={`${(w / SCALE).toFixed(2)}m`}
-                                        fontSize={9}
-                                        fill="#475569"
-                                        x={w / 2}
-                                        y={-12 / zoom}
-                                        offsetX={15}
-                                        scaleX={textScale}
-                                        scaleY={textScale}
+                    {currentDrawingArea && (
+                        'productId' in currentDrawingArea
+                            ? renderAreaContent(currentDrawingArea)
+                            : renderOpeningContent(currentDrawingArea)
+                    )}
+                    {currentDrawingList && (
+                        listDrawingType === 'line' ? renderListContent(currentDrawingList) : (() => {
+                            const minX = Math.min(currentDrawingList.x1, currentDrawingList.x2);
+                            const minY = Math.min(currentDrawingList.y1, currentDrawingList.y2);
+                            const w = Math.abs(currentDrawingList.x2 - currentDrawingList.x1);
+                            const h = Math.abs(currentDrawingList.y2 - currentDrawingList.y1);
+                            const dimOffset = 20 / zoom;
+                            const tickLen = 4 / zoom;
+                            return (
+                                <Group x={minX} y={minY}>
+                                    <Rect
+                                        width={w}
+                                        height={h}
+                                        stroke="rgba(244, 63, 94, 0.8)"
+                                        strokeWidth={2 / zoom}
+                                        dash={[5 / zoom, 5 / zoom]}
                                     />
+                                    <Group y={h + dimOffset}>
+                                        <Line points={[0, 0, w, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                                        <Line points={[-tickLen, tickLen, tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Line points={[w - tickLen, tickLen, w + tickLen, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Text
+                                            text={`${(w / SCALE).toFixed(2)}m`}
+                                            fontSize={9}
+                                            fill="#475569"
+                                            x={w / 2}
+                                            y={-12 / zoom}
+                                            offsetX={15}
+                                            scaleX={textScale}
+                                            scaleY={textScale}
+                                        />
+                                    </Group>
+                                    <Group x={w + dimOffset}>
+                                        <Line points={[0, 0, 0, h]} stroke="#64748b" strokeWidth={0.8 / zoom} />
+                                        <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Line points={[-tickLen, h - tickLen, tickLen, h + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
+                                        <Text
+                                            text={`${(h / SCALE).toFixed(2)}m`}
+                                            fontSize={9}
+                                            fill="#475569"
+                                            x={4 / zoom}
+                                            y={h / 2}
+                                            rotation={90}
+                                            offsetX={15}
+                                            scaleX={textScale}
+                                            scaleY={textScale}
+                                        />
+                                    </Group>
                                 </Group>
-                                <Group x={w + dimOffset}>
-                                    <Line points={[0, 0, 0, h]} stroke="#64748b" strokeWidth={0.8 / zoom} />
-                                    <Line points={[-tickLen, -tickLen, tickLen, tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                                    <Line points={[-tickLen, h - tickLen, tickLen, h + tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                                    <Text
-                                        text={`${(h / SCALE).toFixed(2)}m`}
-                                        fontSize={9}
-                                        fill="#475569"
-                                        x={4 / zoom}
-                                        y={h / 2}
-                                        rotation={90}
-                                        offsetX={15}
-                                        scaleX={textScale}
-                                        scaleY={textScale}
-                                    />
-                                </Group>
-                            </Group>
-                        );
-                    })()
-                )}
+                            );
+                        })()
+                    )}
                 </Group>
-                
+
                 {/* Draw unclipped dimensions */}
                 {allElements.map(el => {
                     if (el.renderType === 'area') {
@@ -1147,6 +1132,148 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         setSelectedDesignAreaId, setSelectedWallId,
         listDrawingType, renderListContent, renderAreaContent, renderOpeningContent
     ]);
+
+    const renderedMouldingDimensions = useMemo(() => {
+        if (shouldHideText || lists.length === 0) return null;
+
+        const TOLERANCE = 2; // px tolerance to consider same size/position
+
+        // Maps: key -> { start, end, labels: {text, color}[] }
+        // Horizontal: keyed by "xMin,xMax"
+        // Vertical: keyed by "yMin,yMax"
+        type DimGroup = { start: number; end: number; labels: { text: string; color: string }[] };
+        const horizontalGroups = new Map<string, DimGroup>();
+        const verticalGroups = new Map<string, DimGroup>();
+
+        lists.forEach((list: any) => {
+            const product = products.find(p => p.id === list.productId);
+            if (!product) return;
+            const color = product.color.replace('0.4', '1');
+            const isMeter = product.countType === 'meter';
+            const unitLength = product.unitLength || 2.9;
+
+            const isHorizontal = Math.abs(list.y1 - list.y2) < 0.1;
+            const isVertical = Math.abs(list.x1 - list.x2) < 0.1;
+
+            if (isHorizontal) {
+                const xMin = Math.min(list.x1, list.x2);
+                const xMax = Math.max(list.x1, list.x2);
+                const lengthPx = xMax - xMin;
+                if (lengthPx < 1) return;
+                const count = Math.ceil((lengthPx / SCALE) / unitLength);
+                const textLabel = isMeter
+                    ? `${(lengthPx / SCALE).toFixed(2)}m`
+                    : `${(lengthPx / SCALE).toFixed(2)}m`;
+
+                // find existing group with same range (within tolerance)
+                let found = false;
+                horizontalGroups.forEach((g, k) => {
+                    if (!found && Math.abs(g.start - xMin) < TOLERANCE && Math.abs(g.end - xMax) < TOLERANCE) {
+                        if (!g.labels.some(l => l.text === textLabel && l.color === color)) {
+                            g.labels.push({ text: textLabel, color });
+                        }
+                        found = true;
+                    }
+                });
+                if (!found) {
+                    const key = `${Math.round(xMin)},${Math.round(xMax)}`;
+                    horizontalGroups.set(key, { start: xMin, end: xMax, labels: [{ text: textLabel, color }] });
+                }
+            } else if (isVertical) {
+                const yMin = Math.min(list.y1, list.y2);
+                const yMax = Math.max(list.y1, list.y2);
+                const lengthPx = yMax - yMin;
+                if (lengthPx < 1) return;
+                const count = Math.ceil((lengthPx / SCALE) / unitLength);
+                const textLabel = isMeter
+                    ? `${(lengthPx / SCALE).toFixed(2)}m`
+                    : `${(lengthPx / SCALE).toFixed(2)}m`;
+
+                let found = false;
+                verticalGroups.forEach((g, k) => {
+                    if (!found && Math.abs(g.start - yMin) < TOLERANCE && Math.abs(g.end - yMax) < TOLERANCE) {
+                        if (!g.labels.some(l => l.text === textLabel && l.color === color)) {
+                            g.labels.push({ text: textLabel, color });
+                        }
+                        found = true;
+                    }
+                });
+                if (!found) {
+                    const key = `${Math.round(yMin)},${Math.round(yMax)}`;
+                    verticalGroups.set(key, { start: yMin, end: yMax, labels: [{ text: textLabel, color }] });
+                }
+            }
+        });
+
+        const spacing = 18 / zoom;
+        const fontSize = 10;
+        const tickLen = 4 / zoom;
+        const elements: React.ReactNode[] = [];
+
+        // Horizontal labels: place ABOVE the wall (bounds.minY - offset - row * spacing)
+        let hRow = 0;
+        horizontalGroups.forEach((group) => {
+            const midX = (group.start + group.end) / 2;
+            group.labels.forEach((label, idx) => {
+                const yPos = bounds.minY - (spacing * (hRow + 1)) - idx * spacing;
+                const lineY = yPos + 12 / zoom;
+                elements.push(
+                    <Group key={`hdim-${group.start}-${group.end}-${idx}`} listening={false}>
+                        <Line points={[group.start, lineY, group.end, lineY]} stroke="#94a3b8" strokeWidth={1 / zoom} />
+                        <Line points={[group.start - tickLen, lineY + tickLen, group.start + tickLen, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                        <Line points={[group.end - tickLen, lineY + tickLen, group.end + tickLen, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                        <Text
+                            x={midX}
+                            y={yPos}
+                            text={label.text}
+                            fontSize={fontSize}
+                            fill={label.color}
+                            fontStyle="bold"
+                            align="center"
+                            offsetX={30}
+                            scaleX={textScale}
+                            scaleY={textScale}
+                        />
+                    </Group>
+                );
+            });
+            hRow++;
+        });
+
+        // Vertical labels: place to the LEFT of the wall (bounds.minX - offset - col * spacing), rotated -90°
+        let vCol = 0;
+        verticalGroups.forEach((group) => {
+            const midY = (group.start + group.end) / 2;
+            group.labels.forEach((label, idx) => {
+                const xPos = bounds.minX - (spacing * (vCol + 1)) - idx * spacing;
+                const lineX = xPos + 12 / zoom;
+                elements.push(
+                    <Group key={`vdim-${group.start}-${group.end}-${idx}`} listening={false}>
+                        <Line points={[lineX, group.start, lineX, group.end]} stroke="#94a3b8" strokeWidth={1 / zoom} />
+                        <Line points={[lineX - tickLen, group.start + tickLen, lineX + tickLen, group.start - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                        <Line points={[lineX - tickLen, group.end + tickLen, lineX + tickLen, group.end - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
+                        <Text
+                            x={xPos}
+                            y={midY}
+                            text={label.text}
+                            fontSize={fontSize}
+                            fill={label.color}
+                            fontStyle="bold"
+                            align="center"
+                            offsetX={30}
+                            rotation={-90}
+                            scaleX={textScale}
+                            scaleY={textScale}
+                        />
+                    </Group>
+                );
+            });
+            vCol++;
+        });
+
+        if (elements.length === 0) return null;
+        return <Group listening={false}>{elements}</Group>;
+    }, [lists, products, zoom, textScale, shouldHideText, bounds]);
 
     const getPointerPosition = () => {
         const stage = stageRef.current;
@@ -1552,7 +1679,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 const elements = [];
                                 const PANEL_WIDTH = (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                                 const direction = activeWall.ceilingPanelDirection || 'horizontal';
-                                
+
                                 if (direction === 'vertical') {
                                     const startX = bounds.minX;
                                     const numPanels = Math.ceil(bounds.width / PANEL_WIDTH);
@@ -1592,7 +1719,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     currentInset += (trap.width / 100) * SCALE;
                                     const tw = bounds.width - 2 * currentInset;
                                     const th = bounds.height - 2 * currentInset;
-                                    
+
                                     if (tw > 0 && th > 0) {
                                         elements.push(
                                             <Rect
@@ -1617,6 +1744,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     )}
 
                     {isClosed && renderedAreas}
+                    {isClosed && renderedMouldingDimensions}
 
                     {/* Measurements & Dimensions */}
                     {points.map((point, i) => {
