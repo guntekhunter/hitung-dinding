@@ -819,7 +819,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         {!isExporting && lines}
                         {!isExporting && (
                             <Text
-                                text={`${count} pcs`}
+                                text={``}
                                 fontSize={11}
                                 fill="#1e293b"
                                 fontStyle="bold"
@@ -1283,7 +1283,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
         vDims.sort((a, b) => (a.end - a.start) - (b.end - b.start));
         const vCols: { start: number, end: number }[][] = [];
-        
+
         vDims.forEach(dim => {
             let placed = false;
             for (let c = 0; c < vCols.length; c++) {
