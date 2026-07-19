@@ -107,20 +107,61 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Sering Mengalami ───────────────────────────────────────────────── */}
-      <section className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
-        <div className="max-w-5xl mx-auto space-y-10">
-          <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
-            Sering Mengalami Hal Ini?
-          </h2>
-          <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
-            <div className="flex space-x-5"><CheckIcon /><p>Menggambar di buku.</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Salah hitung material.</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Pelanggan minta revisi, harus hitung ulang.</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Harus bayar desain interior &amp; drafter</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Membuat RAB menggunakan Excel</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Desain AI sulit diedit untuk dinding lebih dari 1.</p></div>
-            <div className="flex space-x-5 md:col-span-2"><CheckIcon /><p>Revisi desain lama.</p></div>
+      <section className="pt-12">
+        {/* ── Sering Mengalami ───────────────────────────────────────────────── */}
+        <div className="px-4">
+          <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
+            <div className="space-y-5">
+              <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
+                Sering Mengalami Hal Ini?
+              </h2>
+              <Image
+                src="/landing-page/wrong.webp"
+                alt="Masalah"
+                width={600}
+                height={450}
+                priority
+                sizes=""
+                className="rounded-md w-full h-auto"
+              />
+              <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
+                <div className="flex space-x-5"><CheckIcon /><p>Menggambar di buku.</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Salah hitung material.</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Pelanggan minta revisi, harus hitung ulang.</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Harus bayar desain interior &amp; drafter</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Membuat RAB menggunakan Excel</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Desain AI sulit diedit untuk dinding lebih dari 1.</p></div>
+                <div className="flex space-x-5 md:col-span-2"><CheckIcon /><p>Revisi desain lama.</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Dengan satu aplikasi ───────────────────────────────────────────── */}
+        <div className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
+          <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
+            <div className="space-y-5">
+              <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
+                Dengan Rapi Studio Kamu bisa
+              </h2>
+              <Image
+                src="/landing-page/demo.webp"
+                alt="Masalah"
+                width={600}
+                height={450}
+                priority
+                sizes=""
+                className="rounded-md w-full h-auto"
+              />
+              <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
+                <div className="flex space-x-5"><CheckIcon /><p>Membuat drafting dinding</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Menghitung luas area secara otomatis</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Menghitung kebutuhan material</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Membuat estimasi biaya &amp; RAB</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Membuat mockup langsung pada foto ruangan pelanggan</p></div>
+                <div className="flex space-x-5"><CheckIcon /><p>Export hasil untuk presentasi</p></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -129,32 +170,15 @@ export default function Home() {
       <section className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
         <div className="max-w-5xl mx-auto space-y-10">
           <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
-            Akibatnya
+            Tanpa Rapi Studio
           </h2>
           <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
-            <div className="flex space-x-5"><CrossIcon /><p>Pelanggan menunggu terlalu lama.</p></div>
+            <div className="flex space-x-5"><CrossIcon /><p>Pelanggan menunggu terlalu lama (komplain lalu gagal closing)</p></div>
             <div className="flex space-x-5"><CrossIcon /><p>Sales sulit memberikan penawaran saat itu juga.</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Estimasi biaya sering berubah karena salah hitung.</p></div>
+            <div className="flex space-x-5"><CrossIcon /><p>Estimasi biaya sering berubah dan lama karena salah hitung.</p></div>
             <div className="flex space-x-5"><CrossIcon /><p>Kontraktor menghabiskan waktu untuk pekerjaan administratif daripada mengerjakan proyek.</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Bayar mahal drafter dan desain iterior</p></div>
+            <div className="flex space-x-5"><CrossIcon /><p>Bayar ratusan ribu hingga jutaan untuk drafter dan desain iterior</p></div>
             <div className="flex space-x-5"><CrossIcon /><p>Closing menjadi lebih lambat.</p></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Dengan satu aplikasi ───────────────────────────────────────────── */}
-      <section className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
-        <div className="max-w-5xl mx-auto space-y-10">
-          <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
-            Dengan satu aplikasi Ini Kamu bisa
-          </h2>
-          <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
-            <div className="flex space-x-5"><CheckIcon /><p>Membuat drafting dinding</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Menghitung luas area secara otomatis</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Menghitung kebutuhan material</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Membuat estimasi biaya &amp; RAB</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Membuat mockup langsung pada foto ruangan pelanggan</p></div>
-            <div className="flex space-x-5"><CheckIcon /><p>Export hasil untuk presentasi</p></div>
           </div>
         </div>
       </section>
@@ -323,7 +347,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+    </div >
   );
 }
 
