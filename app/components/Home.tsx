@@ -257,37 +257,36 @@ export default function Home() {
           </h2>
           <PaymentCard
             oldPrice="Rp 299.000"
-            price="70.000"
-            totalValue="Rp 1.748.500"
-            todayPrice="Rp 70.000"
-            discountText="HEMAT Rp229.000 (76,59%)"
+            price="89.999"
+            totalValue="Rp 699.500"
+            todayPrice="Rp 89.999"
+            discountText="HEMAT Rp209.001 (76,59%)"
             countdown="10:30:20"
             features={[
               {
-                title: "Sesi Onboarding 1-on-1",
+                title: "Selesaikan desain customer dalam 5 menit",
+              },
+              {
+                title: "Cetak proposal profesional siap kirim",
+                description:
+                  "",
+              },
+              {
+                title: "Tidak perlu lagi menghitung panel satu per satu",
+                description:
+                  "",
+              },
+              {
+                title: "Respon customer lebih cepat dan tingkatkan peluang closing",
+                description: "",
+              },
+              {
+                title: "Onboarding 1-on-1",
+                description: "",
               },
               {
                 title: "Akses penuh selama 30 hari",
-                description:
-                  "(Rp250.000) Gunakan Rapi Studio untuk proyek customer Anda.",
-              },
-              {
-                title: "Buat Hingga 15 Proposal Customer",
-                description:
-                  "(Rp49.500) Presentasikan desain realistis lebih cepat.",
-              },
-              {
-                title: "Hitung Material Otomatis",
-                description: "(Rp100.000) Tanpa menghitung panel satu per satu.",
-              },
-              {
-                title: "Drafting Cepat",
-                description: "(Rp300.000) Lebih cepat daripada membuat dari nol.",
-              },
-              {
-                title: "Bonus Template Premium",
-                description:
-                  "(Rp450.000) Siap digunakan untuk berbagai jenis proyek.",
+                description: "",
               },
             ]}
           />

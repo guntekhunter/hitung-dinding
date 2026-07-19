@@ -50,14 +50,6 @@ export default function PaymentCard({
         </div>
       </div>
 
-      {/* Countdown */}
-      <div className="mt-5 rounded-xl bg-[#E8E3FF] py-4">
-        <p className="text-center text-xs text-[#6B5CE7]">
-          Harga naik menjadi <strong>199.000</strong> dalam{" "}
-          <strong><CountdownTimer initialTime={countdown} /></strong>
-        </p>
-      </div>
-
       {/* Features */}
       <div className="mt-8 space-y-6">
         {features.map((feature, index) => (
@@ -74,14 +66,22 @@ export default function PaymentCard({
 
       {/* Value */}
       <div className="mt-10 text-center space-y-5">
-        <div>
+        {/* <div>
           <p className="text-sm text-gray-500">Total Value</p>
           <p className="text-xl font-bold">{totalValue}</p>
-        </div>
+        </div> */}
+
 
         <div>
           <p className="text-sm text-gray-500">Hari Ini</p>
           <p className="text-2xl font-bold">{todayPrice}</p>
+        </div>
+        {/* Countdown */}
+        <div className="mt-5 rounded-xl bg-[#E8E3FF] py-4">
+          <p className="text-center text-xs text-[#6B5CE7]">
+            <strong>Harga naik</strong> dalam{" "}
+            <strong><CountdownTimer initialTime={countdown} /></strong>
+          </p>
         </div>
       </div>
 
