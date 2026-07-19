@@ -766,7 +766,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     name="design-area"
                     width={area.width}
                     height={area.height}
-                    fill={isPattern ? undefined : (product.countType === 'length' ? "transparent" : effectiveColor)}
+                    fill={isPattern ? undefined : (product.countType === 'length' || product.countType === 'meter' ? "transparent" : effectiveColor)}
                     fillPatternImage={isPattern ? patternImage : undefined}
                     fillPatternRepeat="repeat"
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
@@ -776,7 +776,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             ? "#7B6DED"
                             : isWallSelected && readOnly
                                 ? "#22c55e"
-                                : product.countType === 'length'
+                                : (product.countType === 'length' || product.countType === 'meter')
                                     ? effectiveColor.replace('0.4', '1')
                                     : isColoringMode ? "transparent" : "#1e293b"
                     }
@@ -785,7 +785,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             ? 4 / zoom
                             : isWallSelected && readOnly
                                 ? 2 / zoom
-                                : product.countType === 'length'
+                                : (product.countType === 'length' || product.countType === 'meter')
                                     ? 2 / zoom
                                     : isColoringMode ? 0 : 1 / zoom
                     }
@@ -814,7 +814,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         scaleY={textScale}
                     />
                 )}
-                {product.countType !== 'length' && (
+                {(product.countType !== 'length' && product.countType !== 'meter') && (
                     <Group clipFunc={(ctx) => ctx.rect(0, 0, area.width, area.height)}>
                         {!isExporting && lines}
                         {!isExporting && (

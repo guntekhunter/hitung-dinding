@@ -11,7 +11,7 @@ interface WorkerWall {
 
 interface WorkerProduct {
     id: string;
-    countType: 'area' | 'length';
+    countType: 'area' | 'length' | 'meter';
     width?: number;
     height?: number;
     unitLength?: number;
@@ -91,7 +91,7 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
             });
             productAreas[pid] = (productAreas[pid] || 0) + totalAreaM2 / (SCALE * SCALE);
 
-        } else {
+        } else if (product.countType === 'length' || product.countType === 'meter') {
             // length-type: perimeter per design area
             wall.designAreas.filter(da => da.productId === pid).forEach(da => {
                 const wM = Math.abs(da.width) / SCALE;
@@ -235,6 +235,11 @@ self.onmessage = (e: MessageEvent) => {
                 });
 
                 productTotalCounts[product.id] = Math.ceil(totalUnits * wasteMult);
+            } else if (product.countType === 'meter') {
+                const cuts = allLengthCuts[product.id] || [];
+                if (cuts.length === 0) return;
+                const totalMeters = cuts.reduce((acc, cut) => acc + cut, 0);
+                productTotalCounts[product.id] = parseFloat((totalMeters * wasteMult).toFixed(2));
             }
         });
 

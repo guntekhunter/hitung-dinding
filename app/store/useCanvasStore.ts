@@ -14,7 +14,7 @@ export type Product = {
     height: number | null;
     width: number | null;
     color: string;
-    countType: 'area' | 'length'; // count_type in db
+    countType: 'area' | 'length' | 'meter'; // count_type in db
 };
 
 export type DesignArea = {
@@ -276,7 +276,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     height: item.height,
                     width: item.width,
                     color: item.color,
-                    countType: item.count_type as 'area' | 'length'
+                    countType: item.count_type as 'area' | 'length' | 'meter'
                 }));
                 
                 const state = get();

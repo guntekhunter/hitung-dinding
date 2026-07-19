@@ -133,7 +133,7 @@ export const generateRAB = async (
         const price = materialPrices[product.id] ?? product.price ?? 0;
         const subtotal = qty * price;
         grandTotalCount += subtotal;
-        const unitLabel = product.countType === 'length' ? 'Batang' : 'Lembar';
+        const unitLabel = product.countType === 'length' ? 'Batang' : (product.countType === 'meter' ? 'Meter' : 'Lembar');
 
         materialRows.push([
             (materialRows.length + 1).toString(),

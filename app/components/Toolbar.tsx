@@ -689,7 +689,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         id: product.id,
                         name: product.name,
                         quantity: count,
-                        unit: product.countType === 'length' ? 'Batang' : 'Lembar',
+                        unit: product.countType === 'length' ? 'Batang' : (product.countType === 'meter' ? 'Meter' : 'Lembar'),
                         unitPrice: price,
                         totalPrice: subtotal
                     });
@@ -835,7 +835,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     ctx.fillStyle = '#334155';
                     ctx.fillText(product.name, padding, currentY);
                     ctx.fillStyle = '#4f46e5';
-                    const countText = `${count} ${product.countType === 'length' ? 'btg' : 'pcs'}`;
+                    const countText = `${count} ${product.countType === 'length' ? 'btg' : (product.countType === 'meter' ? 'm' : 'pcs')}`;
                     const metrics = ctx.measureText(countText);
                     ctx.fillText(countText, canvas.width - padding - metrics.width, currentY);
                     currentY += rowHeight;
@@ -923,7 +923,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     key={product.id}
                                     onClick={() => {
                                         setSelectedProduct(product.id);
-                                        if (product.countType === 'length') setInteractionMode('list');
+                                        if (product.countType === 'length' || product.countType === 'meter') setInteractionMode('list');
                                         else setInteractionMode('place');
                                     }}
                                     className={`flex py-2 px-3 rounded-[5px] items-center gap-2 hover:bg-[#E2E2E2] duration-300 border-[#E5E5E5] border flex items-center justify-between transition-all ${selectedProductId === product.id ? "bg-[#F5F5F5] border-[#F5F5F5] text-[#303030]" : "bg-white border-slate-200"}`}
@@ -996,7 +996,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                             <div key={product.id} className="flex flex-col gap-1.5">
                                                 <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
                                                     <span>{product.name}</span>
-                                                    <span className="font-bold">{count} {product.countType === 'length' ? 'Btg' : 'Pcs'}</span>
+                                                    <span className="font-bold">{count} {product.countType === 'length' ? 'Btg' : (product.countType === 'meter' ? 'Meter' : 'Pcs')}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
                                                     <span className="text-[.8rem] text-[#303030]">Harga Produk</span>
@@ -1153,8 +1153,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                                 const length = metrics.productLengths[product.id] || 0;
                                                                 if (area === 0 && length === 0) return null;
 
-                                                                const val = product.countType === 'length' ? length : area;
-                                                                const unit = product.countType === 'length' ? 'm' : 'm²';
+                                                                const val = product.countType === 'length' || product.countType === 'meter' ? length : area;
+                                                                const unit = product.countType === 'length' || product.countType === 'meter' ? 'm' : 'm²';
                                                                 const formattedVal = val.toFixed(2).replace(/\.00$/, '');
 
                                                                 return (
