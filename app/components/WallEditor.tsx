@@ -1228,7 +1228,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
             for (let r = 0; r < hRows.length; r++) {
                 const row = hRows[r];
                 const overlaps = row.some(existing => {
-                    return !(dim.end + TEXT_PADDING < existing.start || dim.start - TEXT_PADDING > existing.end);
+                    const lineOverlaps = (dim.start < existing.end - 1) && (dim.end > existing.start + 1);
+                    const mid1 = (dim.start + dim.end) / 2;
+                    const mid2 = (existing.start + existing.end) / 2;
+                    const textOverlaps = Math.abs(mid1 - mid2) < TEXT_PADDING;
+                    return lineOverlaps || textOverlaps;
                 });
                 if (!overlaps) {
                     row.push(dim);
@@ -1285,7 +1289,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
             for (let c = 0; c < vCols.length; c++) {
                 const col = vCols[c];
                 const overlaps = col.some(existing => {
-                    return !(dim.end + TEXT_PADDING < existing.start || dim.start - TEXT_PADDING > existing.end);
+                    const lineOverlaps = (dim.start < existing.end - 1) && (dim.end > existing.start + 1);
+                    const mid1 = (dim.start + dim.end) / 2;
+                    const mid2 = (existing.start + existing.end) / 2;
+                    const textOverlaps = Math.abs(mid1 - mid2) < TEXT_PADDING;
+                    return lineOverlaps || textOverlaps;
                 });
                 if (!overlaps) {
                     col.push(dim);
