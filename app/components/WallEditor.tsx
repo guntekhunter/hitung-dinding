@@ -495,7 +495,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     <Line points={[0, 0, 0, area.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, 0, tickLen, 0]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[-tickLen, area.height, tickLen, area.height]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={4 / zoom} y={area.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={14 / zoom} y={area.height / 2} rotation={90} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
             </Group>
         );
@@ -520,14 +520,14 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[0, tickLen, 0, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[opening.width, tickLen, opening.width, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={4 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={14 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
                 {/* Height to the left of the opening */}
                 <Group x={leftX}>
                     <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, 0, tickLen, 0]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[-tickLen, opening.height, tickLen, opening.height]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-4 / zoom} y={opening.height / 2} rotation={-90} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-14 / zoom} y={opening.height / 2} rotation={-90} offsetX={15} scaleX={textScale} scaleY={textScale} />
                 </Group>
             </Group>
         );
@@ -1085,7 +1085,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                             text={`${(h / SCALE).toFixed(2)}m`}
                                             fontSize={9}
                                             fill="#475569"
-                                            x={4 / zoom}
+                                            x={14 / zoom}
                                             y={h / 2}
                                             rotation={90}
                                             offsetX={15}
