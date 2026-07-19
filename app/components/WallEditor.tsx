@@ -225,10 +225,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         return segs;
     }, [points, isClosed, lists, designAreas, openings]);
 
-    const snapToGap = (pos: { x: number; y: number }, useGap: boolean = true) => {
+    const snapToGap = (pos: { x: number; y: number }, useGap: boolean = true, customGapPx?: number) => {
         let snappedX = pos.x;
         let snappedY = pos.y;
-        const gapPx = useGap ? mouldingGap * SCALE : 0;
+        const gapPx = customGapPx !== undefined ? customGapPx : (useGap ? mouldingGap * SCALE : 0);
 
         allSegments.forEach(seg => {
             // Is it vertical?
@@ -1214,9 +1214,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
             if (!selectedProduct) return;
             const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
+            const isLisPlat = selectedProduct?.name?.toLowerCase().includes('lis plat') || selectedProduct?.countType === 'meter';
+            const gapPx = isLisPlat ? 0.05 * SCALE : (isMoulding ? mouldingGap * SCALE : 0);
             const snappedPos = listDrawingType === 'rectangle'
-                ? snapKotakMode(pos, mouldingGap * SCALE)
-                : snapToGap(pos, isMoulding);
+                ? snapKotakMode(pos, gapPx)
+                : snapToGap(pos, gapPx > 0, gapPx);
             startList(snappedPos.x, snappedPos.y);
         }
     };
@@ -1318,6 +1320,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
             const isMoulding = selectedProduct?.category === 'moulding' && !selectedProduct?.name?.toLowerCase().includes('lis');
+            const isLisPlat = selectedProduct?.name?.toLowerCase().includes('lis plat') || selectedProduct?.countType === 'meter';
+            const gapPx = isLisPlat ? 0.05 * SCALE : (isMoulding ? mouldingGap * SCALE : 0);
 
             // --- Dimension Snapping for Rectangles ---
             if (listDrawingType === 'rectangle') {
@@ -1361,8 +1365,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 }
             }
             const snappedPos = listDrawingType === 'rectangle'
-                ? snapKotakMode({ x: newX, y: newY }, mouldingGap * SCALE)
-                : snapToGap({ x: newX, y: newY }, isMoulding);
+                ? snapKotakMode({ x: newX, y: newY }, gapPx)
+                : snapToGap({ x: newX, y: newY }, gapPx > 0, gapPx);
             newX = snappedPos.x;
             newY = snappedPos.y;
 
