@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const DUITKU_BASE_URL =
   process.env.DUITKU_BASE_URL ?? "https://passport.duitku.com/webapi/api/merchant";
-const PLAN_PRICE = 70000; // Rp 70.000
+const PLAN_PRICE = 89999; // Rp 89.999
 
 export async function POST(req: Request) {
   try {

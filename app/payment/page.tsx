@@ -123,7 +123,7 @@ export default function PaymentPage() {
             <div className="bg-[#7B6DED] px-8 py-6 text-white">
               <h1 className="text-2xl font-bold">Buat Akun & Bayar</h1>
               <p className="text-sm opacity-80 mt-1">
-                Isi data di bawah, lalu selesaikan pembayaran Rp 70.000 anda.
+                Isi data di bawah, lalu selesaikan pembayaran Rp 89.999 anda.
               </p>
             </div>
 
@@ -248,7 +248,7 @@ export default function PaymentPage() {
                   <div className="bg-[#F7F6FF] rounded-xl p-4 flex items-center justify-between mt-2">
                     <div>
                       <p className="text-xs text-gray-500">Total Pembayaran</p>
-                      <p className="text-xl font-bold text-gray-800">Rp 70.000</p>
+                      <p className="text-xl font-bold text-gray-800">Rp 89.999</p>
                     </div>
                   </div>
 
