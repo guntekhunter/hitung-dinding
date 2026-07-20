@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       user_id: null, // akan diisi setelah akun dibuat di callback
       amount: PLAN_PRICE,
       status: "PENDING",
-      payment_method: paymentMethod ?? "QR",
+      payment_method: paymentMethod ?? "VA",
     });
 
     if (insertError) {

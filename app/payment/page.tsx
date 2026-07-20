@@ -58,7 +58,7 @@ export default function PaymentPage() {
           email: form.email,
           waNumber: form.waNumber,
           password: form.password,
-          paymentMethod: "QR",
+          paymentMethod: "VA",
         }),
       });
 
