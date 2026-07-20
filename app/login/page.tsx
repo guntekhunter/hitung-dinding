@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (user && company) {
-            router.push("/");
+            router.push("/wall-editor");
         }
     }, [user, company, router]);
 
