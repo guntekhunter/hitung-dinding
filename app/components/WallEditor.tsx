@@ -38,15 +38,39 @@ interface WallEditorProps {
 }
 
 /** Renders a tiled texture image as the ceiling wall background fill */
-const CeilingTextureRect = React.memo(({ clipFunc, bounds, textureUrl, panelWidth, panelHeight }: {
+const CeilingTextureRect = React.memo(({ clipFunc, bounds, textureUrl, panelWidth, panelHeight, direction }: {
     clipFunc: (ctx: any) => void;
     bounds: { minX: number; minY: number; width: number; height: number };
     textureUrl: string;
     panelWidth: number;
     panelHeight: number;
+    direction: 'horizontal' | 'vertical';
 }) => {
     const image = useCustomImage(textureUrl);
     if (!image) return null;
+
+    const isPortrait = image.naturalHeight > image.naturalWidth;
+    let rotation = 0;
+    let scale = 1;
+
+    if (direction === 'horizontal') {
+        if (isPortrait) {
+            rotation = 270;
+            scale = panelWidth / image.naturalWidth;
+        } else {
+            rotation = 0;
+            scale = panelWidth / image.naturalHeight;
+        }
+    } else {
+        if (isPortrait) {
+            rotation = 0;
+            scale = panelWidth / image.naturalWidth;
+        } else {
+            rotation = 90;
+            scale = panelWidth / image.naturalHeight;
+        }
+    }
+
     return (
         <Group clipFunc={clipFunc}>
             <Rect
@@ -56,8 +80,9 @@ const CeilingTextureRect = React.memo(({ clipFunc, bounds, textureUrl, panelWidt
                 height={bounds.height}
                 fillPatternImage={image}
                 fillPatternRepeat="repeat"
-                fillPatternScaleX={panelWidth / image.naturalWidth}
-                fillPatternScaleY={panelHeight / image.naturalHeight}
+                fillPatternScaleX={scale}
+                fillPatternScaleY={scale}
+                fillPatternRotation={rotation}
                 listening={false}
             />
         </Group>
@@ -1786,6 +1811,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 textureUrl={ceilingFill}
                                 panelWidth={(activeWall.ceilingPanelWidth || 20) / 100 * SCALE}
                                 panelHeight={(activeWall.ceilingPanelWidth || 20) / 100 * SCALE}
+                                direction={activeWall.ceilingPanelDirection || 'horizontal'}
                             />
                         ) : null;
                     })()}
@@ -1797,35 +1823,37 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 const PANEL_WIDTH = (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                                 const direction = activeWall.ceilingPanelDirection || 'horizontal';
 
-                                if (direction === 'vertical') {
-                                    const startX = bounds.minX;
-                                    const numPanels = Math.ceil(bounds.width / PANEL_WIDTH);
-                                    for (let i = 1; i <= numPanels; i++) {
-                                        const x = startX + i * PANEL_WIDTH;
-                                        elements.push(
-                                            <Line
-                                                key={`ceiling-panel-v-${i}`}
-                                                points={[x, bounds.minY, x, bounds.minY + bounds.height]}
-                                                stroke="#cbd5e1"
-                                                strokeWidth={1 / zoom}
-                                                listening={false}
-                                            />
-                                        );
-                                    }
-                                } else {
-                                    const startY = bounds.minY;
-                                    const numPanels = Math.ceil(bounds.height / PANEL_WIDTH);
-                                    for (let i = 1; i <= numPanels; i++) {
-                                        const y = startY + i * PANEL_WIDTH;
-                                        elements.push(
-                                            <Line
-                                                key={`ceiling-panel-h-${i}`}
-                                                points={[bounds.minX, y, bounds.minX + bounds.width, y]}
-                                                stroke="#cbd5e1"
-                                                strokeWidth={1 / zoom}
-                                                listening={false}
-                                            />
-                                        );
+                                if (!isColoringMode) {
+                                    if (direction === 'vertical') {
+                                        const startX = bounds.minX;
+                                        const numPanels = Math.ceil(bounds.width / PANEL_WIDTH);
+                                        for (let i = 1; i <= numPanels; i++) {
+                                            const x = startX + i * PANEL_WIDTH;
+                                            elements.push(
+                                                <Line
+                                                    key={`ceiling-panel-v-${i}`}
+                                                    points={[x, bounds.minY, x, bounds.minY + bounds.height]}
+                                                    stroke="#cbd5e1"
+                                                    strokeWidth={1 / zoom}
+                                                    listening={false}
+                                                />
+                                            );
+                                        }
+                                    } else {
+                                        const startY = bounds.minY;
+                                        const numPanels = Math.ceil(bounds.height / PANEL_WIDTH);
+                                        for (let i = 1; i <= numPanels; i++) {
+                                            const y = startY + i * PANEL_WIDTH;
+                                            elements.push(
+                                                <Line
+                                                    key={`ceiling-panel-h-${i}`}
+                                                    points={[bounds.minX, y, bounds.minX + bounds.width, y]}
+                                                    stroke="#cbd5e1"
+                                                    strokeWidth={1 / zoom}
+                                                    listening={false}
+                                                />
+                                            );
+                                        }
                                     }
                                 }
 
