@@ -1804,13 +1804,14 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
                         const ceilingFill = plafonProduct?.color || '#ffffff';
                         const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
+                        const productPanelWidth = plafonProduct?.width ? plafonProduct.width * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                         return isTexture ? (
                             <CeilingTextureRect
                                 clipFunc={clipFunc}
                                 bounds={bounds}
                                 textureUrl={ceilingFill}
-                                panelWidth={(activeWall.ceilingPanelWidth || 20) / 100 * SCALE}
-                                panelHeight={(activeWall.ceilingPanelWidth || 20) / 100 * SCALE}
+                                panelWidth={productPanelWidth}
+                                panelHeight={productPanelWidth}
                                 direction={activeWall.ceilingPanelDirection || 'horizontal'}
                             />
                         ) : null;
@@ -1820,7 +1821,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         <Group clipFunc={clipFunc}>
                             {(() => {
                                 const elements = [];
-                                const PANEL_WIDTH = (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
+                                const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
+                                const PANEL_WIDTH = plafonProduct?.width ? plafonProduct.width * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                                 const direction = activeWall.ceilingPanelDirection || 'horizontal';
 
                                 if (!isColoringMode) {
