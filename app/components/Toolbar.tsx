@@ -829,7 +829,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             ctx.fillText(`Total Design Area: ${Math.ceil(totals.totalDesignArea)} m²`, padding, img.height + padding + 80);
 
             let currentY = img.height + padding + 120;
-            products.forEach((product: Product) => {
+            products.filter((p: Product) => p.category?.toLowerCase() !== 'plafon').forEach((product: Product) => {
                 const count = totalProductCounts[product.id] || 0;
                 if (count > 0) {
                     ctx.fillStyle = '#334155';
@@ -918,7 +918,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         {isLoadingProducts ? (
                             <div className="p-4 text-center text-xs animate-pulse">🔄 Loading...</div>
                         ) : (
-                            products.map((product: Product) => (
+                            products.filter((p: Product) => p.category?.toLowerCase() !== 'plafon').map((product: Product) => (
                                 <button
                                     key={product.id}
                                     onClick={() => {
@@ -988,7 +988,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             <div className={`space-y-6 transition-all ${!user ? "filter blur-md select-none pointer-events-none opacity-40" : ""}`}>
                                 <h3 className="font-medium uppercase text-[10px] tracking-widest">Total Kebutuhan</h3>
                                 <div className="grid grid-cols-1 gap-x-4 gap-y-4">
-                                    {products.map((product: Product) => {
+                                    {products.filter((p: Product) => p.category?.toLowerCase() !== 'plafon').map((product: Product) => {
                                         const count = totalProductCounts[product.id] || 0;
                                         if (count === 0) return null;
                                         const price = materialPrices[product.id] || 0;
@@ -1148,7 +1148,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                                 <div className="flex-1 pr-4">
                                                     {wallHasContent ? (
                                                         <div className="flex flex-col">
-                                                            {products.map((product: Product) => {
+                                                            {products.filter((p: Product) => p.category?.toLowerCase() !== 'plafon').map((product: Product) => {
                                                                 const area = metrics.productAreas[product.id] || 0;
                                                                 const length = metrics.productLengths[product.id] || 0;
                                                                 if (area === 0 && length === 0) return null;
