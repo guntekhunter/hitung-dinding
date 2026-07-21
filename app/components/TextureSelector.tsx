@@ -71,6 +71,15 @@ export default function TextureSelector({
         return products.filter(p => productIds.has(p.id));
     }, [walls, products]);
 
+    // Detect if any wall is a ceiling type
+    const hasCeilingWalls = useMemo(() => walls.some((w: any) => w.type === 'ceiling'), [walls]);
+
+    // Plafon products — only shown when there are ceiling walls
+    const plafonProducts = useMemo(() => {
+        if (!hasCeilingWalls) return [];
+        return products.filter((p: any) => p.category?.toLowerCase() === 'plafon');
+    }, [products, hasCeilingWalls]);
+
     // Name of the selected wall (for the banner)
     const selectedWallName = useMemo(() => {
         if (!selectedWallId) return null;
@@ -79,8 +88,9 @@ export default function TextureSelector({
 
     React.useEffect(() => {
         const fetchMaterialColors = async () => {
-            if (usedProducts.length === 0) return;
-            const newProducts = usedProducts.filter(p => !fetchedProductIds.current.has(p.id));
+            const allProductsToFetch = [...usedProducts, ...plafonProducts];
+            if (allProductsToFetch.length === 0) return;
+            const newProducts = allProductsToFetch.filter(p => !fetchedProductIds.current.has(p.id));
             if (newProducts.length === 0) return;
             setIsLoadingMaterials(true);
             for (const product of newProducts) {
@@ -96,7 +106,7 @@ export default function TextureSelector({
             setIsLoadingMaterials(false);
         };
         fetchMaterialColors();
-    }, [usedProducts]);
+    }, [usedProducts, plafonProducts]);
 
     /**
      * Apply a color/texture with this priority:
@@ -267,6 +277,52 @@ export default function TextureSelector({
                         </div>
                     )}
                 </div>
+
+                {/* Plafon section — shown only when ceiling walls are present */}
+                {hasCeilingWalls && plafonProducts.length > 0 && (
+                    <div className="p-4 border-t border-gray-100">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Tekstur Plafon</h3>
+                        <div className="flex flex-col gap-4">
+                            {plafonProducts.map((product: any) => {
+                                const currentColor = products.find((p: any) => p.id === product.id)?.color || '#ffffff';
+                                const isHex = currentColor && !currentColor.startsWith("data:") && !currentColor.startsWith("http");
+                                return (
+                                    <div key={product.id} className="flex flex-col gap-2 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
+                                                {product.name}
+                                            </span>
+                                            <input
+                                                type="color"
+                                                value={isHex ? currentColor : "#ffffff"}
+                                                onChange={e => setProductColor(product.id, e.target.value)}
+                                                className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                            />
+                                        </div>
+                                        {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                            <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                                {materialColorsData[product.id].map((mc: any) => (
+                                                    <button
+                                                        key={mc.id}
+                                                        onClick={() => setProductColor(product.id, mc.image)}
+                                                        className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${currentColor === mc.image
+                                                            ? 'border-[#7B6DED] scale-105'
+                                                            : 'border-transparent hover:border-gray-300'
+                                                            }`}
+                                                        title="Apply Texture to Ceiling"
+                                                    >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

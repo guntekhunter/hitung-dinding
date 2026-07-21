@@ -37,6 +37,34 @@ interface WallEditorProps {
     readOnly?: boolean;
 }
 
+/** Renders a tiled texture image as the ceiling wall background fill */
+const CeilingTextureRect = React.memo(({ clipFunc, bounds, textureUrl, panelWidth, panelHeight }: {
+    clipFunc: (ctx: any) => void;
+    bounds: { minX: number; minY: number; width: number; height: number };
+    textureUrl: string;
+    panelWidth: number;
+    panelHeight: number;
+}) => {
+    const image = useCustomImage(textureUrl);
+    if (!image) return null;
+    return (
+        <Group clipFunc={clipFunc}>
+            <Rect
+                x={bounds.minX}
+                y={bounds.minY}
+                width={bounds.width}
+                height={bounds.height}
+                fillPatternImage={image}
+                fillPatternRepeat="repeat"
+                fillPatternScaleX={panelWidth / image.naturalWidth}
+                fillPatternScaleY={panelHeight / image.naturalHeight}
+                listening={false}
+            />
+        </Group>
+    );
+});
+CeilingTextureRect.displayName = 'CeilingTextureRect';
+
 const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const stageRef = useRef<any>(null);
     const lastPointerPos = useRef({ x: 0, y: 0 });
@@ -1728,14 +1756,39 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     )}
 
                     {/* Wall Surface (Background) */}
-                    <Line
-                        points={points.flatMap(p => [p.x, p.y])}
-                        fill="#ffffff"
-                        stroke="#64748b"
-                        strokeWidth={2 / zoom}
-                        closed={isClosed}
-                        listening={false}
-                    />
+                    {(() => {
+                        // For ceiling walls, use the selected plafon product color as fill
+                        const plafonProduct = activeWall?.type === 'ceiling'
+                            ? products.find((p: Product) => p.category?.toLowerCase() === 'plafon')
+                            : undefined;
+                        const ceilingFill = plafonProduct?.color || '#ffffff';
+                        const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
+                        return (
+                            <Line
+                                points={points.flatMap(p => [p.x, p.y])}
+                                fill={isTexture ? undefined : ceilingFill}
+                                stroke="#64748b"
+                                strokeWidth={2 / zoom}
+                                closed={isClosed}
+                                listening={false}
+                            />
+                        );
+                    })()}
+
+                    {isClosed && activeWall?.type === 'ceiling' && (() => {
+                        const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
+                        const ceilingFill = plafonProduct?.color || '#ffffff';
+                        const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
+                        return isTexture ? (
+                            <CeilingTextureRect
+                                clipFunc={clipFunc}
+                                bounds={bounds}
+                                textureUrl={ceilingFill}
+                                panelWidth={(activeWall.ceilingPanelWidth || 20) / 100 * SCALE}
+                                panelHeight={(activeWall.ceilingPanelWidth || 20) / 100 * SCALE}
+                            />
+                        ) : null;
+                    })()}
 
                     {isClosed && activeWall?.type === 'ceiling' && (
                         <Group clipFunc={clipFunc}>
