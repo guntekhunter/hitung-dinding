@@ -257,12 +257,14 @@ function MockupPageContent() {
             if (e.cancelable && 'touches' in e) {
                 e.preventDefault();
             }
-            const rect = containerRef.current.getBoundingClientRect();
+            const inner = document.getElementById('mockup-canvas-inner');
+            if (!inner) return;
+            const rect = inner.getBoundingClientRect();
             const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
             const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
 
-            let x = (clientX - rect.left + containerRef.current.scrollLeft) / zoom;
-            let y = (clientY - rect.top + containerRef.current.scrollTop) / zoom;
+            let x = (clientX - rect.left) / zoom;
+            let y = (clientY - rect.top) / zoom;
 
             // Allow points to go outside the canvas dimensions for better perspective matching
             // x = Math.max(0, Math.min(x, canvasDims.width));
@@ -934,15 +936,15 @@ function MockupPageContent() {
                     ref={containerRef}
                     className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
                 >
-                    <div style={{ width: canvasDims.width * zoom, height: canvasDims.height * zoom, position: 'relative', margin: '0 auto', minHeight: '100%' }}>
+                    <div className="flex items-center justify-center" style={{ width: canvasDims.width * zoom, height: canvasDims.height * zoom, position: 'relative', margin: '0 auto', minHeight: '100%' }}>
                         <div
                             id="mockup-canvas-inner"
-                            className="absolute top-0 left-0"
+                            className="relative shrink-0"
                             style={{
                                 width: `${canvasDims.width}px`,
                                 height: `${canvasDims.height}px`,
                                 transform: `scale(${zoom})`,
-                                transformOrigin: 'top left',
+                                transformOrigin: 'center center',
                                 transformStyle: 'preserve-3d'
                             }}
                         >
@@ -952,7 +954,7 @@ function MockupPageContent() {
                                     src={bgImage}
                                     alt="Background"
                                     className="absolute top-0 left-0 pointer-events-none"
-                                    style={{ width: `${canvasDims.width}px`, height: `${canvasDims.height}px`, objectFit: 'fill', transform: 'translateZ(-1px)' }}
+                                    style={{ width: `${canvasDims.width}px`, height: `${canvasDims.height}px`, objectFit: 'fill' }}
                                     crossOrigin="anonymous"
                                 />
                             ) : (
@@ -962,8 +964,7 @@ function MockupPageContent() {
                                         backgroundImage: `radial-gradient(#444cf7 0.5px, #e5e5f7 0.5px)`,
                                         backgroundSize: '10px 10px',
                                         backgroundPosition: 'top left',
-                                        backgroundRepeat: 'no-repeat',
-                                        transform: 'translateZ(-1px)'
+                                        backgroundRepeat: 'no-repeat'
                                     }}
                                 />
                             )}
