@@ -52,7 +52,6 @@ const CeilingTextureRect = React.memo(({ clipFunc, bounds, textureUrl, panelWidt
     const isPortrait = image.naturalHeight > image.naturalWidth;
     let rotation = 0;
     let scale = 1;
-
     if (direction === 'horizontal') {
         if (isPortrait) {
             rotation = 270;
@@ -1809,7 +1808,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
                         const ceilingFill = plafonProduct?.color || '#ffffff';
                         const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
-                        const productPanelWidth = plafonProduct?.width ? plafonProduct.width * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
+                        const productPanelWidth = plafonProduct?.width ? (plafonProduct.width / 100) * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                         return isTexture ? (
                             <CeilingTextureRect
                                 clipFunc={clipFunc}
@@ -1827,7 +1826,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             {(() => {
                                 const elements = [];
                                 const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
-                                const PANEL_WIDTH = plafonProduct?.width ? plafonProduct.width * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
+                                const PANEL_WIDTH = plafonProduct?.width ? (plafonProduct.width / 100) * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                                 const direction = activeWall.ceilingPanelDirection || 'horizontal';
 
                                 if (!isColoringMode) {
