@@ -837,6 +837,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
           panelLength: panelLengthCm,
           direction: w.ceilingPanelDirection || "horizontal",
           traps: w.ceilingTraps || [],
+          colors: w.ceilingColors,
         };
 
         const optimization = optimizeCeiling(input);
@@ -1378,40 +1379,26 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <div key={productId} className="flex flex-col gap-1.5">
                           {/* PVC Panel */}
                           {(() => {
-                            const hasTraps = (w.ceilingTraps?.length || 0) > 0;
-                            const outerPanels =
-                              p.optimization?.outerPanels || 0;
-                            const innerPanels =
-                              p.optimization?.innerPanels || 0;
+                            const breakdown = p.optimization?.panelsByGroup || {};
+                            const groups = Object.keys(breakdown);
 
-                            if (
-                              hasTraps &&
-                              (outerPanels > 0 || innerPanels > 0)
-                            ) {
+                            if (groups.length > 0) {
                               return (
                                 <>
-                                  {outerPanels > 0 && (
-                                    <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
-                                      <span>
-                                        Plafon {p.length}m (Luar / Base) -{" "}
-                                        {w.name}
-                                      </span>
-                                      <span className="font-bold">
-                                        {outerPanels} Lembar
-                                      </span>
-                                    </div>
-                                  )}
-                                  {innerPanels > 0 && (
-                                    <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
-                                      <span>
-                                        Plafon {p.length}m (Dalam /
-                                        Trap) - {w.name}
-                                      </span>
-                                      <span className="font-bold">
-                                        {innerPanels} Lembar
-                                      </span>
-                                    </div>
-                                  )}
+                                  {groups.map(groupName => {
+                                    const panels = breakdown[groupName];
+                                    if (panels <= 0) return null;
+                                    return (
+                                      <div key={groupName} className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                        <span>
+                                          Plafon {p.length}m ({groupName}) - {w.name}
+                                        </span>
+                                        <span className="font-bold">
+                                          {panels} Lembar
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                 </>
                               );
                             }

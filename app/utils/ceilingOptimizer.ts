@@ -16,6 +16,7 @@ export interface CeilingInput {
   panelLength: number; // cm (400 or 600)
   direction: 'horizontal' | 'vertical';
   traps: TrapConfig[];
+  colors?: string[]; // Colors per zone (Base, Trap 1, Trap 2, ...)
 }
 
 export interface OptimizationResult {
@@ -161,66 +162,64 @@ function ffdBinPack(cuts: number[], binLength: number): number {
  * Mirrors the reference project's calculateMaterials for drop1 ceilings.
  */
 export function optimizeCeiling(input: CeilingInput): OptimizationResult {
-  const { roomWidth, roomLength, panelWidth, panelLength, direction, traps } = input;
+  const { roomWidth, roomLength, panelWidth, panelLength, direction, traps, colors } = input;
 
-  // Room rectangle (outer boundary)
-  const roomRect: Rect = { x: 0, y: 0, w: roomWidth, h: roomLength };
-
-  // Calculate inset for the inner ceiling area
-  let totalInset = 0;
+  // Compute all rects for the zones
+  const rects: Rect[] = [];
+  let currentInset = 0;
+  
+  // Rect 0: outer boundary (wall)
+  rects.push({ x: 0, y: 0, w: roomWidth, h: roomLength });
+  
+  // Rects for each trap
   traps.forEach(t => {
-    totalInset += t.width + t.gap;
+    currentInset += t.width + t.gap;
+    rects.push({
+      x: currentInset,
+      y: currentInset,
+      w: roomWidth - 2 * currentInset,
+      h: roomLength - 2 * currentInset
+    });
   });
 
-  // Inner rectangle (after all trap insets)
-  const innerRect: Rect = {
-    x: totalInset,
-    y: totalInset,
-    w: roomWidth - 2 * totalInset,
-    h: roomLength - 2 * totalInset
-  };
+  const numZones = traps.length + 1;
+  const zoneCuts: number[][] = Array(numZones).fill(0).map(() => []);
 
-  const hasTraps = traps.length > 0 && totalInset > 0;
-  const innerValid = innerRect.w > 0 && innerRect.h > 0;
+  // ========== HORIZONTAL/VERTICAL CUTS PER ZONE ==========
+  for (let i = 0; i < numZones; i++) {
+    const outerRect = rects[i];
+    if (outerRect.w <= 0 || outerRect.h <= 0) continue;
 
-  // ========== OUTER CUTS (Trap area = room minus inner) ==========
-  const outerCuts: number[] = [];
-  if (hasTraps && innerValid) {
-    outerCuts.push(...getRequiredCuts(roomRect, [innerRect], direction, panelWidth));
-  } else if (!hasTraps) {
-    // No traps: everything is "inner" (flat ceiling)
-  } else {
-    // Inner is too small, whole room is outer
-    outerCuts.push(...getRequiredCuts(roomRect, [], direction, panelWidth));
-  }
-
-  // ========== INNER CUTS (Plafon Utama) ==========
-  const innerCuts: number[] = [];
-  if (hasTraps && innerValid) {
-    innerCuts.push(...getRequiredCuts(innerRect, [], direction, panelWidth));
-  } else if (!hasTraps) {
-    // Flat ceiling: everything is inner
-    innerCuts.push(...getRequiredCuts(roomRect, [], direction, panelWidth));
+    const innerRects = [];
+    if (i + 1 < numZones) {
+      const innerRect = rects[i + 1];
+      if (innerRect.w > 0 && innerRect.h > 0) {
+        innerRects.push(innerRect);
+      }
+    }
+    
+    zoneCuts[i].push(...getRequiredCuts(outerRect, innerRects, direction, panelWidth));
   }
 
   // ========== VERTICAL DROP CUTS ==========
-  // Each trap has a vertical drop surface around the inner perimeter
-  let currentInsetForDrop = 0;
+  let insetForDrop = 0;
   let lisSikuMeters = 0;
-  traps.forEach(trap => {
-    currentInsetForDrop += trap.width;
-    const dropW = roomWidth - 2 * currentInsetForDrop;
-    const dropH = roomLength - 2 * currentInsetForDrop;
+  traps.forEach((trap, i) => {
+    insetForDrop += trap.width;
+    const dropW = roomWidth - 2 * insetForDrop;
+    const dropH = roomLength - 2 * insetForDrop;
 
     if (dropW > 0 && dropH > 0 && trap.dropHeight > 0) {
       const perimeterCm = 2 * (dropW + dropH);
       lisSikuMeters += perimeterCm / 100;
       const numStrips = Math.ceil(perimeterCm / panelWidth);
-      for (let i = 0; i < numStrips; i++) {
-        innerCuts.push(trap.dropHeight); // drop cuts belong to inner (Bagian Dalam)
+      
+      // Assign drop cuts to the inner zone (i+1)
+      for (let j = 0; j < numStrips; j++) {
+        zoneCuts[i + 1].push(trap.dropHeight);
       }
     }
-    currentInsetForDrop += trap.gap;
+    insetForDrop += trap.gap;
   });
 
   const lisDindingMeters = 2 * (roomWidth + roomLength) / 100;
@@ -244,45 +243,56 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
   
   const totalSurfaceAreaSqM = luasFlatSqM + luasDropSqM;
 
-  // ========== OPTIMIZE EACH POOL ==========
-  // Convert all cuts to meters before packing to perfectly match reference app float packing
-  const outerCutsM = outerCuts.map(c => parseFloat((c / 100).toFixed(4)));
-  const innerCutsM = innerCuts.map(c => parseFloat((c / 100).toFixed(4)));
-  const panelLengthM = panelLength / 100;
+  // ========== OPTIMIZE EACH POOL BY COLOR ==========
+  const colorPools = new Map<string, { cuts: number[], zones: string[] }>();
+  
+  for (let i = 0; i < numZones; i++) {
+    const color = (colors && colors[i]) ? colors[i] : `Zone_${i}`;
+    let zoneName = 'Luar / Base';
+    if (i > 0 && i < numZones - 1) zoneName = `Trap ${i}`;
+    if (i > 0 && i === numZones - 1) zoneName = 'Dalam / Plafon Utama';
+    if (numZones === 1) zoneName = 'Plafon Utama';
 
-  const outerPanels = ffdBinPack(outerCutsM, panelLengthM);
-  const innerPanels = ffdBinPack(innerCutsM, panelLengthM);
-  const totalPanels = outerPanels + innerPanels;
+    if (!colorPools.has(color)) {
+      colorPools.set(color, { cuts: [], zones: [] });
+    }
+    colorPools.get(color)!.cuts.push(...zoneCuts[i]);
+    colorPools.get(color)!.zones.push(zoneName);
+  }
 
-  const totalMaterialM = totalPanels * panelLengthM;
-  const totalUsedM = [...outerCutsM, ...innerCutsM].reduce((a, b) => a + b, 0);
-  const totalWasteCm = (totalMaterialM - totalUsedM) * 100;
-  const wastePercentage = totalMaterialM > 0 ? ((totalMaterialM - totalUsedM) / totalMaterialM) * 100 : 0;
-
-  // Build per-group breakdown
+  let totalPanels = 0;
+  let totalUsedM = 0;
   const panelsByGroup: Record<string, number> = {};
   const lengthByGroup: Record<string, number> = {};
 
-  if (hasTraps) {
-    panelsByGroup['Trap 1'] = outerPanels;
-    lengthByGroup['Trap 1'] = outerCuts.reduce((a, b) => a + b, 0);
-    panelsByGroup['Plafon Utama'] = innerPanels;
-    lengthByGroup['Plafon Utama'] = innerCuts.reduce((a, b) => a + b, 0);
-  } else {
-    panelsByGroup['Plafon Utama'] = innerPanels;
-    lengthByGroup['Plafon Utama'] = innerCuts.reduce((a, b) => a + b, 0);
-  }
+  const panelLengthM = panelLength / 100;
 
-  const outerMaterialM = outerPanels * panelLengthM;
-  const outerUsedM = outerCutsM.reduce((a, b) => a + b, 0);
-  const wasteOuter = (outerMaterialM > 0) ? ((outerMaterialM - outerUsedM) / outerMaterialM) * 100 : 0;
+  colorPools.forEach((pool, color) => {
+    const cutsM = pool.cuts.map(c => parseFloat((c / 100).toFixed(4)));
+    const panels = ffdBinPack(cutsM, panelLengthM);
+    
+    totalPanels += panels;
+    const usedM = cutsM.reduce((a, b) => a + b, 0);
+    totalUsedM += usedM;
 
-  const innerMaterialM = innerPanels * panelLengthM;
-  const innerUsedM = innerCutsM.reduce((a, b) => a + b, 0);
-  const wasteInner = (innerMaterialM > 0) ? ((innerMaterialM - innerUsedM) / innerMaterialM) * 100 : 0;
+    // Use joined zone names as the group key
+    const groupName = pool.zones.join(' + ');
+    panelsByGroup[groupName] = panels;
+    lengthByGroup[groupName] = pool.cuts.reduce((a, b) => a + b, 0);
+  });
+
+  const totalMaterialM = totalPanels * panelLengthM;
+  const totalWasteCm = (totalMaterialM - totalUsedM) * 100;
+  const wastePercentage = totalMaterialM > 0 ? ((totalMaterialM - totalUsedM) / totalMaterialM) * 100 : 0;
+
+  // Provide dummy values for legacy properties
+  const outerPanels = 0;
+  const innerPanels = 0;
+  const wasteOuter = 0;
+  const wasteInner = 0;
 
   return {
-    panels: [], // Added to satisfy the interface requirement from page.tsx
+    panels: [],
     totalPanels,
     totalWasteCm,
     wastePercentage,

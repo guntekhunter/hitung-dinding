@@ -69,8 +69,7 @@ export type Wall = {
     ceilingPanelLength?: number;
     ceilingPanelDirection?: 'horizontal' | 'vertical';
     ceilingTraps?: TrapConfig[];
-    ceilingBaseColor?: string;
-    ceilingTrapColor?: string;
+    ceilingColors?: string[];
 };
 
 type HistoryEntry = {
@@ -130,8 +129,7 @@ type CanvasState = {
     setCeilingPanelWidth: (id: string, width: number) => void;
     setCeilingTraps: (id: string, traps: TrapConfig[]) => void;
     setCeilingPanelDirection: (id: string, direction: 'horizontal' | 'vertical') => void;
-    setCeilingBaseColor: (id: string, color: string) => void;
-    setCeilingTrapColor: (id: string, color: string) => void;
+    setCeilingColor: (id: string, index: number, color: string) => void;
 
     // Wall specific actions
     addPoint: (x: number, y: number) => void;
@@ -450,16 +448,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             walls: state.walls.map(w => w.id === id ? { ...w, ceilingPanelDirection: direction } : w)
         }));
     },
-    setCeilingBaseColor: (id, color) => {
+    setCeilingColor: (id, index, color) => {
         get()._saveHistory();
         set((state) => ({
-            walls: state.walls.map(w => w.id === id ? { ...w, ceilingBaseColor: color } : w)
-        }));
-    },
-    setCeilingTrapColor: (id, color) => {
-        get()._saveHistory();
-        set((state) => ({
-            walls: state.walls.map(w => w.id === id ? { ...w, ceilingTrapColor: color } : w)
+            walls: state.walls.map(w => {
+                if (w.id === id) {
+                    const newColors = [...(w.ceilingColors || [])];
+                    newColors[index] = color;
+                    return { ...w, ceilingColors: newColors };
+                }
+                return w;
+            })
         }));
     },
 

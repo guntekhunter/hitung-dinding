@@ -1790,7 +1790,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             ? products.find((p: Product) => p.category?.toLowerCase() === 'plafon')
                             : undefined;
                         const defaultFill = plafonProduct?.color || '#ffffff';
-                        const ceilingFill = activeWall?.type === 'ceiling' ? (activeWall.ceilingBaseColor || defaultFill) : '#ffffff';
+                        const ceilingFill = activeWall?.type === 'ceiling' ? ((activeWall.ceilingColors && activeWall.ceilingColors[0]) || defaultFill) : '#ffffff';
                         const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
                         return (
                             <Line
@@ -1807,68 +1807,69 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     {isClosed && activeWall?.type === 'ceiling' && (() => {
                         const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
                         const defaultFill = plafonProduct?.color || '#ffffff';
-                        const ceilingBaseFill = activeWall.ceilingBaseColor || defaultFill;
-                        const ceilingTrapFill = activeWall.ceilingTrapColor || ceilingBaseFill;
-                        const isBaseTexture = !!ceilingBaseFill && (ceilingBaseFill.startsWith('http') || ceilingBaseFill.startsWith('data:'));
-                        const isTrapTexture = !!ceilingTrapFill && (ceilingTrapFill.startsWith('http') || ceilingTrapFill.startsWith('data:'));
-
+                        
                         const productPanelWidth = plafonProduct?.width ? (plafonProduct.width / 100) * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
                         const direction = activeWall.ceilingPanelDirection || 'horizontal';
-
+                        
                         const traps = activeWall.ceilingTraps || [];
-                        const hasTraps = traps.length > 0;
-                        let totalInset = 0;
-                        if (hasTraps) {
-                            traps.forEach((trap: any) => {
-                                totalInset += (trap.width / 100) * SCALE + (trap.gap / 100) * SCALE;
-                            });
-                        }
-                        const trapBounds = {
-                            minX: bounds.minX + totalInset,
-                            minY: bounds.minY + totalInset,
-                            width: bounds.width - 2 * totalInset,
-                            height: bounds.height - 2 * totalInset
-                        };
-                        const innerValid = trapBounds.width > 0 && trapBounds.height > 0;
+                        const numZones = traps.length + 1;
+                        
+                        const elements = [];
+                        let currentInset = 0;
+                        
+                        for (let i = 0; i < numZones; i++) {
+                            const color = (activeWall.ceilingColors && activeWall.ceilingColors[i]) ? activeWall.ceilingColors[i] : defaultFill;
+                            const isTexture = !!color && (color.startsWith('http') || color.startsWith('data:'));
+                            
+                            let trapBounds;
+                            if (i === 0) {
+                                trapBounds = bounds;
+                            } else {
+                                const prevTrap = traps[i - 1];
+                                currentInset += (prevTrap.width / 100) * SCALE + (prevTrap.gap / 100) * SCALE;
+                                trapBounds = {
+                                    minX: bounds.minX + currentInset,
+                                    minY: bounds.minY + currentInset,
+                                    width: bounds.width - 2 * currentInset,
+                                    height: bounds.height - 2 * currentInset
+                                };
+                            }
+                            
+                            const validBounds = trapBounds.width > 0 && trapBounds.height > 0;
+                            if (!validBounds) continue;
 
-                        return (
-                            <>
-                                {isBaseTexture ? (
+                            const clipF = i === 0 ? clipFunc : (ctx: any) => {
+                                ctx.rect(trapBounds.minX, trapBounds.minY, trapBounds.width, trapBounds.height);
+                            };
+
+                            if (isTexture) {
+                                elements.push(
                                     <CeilingTextureRect
-                                        clipFunc={clipFunc}
-                                        bounds={bounds}
-                                        textureUrl={ceilingBaseFill}
+                                        key={`texture-${i}`}
+                                        clipFunc={clipF}
+                                        bounds={trapBounds}
+                                        textureUrl={color}
                                         panelWidth={productPanelWidth}
                                         panelHeight={productPanelWidth}
                                         direction={direction}
                                     />
-                                ) : null}
-
-                                {hasTraps && innerValid ? (
-                                    isTrapTexture ? (
-                                        <CeilingTextureRect
-                                            clipFunc={(ctx) => {
-                                                ctx.rect(trapBounds.minX, trapBounds.minY, trapBounds.width, trapBounds.height);
-                                            }}
-                                            bounds={trapBounds}
-                                            textureUrl={ceilingTrapFill}
-                                            panelWidth={productPanelWidth}
-                                            panelHeight={productPanelWidth}
-                                            direction={direction}
-                                        />
-                                    ) : (
-                                        <Rect
-                                            x={trapBounds.minX}
-                                            y={trapBounds.minY}
-                                            width={trapBounds.width}
-                                            height={trapBounds.height}
-                                            fill={ceilingTrapFill}
-                                            listening={false}
-                                        />
-                                    )
-                                ) : null}
-                            </>
-                        );
+                                );
+                            } else if (i > 0) {
+                                // Base (i=0) solid color is handled by the Line background above
+                                elements.push(
+                                    <Rect
+                                        key={`rect-${i}`}
+                                        x={trapBounds.minX}
+                                        y={trapBounds.minY}
+                                        width={trapBounds.width}
+                                        height={trapBounds.height}
+                                        fill={color}
+                                        listening={false}
+                                    />
+                                );
+                            }
+                        }
+                        return <>{elements}</>;
                     })()}
 
                     {isClosed && activeWall?.type === 'ceiling' && (
