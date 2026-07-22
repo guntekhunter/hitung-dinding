@@ -962,12 +962,15 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const count = Math.ceil((lengthPx / SCALE) / unitLength);
         const angle = Math.atan2(dy, dx);
 
+        const isMoulding = product?.category === 'moulding';
+        const lineThickness = isMoulding && product?.width ? (product.width * SCALE) : (2 / zoom);
+
         return (
             <Group>
                 <Line
                     points={[list.x1, list.y1, list.x2, list.y2]}
                     stroke={color}
-                    strokeWidth={2 / zoom}
+                    strokeWidth={lineThickness}
                     onClick={onClick}
                     onTap={onClick}
                 />
