@@ -963,7 +963,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const angle = Math.atan2(dy, dx);
 
         const isMoulding = product?.category === 'moulding';
-        const lineThickness = isMoulding && product?.width ? (product.width * SCALE) : (2 / zoom);
+        const isMeterList = product?.countType === 'meter';
+        const lineThickness = (isMoulding || isMeterList) && product?.width ? (product.width * SCALE) : (2 / zoom);
 
         return (
             <Group>
