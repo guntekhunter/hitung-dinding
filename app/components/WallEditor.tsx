@@ -1785,12 +1785,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     )}
 
                     {/* Wall Surface (Background) */}
-                    {(() => {
-                        // For ceiling walls, use the selected plafon product color as fill
+                    {isClosed && (() => {
                         const plafonProduct = activeWall?.type === 'ceiling'
                             ? products.find((p: Product) => p.category?.toLowerCase() === 'plafon')
                             : undefined;
-                        const ceilingFill = plafonProduct?.color || '#ffffff';
+                        const defaultFill = plafonProduct?.color || '#ffffff';
+                        const ceilingFill = activeWall?.type === 'ceiling' ? (activeWall.ceilingBaseColor || defaultFill) : '#ffffff';
                         const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
                         return (
                             <Line
@@ -1806,19 +1806,69 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
                     {isClosed && activeWall?.type === 'ceiling' && (() => {
                         const plafonProduct = products.find((p: Product) => p.category?.toLowerCase() === 'plafon');
-                        const ceilingFill = plafonProduct?.color || '#ffffff';
-                        const isTexture = !!ceilingFill && (ceilingFill.startsWith('http') || ceilingFill.startsWith('data:'));
+                        const defaultFill = plafonProduct?.color || '#ffffff';
+                        const ceilingBaseFill = activeWall.ceilingBaseColor || defaultFill;
+                        const ceilingTrapFill = activeWall.ceilingTrapColor || ceilingBaseFill;
+                        const isBaseTexture = !!ceilingBaseFill && (ceilingBaseFill.startsWith('http') || ceilingBaseFill.startsWith('data:'));
+                        const isTrapTexture = !!ceilingTrapFill && (ceilingTrapFill.startsWith('http') || ceilingTrapFill.startsWith('data:'));
+
                         const productPanelWidth = plafonProduct?.width ? (plafonProduct.width / 100) * SCALE : (activeWall.ceilingPanelWidth || 20) / 100 * SCALE;
-                        return isTexture ? (
-                            <CeilingTextureRect
-                                clipFunc={clipFunc}
-                                bounds={bounds}
-                                textureUrl={ceilingFill}
-                                panelWidth={productPanelWidth}
-                                panelHeight={productPanelWidth}
-                                direction={activeWall.ceilingPanelDirection || 'horizontal'}
-                            />
-                        ) : null;
+                        const direction = activeWall.ceilingPanelDirection || 'horizontal';
+
+                        const traps = activeWall.ceilingTraps || [];
+                        const hasTraps = traps.length > 0;
+                        let totalInset = 0;
+                        if (hasTraps) {
+                            traps.forEach((trap: any) => {
+                                totalInset += (trap.width / 100) * SCALE + (trap.gap / 100) * SCALE;
+                            });
+                        }
+                        const trapBounds = {
+                            minX: bounds.minX + totalInset,
+                            minY: bounds.minY + totalInset,
+                            width: bounds.width - 2 * totalInset,
+                            height: bounds.height - 2 * totalInset
+                        };
+                        const innerValid = trapBounds.width > 0 && trapBounds.height > 0;
+
+                        return (
+                            <>
+                                {isBaseTexture ? (
+                                    <CeilingTextureRect
+                                        clipFunc={clipFunc}
+                                        bounds={bounds}
+                                        textureUrl={ceilingBaseFill}
+                                        panelWidth={productPanelWidth}
+                                        panelHeight={productPanelWidth}
+                                        direction={direction}
+                                    />
+                                ) : null}
+
+                                {hasTraps && innerValid ? (
+                                    isTrapTexture ? (
+                                        <CeilingTextureRect
+                                            clipFunc={(ctx) => {
+                                                ctx.rect(trapBounds.minX, trapBounds.minY, trapBounds.width, trapBounds.height);
+                                            }}
+                                            bounds={trapBounds}
+                                            textureUrl={ceilingTrapFill}
+                                            panelWidth={productPanelWidth}
+                                            panelHeight={productPanelWidth}
+                                            direction={direction}
+                                        />
+                                    ) : (
+                                        <Rect
+                                            x={trapBounds.minX}
+                                            y={trapBounds.minY}
+                                            width={trapBounds.width}
+                                            height={trapBounds.height}
+                                            fill={ceilingTrapFill}
+                                            listening={false}
+                                        />
+                                    )
+                                ) : null}
+                            </>
+                        );
                     })()}
 
                     {isClosed && activeWall?.type === 'ceiling' && (

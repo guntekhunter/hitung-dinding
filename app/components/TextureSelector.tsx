@@ -52,10 +52,15 @@ export default function TextureSelector({
         setWallProductColor,
         setSelectedDesignAreaId,
         setSelectedWallId,
+        activeWallId,
+        setCeilingBaseColor,
+        setCeilingTrapColor,
     } = useCanvasStore();
 
     const selectedWallId = useCanvasStore(state => state.selectedWallId);
     const selectedDesignAreaId = useCanvasStore(state => state.selectedDesignAreaId);
+
+    const activeWall = walls.find(w => w.id === activeWallId);
 
     const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
     const [isLoadingMaterials, setIsLoadingMaterials] = React.useState(false);
@@ -284,37 +289,82 @@ export default function TextureSelector({
                         <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Tekstur Plafon</h3>
                         <div className="flex flex-col gap-4">
                             {plafonProducts.map((product: any) => {
-                                const currentColor = products.find((p: any) => p.id === product.id)?.color || '#ffffff';
-                                const isHex = currentColor && !currentColor.startsWith("data:") && !currentColor.startsWith("http");
+                                const defaultColor = products.find((p: any) => p.id === product.id)?.color || '#ffffff';
+                                const baseColor = (activeWall?.type === 'ceiling' && activeWall.ceilingBaseColor) ? activeWall.ceilingBaseColor : defaultColor;
+                                const trapColor = (activeWall?.type === 'ceiling' && activeWall.ceilingTrapColor) ? activeWall.ceilingTrapColor : baseColor;
+                                const hasTraps = (activeWall?.type === 'ceiling' && (activeWall.ceilingTraps?.length || 0) > 0);
+
+                                const handleSetBaseColor = (c: string) => {
+                                    if (activeWall?.type === 'ceiling') setCeilingBaseColor(activeWall.id, c);
+                                    setProductColor(product.id, c);
+                                };
+                                const handleSetTrapColor = (c: string) => {
+                                    if (activeWall?.type === 'ceiling') setCeilingTrapColor(activeWall.id, c);
+                                };
+
                                 return (
-                                    <div key={product.id} className="flex flex-col gap-2 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
-                                                {product.name}
-                                            </span>
-                                            <input
-                                                type="color"
-                                                value={isHex ? currentColor : "#ffffff"}
-                                                onChange={e => setProductColor(product.id, e.target.value)}
-                                                className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
-                                            />
+                                    <div key={product.id} className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
+                                                    {product.name} {hasTraps ? '(Luar / Base)' : ''}
+                                                </span>
+                                                <input
+                                                    type="color"
+                                                    value={(!baseColor.startsWith("data:") && !baseColor.startsWith("http")) ? baseColor : "#ffffff"}
+                                                    onChange={e => handleSetBaseColor(e.target.value)}
+                                                    className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                                />
+                                            </div>
+                                            {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                                <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                                    {materialColorsData[product.id].map((mc: any) => (
+                                                        <button
+                                                            key={mc.id}
+                                                            onClick={() => handleSetBaseColor(mc.image)}
+                                                            className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${baseColor === mc.image
+                                                                ? 'border-[#7B6DED] scale-105'
+                                                                : 'border-transparent hover:border-gray-300'
+                                                                }`}
+                                                            title="Apply Texture to Base Ceiling"
+                                                        >
+                                                            <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                        {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
-                                            <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
-                                                {materialColorsData[product.id].map((mc: any) => (
-                                                    <button
-                                                        key={mc.id}
-                                                        onClick={() => setProductColor(product.id, mc.image)}
-                                                        className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${currentColor === mc.image
-                                                            ? 'border-[#7B6DED] scale-105'
-                                                            : 'border-transparent hover:border-gray-300'
-                                                            }`}
-                                                        title="Apply Texture to Ceiling"
-                                                    >
-                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                        <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
-                                                    </button>
-                                                ))}
+
+                                        {hasTraps && (
+                                            <div className="flex flex-col gap-2 border-t border-indigo-100 pt-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-medium text-gray-700 truncate mr-2" title="Trap Ceiling Material">
+                                                        {product.name} (Dalam / Trap)
+                                                    </span>
+                                                    <input
+                                                        type="color"
+                                                        value={(!trapColor.startsWith("data:") && !trapColor.startsWith("http")) ? trapColor : "#ffffff"}
+                                                        onChange={e => handleSetTrapColor(e.target.value)}
+                                                        className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                                    />
+                                                </div>
+                                                {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                                    <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                                        {materialColorsData[product.id].map((mc: any) => (
+                                                            <button
+                                                                key={`trap-${mc.id}`}
+                                                                onClick={() => handleSetTrapColor(mc.image)}
+                                                                className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${trapColor === mc.image
+                                                                    ? 'border-[#7B6DED] scale-105'
+                                                                    : 'border-transparent hover:border-gray-300'
+                                                                    }`}
+                                                                title="Apply Texture to Trap Ceiling"
+                                                            >
+                                                                <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
