@@ -54,7 +54,8 @@ export default function TextureSelector({
         setSelectedWallId,
         activeWallId,
         setCeilingPanelDirection,
-        setCeilingColor
+        setCeilingColor,
+        setTrapLineColor
     } = useCanvasStore();
 
     const selectedWallId = useCanvasStore(state => state.selectedWallId);
@@ -343,6 +344,21 @@ export default function TextureSelector({
                                     </div>
                                 );
                             })}
+                            {activeWall?.type === 'ceiling' && activeWall.ceilingTraps && activeWall.ceilingTraps.length > 0 && (
+                                <div className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-gray-700 mr-2">
+                                            Warna Garis Trap (Trap Line Color)
+                                        </span>
+                                        <input
+                                            type="color"
+                                            value={activeWall.trapLineColor || "#3b82f6"}
+                                            onChange={e => setTrapLineColor(activeWall.id, e.target.value)}
+                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

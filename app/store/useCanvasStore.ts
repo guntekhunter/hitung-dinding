@@ -70,6 +70,7 @@ export type Wall = {
     ceilingPanelDirection?: 'horizontal' | 'vertical';
     ceilingTraps?: TrapConfig[];
     ceilingColors?: string[];
+    trapLineColor?: string;
 };
 
 type HistoryEntry = {
@@ -130,6 +131,9 @@ type CanvasState = {
     setCeilingTraps: (id: string, traps: TrapConfig[]) => void;
     setCeilingPanelDirection: (id: string, direction: 'horizontal' | 'vertical') => void;
     setCeilingColor: (id: string, index: number, color: string) => void;
+    
+    // Set custom color for trap lines
+    setTrapLineColor: (wallId: string, color: string) => void;
 
     // Wall specific actions
     addPoint: (x: number, y: number) => void;
@@ -459,6 +463,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 }
                 return w;
             })
+        }));
+    },
+
+    setTrapLineColor: (wallId, color) => {
+        set((state) => ({
+            walls: state.walls.map(w => w.id === wallId ? { ...w, trapLineColor: color } : w)
         }));
     },
 
