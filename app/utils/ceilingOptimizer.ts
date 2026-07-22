@@ -203,7 +203,8 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
 
   // ========== VERTICAL DROP CUTS ==========
   let insetForDrop = 0;
-  let lisSikuMeters = 0;
+  const lisSikuCutsM: number[] = [];
+  
   traps.forEach((trap, i) => {
     insetForDrop += trap.width;
     const dropW = roomWidth - 2 * insetForDrop;
@@ -211,7 +212,21 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
 
     if (dropW > 0 && dropH > 0 && trap.dropHeight > 0) {
       const perimeterCm = 2 * (dropW + dropH);
-      lisSikuMeters += perimeterCm / 100;
+      
+      // Calculate lis siku cuts (sides of the drop)
+      [dropW, dropW, dropH, dropH].forEach(side => {
+        let remaining = side / 100;
+        while (remaining > 0) {
+          if (remaining > 4) {
+            lisSikuCutsM.push(4);
+            remaining -= 4;
+          } else {
+            lisSikuCutsM.push(parseFloat(remaining.toFixed(4)));
+            remaining = 0;
+          }
+        }
+      });
+
       const numStrips = Math.ceil(perimeterCm / panelWidth);
       
       // Assign drop cuts to the inner zone (i+1)
@@ -222,9 +237,22 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
     insetForDrop += trap.gap;
   });
 
-  const lisDindingMeters = 2 * (roomWidth + roomLength) / 100;
-  const lisDindingSticks = Math.ceil(lisDindingMeters / 4);
-  const lisSikuSticks = Math.ceil(lisSikuMeters / 4);
+  const lisDindingCutsM: number[] = [];
+  [roomWidth, roomWidth, roomLength, roomLength].forEach(side => {
+    let remaining = side / 100;
+    while (remaining > 0) {
+      if (remaining > 4) {
+        lisDindingCutsM.push(4);
+        remaining -= 4;
+      } else {
+        lisDindingCutsM.push(parseFloat(remaining.toFixed(4)));
+        remaining = 0;
+      }
+    }
+  });
+
+  const lisDindingSticks = ffdBinPack(lisDindingCutsM, 4);
+  const lisSikuSticks = ffdBinPack(lisSikuCutsM, 4);
 
   // ========== AREA CALCULATION ==========
   let luasFlatSqM = (roomWidth * roomLength) / 10000;
