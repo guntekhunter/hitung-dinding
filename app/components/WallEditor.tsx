@@ -971,6 +971,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     points={[list.x1, list.y1, list.x2, list.y2]}
                     stroke={color}
                     strokeWidth={lineThickness}
+                    lineCap="square"
                     onClick={onClick}
                     onTap={onClick}
                 />
