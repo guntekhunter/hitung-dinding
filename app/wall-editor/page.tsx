@@ -1,7 +1,8 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Toolbar from "../components/Toolbar";
+import { useCanvasStore } from "../store/useCanvasStore";
 
 const WallEditor = dynamic(() => import("../components/WallEditor"), {
   ssr: false,
@@ -14,6 +15,10 @@ const WallEditor = dynamic(() => import("../components/WallEditor"), {
 
 export default function WallEditorPage() {
   const wallEditorRef = useRef<any>(null);
+
+  // console.log the canvas conva code
+  // const walls = useCanvasStore((state) => state.walls);
+  // console.log("Canvas Design:", walls);
 
   return (
     <main className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50">
