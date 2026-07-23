@@ -469,7 +469,8 @@ function MockupPageContent() {
     const handleDownload = async () => {
         try {
             // === Canvas-based export to avoid html-to-image 3D transform clipping ===
-            const pixelRatio = 2; // High resolution
+            const isMobile = window.innerWidth <= 768;
+            const pixelRatio = isMobile ? 1 : 2; // High resolution on desktop, lower on mobile for speed
 
             // Determine export bounds
             let minX = 0;
@@ -617,7 +618,10 @@ function MockupPageContent() {
                 drawTexturedQuad(ctx, sourceCanvas, srcW, srcH, dst);
             }
 
-            // Convert to PNG and download using Blob to avoid base64 URL length limits
+            // Convert to PNG/JPEG and download using Blob to avoid base64 URL length limits
+            const mimeType = isMobile ? 'image/jpeg' : 'image/png';
+            const quality = isMobile ? 0.7 : undefined;
+            
             exportCanvas.toBlob((blob) => {
                 if (!blob) {
                     alert("Failed to generate image.");
@@ -626,14 +630,14 @@ function MockupPageContent() {
                 const blobUrl = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = blobUrl;
-                link.download = 'mockup-scene.png';
+                link.download = `mockup-scene.${isMobile ? 'jpg' : 'png'}`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
 
                 // Clean up the object URL to free memory
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-            }, 'image/png');
+            }, mimeType, quality);
         } catch (err) {
             console.error("Download failed:", err);
             alert("Failed to download mockup.");
@@ -650,7 +654,8 @@ function MockupPageContent() {
     ) {
         // Subdivide the quad into a grid and draw each cell as two triangles
         // More subdivisions = better perspective approximation
-        const divisions = 20;
+        const isMobile = window.innerWidth <= 768;
+        const divisions = isMobile ? 8 : 20;
 
         const src = [
             { x: 0, y: 0 },
@@ -945,7 +950,8 @@ function MockupPageContent() {
                                 height: `${canvasDims.height}px`,
                                 transform: `scale(${zoom})`,
                                 transformOrigin: 'center center',
-                                transformStyle: 'preserve-3d'
+                                transformStyle: 'preserve-3d',
+                                willChange: 'transform'
                             }}
                         >
                             {/* Background Image Layer - Separated to prevent mobile 3D transform clipping bugs */}
@@ -982,7 +988,8 @@ function MockupPageContent() {
                                                 width: dims.width,
                                                 height: dims.height,
                                                 transform: getTransformMatrix(wallId) || 'none',
-                                                zIndex: 10
+                                                zIndex: 10,
+                                                willChange: 'transform'
                                             }}
                                         >
                                             <div className="w-full h-full shadow-2xl opacity-90 overflow-visible bg-transparent pointer-events-auto">
