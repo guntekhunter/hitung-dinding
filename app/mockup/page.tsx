@@ -654,8 +654,7 @@ function MockupPageContent() {
     ) {
         // Subdivide the quad into a grid and draw each cell as two triangles
         // More subdivisions = better perspective approximation
-        const isMobile = window.innerWidth <= 768;
-        const divisions = isMobile ? 8 : 20;
+        const divisions = 20;
 
         const src = [
             { x: 0, y: 0 },
