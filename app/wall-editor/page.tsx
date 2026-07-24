@@ -19,6 +19,7 @@ export default function WallEditorPage() {
   // console.log the canvas conva code
   // const walls = useCanvasStore((state) => state.walls);
   // console.log("Canvas Design:", walls);
+  // ahhay
 
   return (
     <main className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50">
