@@ -179,6 +179,10 @@ type CanvasState = {
     setZoom: (zoom: number) => void;
     setOffset: (x: number, y: number) => void;
 
+    // Snapping feature
+    isSnapEnabled: boolean;
+    setIsSnapEnabled: (val: boolean) => void;
+
     // Export State
     isExporting: boolean;
     setIsExporting: (isExporting: boolean) => void;
@@ -252,6 +256,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     offset: { x: 0, y: 0 },
     setZoom: (zoom: number) => set({ zoom }),
     setOffset: (x: number, y: number) => set({ offset: { x, y } }),
+
+    isSnapEnabled: true,
+    setIsSnapEnabled: (val: boolean) => set({ isSnapEnabled: val }),
 
     isExporting: false,
     setIsExporting: (isExporting: boolean) => set({ isExporting }),

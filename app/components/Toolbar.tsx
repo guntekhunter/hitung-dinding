@@ -38,6 +38,7 @@ import {
   Copy,
   ImagePlus,
   LayoutTemplate,
+  Magnet,
 } from "lucide-react";
 
 // --- Split into smaller memoized components to prevent global re-renders ---
@@ -59,6 +60,8 @@ const UserHeader = memo(
     past = [],
     isMobile,
     onMockupClick,
+    isSnapEnabled,
+    setIsSnapEnabled,
   }: any) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -181,6 +184,13 @@ const UserHeader = memo(
               ) : (
                 <Unlock className="w-[1rem]" />
               )}
+            </button>
+            <button
+              onClick={() => setIsSnapEnabled(!isSnapEnabled)}
+              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${isSnapEnabled ? "bg-slate-700 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              title={isSnapEnabled ? "Snap On" : "Snap Off"}
+            >
+              <Magnet className="w-[1rem]" />
             </button>
             <button
               onClick={() => setInteractionMode("pan")}
@@ -723,6 +733,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     clearDesignAreas,
     setCeilingPanelLength,
     setCeilingPanelDirection,
+    isSnapEnabled,
+    setIsSnapEnabled,
   } = useCanvasStore();
 
   useEffect(() => {
@@ -1132,6 +1144,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
         undo={undo}
         past={past}
         isMobile={isMobile}
+        isSnapEnabled={isSnapEnabled}
+        setIsSnapEnabled={setIsSnapEnabled}
         onMockupClick={() => {
           if (projectId) {
             router.push(`/mockup?id=${projectId}`);

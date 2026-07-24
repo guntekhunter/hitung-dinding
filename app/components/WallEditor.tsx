@@ -111,7 +111,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         undo, redo, mouldingGap, listDrawingType, setListDrawingType,
         products, isExporting, isColoringPreview,
         selectedDesignAreaId, setSelectedDesignAreaId,
-        selectedWallId, setSelectedWallId
+        selectedWallId, setSelectedWallId,
+        isSnapEnabled
     } = useCanvasStore();
 
     const activeWallId = props.wallId || storeActiveWallId;
@@ -280,6 +281,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const snapToGap = (pos: { x: number; y: number }, useGap: boolean = true, customGapPx?: number) => {
         let snappedX = pos.x;
         let snappedY = pos.y;
+        if (!isSnapEnabled) return { x: snappedX, y: snappedY };
         const gapPx = customGapPx !== undefined ? customGapPx : (useGap ? mouldingGap * SCALE : 0);
 
         allSegments.forEach(seg => {
@@ -336,6 +338,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const snapKotakMode = (pos: { x: number; y: number }, gapPx: number) => {
         let snappedX = pos.x;
         let snappedY = pos.y;
+        if (!isSnapEnabled) return pos;
 
         const wallCenter = {
             x: bounds.minX + bounds.width / 2,
