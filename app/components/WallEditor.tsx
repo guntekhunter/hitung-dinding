@@ -1,7 +1,7 @@
 'use client';
 import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 export const dynamic = 'force-static';
-import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
+import { Stage, Layer, Line, Circle, Text, Group, Rect, Label, Tag } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { usePathname } from 'next/navigation';
 
@@ -575,14 +575,20 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     <Line points={[0, 0, opening.width, 0]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[0, tickLen, 0, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[opening.width, tickLen, opening.width, -tickLen]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={opening.width / 2} y={14 / zoom} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                    <Group x={opening.width / 2} y={0} scaleX={textScale} scaleY={textScale}>
+                        <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                        <Text text={`${(absWidth / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-20} y={-8} width={40} height={16} align="center" verticalAlign="middle" fontStyle="bold" />
+                    </Group>
                 </Group>
                 {/* Height to the left of the opening */}
                 <Group x={leftX}>
                     <Line points={[0, 0, 0, opening.height]} stroke="#64748b" strokeWidth={0.8 / zoom} />
                     <Line points={[-tickLen, 0, tickLen, 0]} stroke="#64748b" strokeWidth={1 / zoom} />
                     <Line points={[-tickLen, opening.height, tickLen, opening.height]} stroke="#64748b" strokeWidth={1 / zoom} />
-                    <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-14 / zoom} y={opening.height / 2} rotation={-90} offsetX={15} scaleX={textScale} scaleY={textScale} />
+                    <Group x={0} y={opening.height / 2} rotation={-90} scaleX={textScale} scaleY={textScale}>
+                        <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                        <Text text={`${(absHeight / SCALE).toFixed(2)}m`} fontSize={9} fill="#475569" x={-20} y={-8} width={40} height={16} align="center" verticalAlign="middle" fontStyle="bold" />
+                    </Group>
                 </Group>
             </Group>
         );
@@ -630,17 +636,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         <Line points={[wallMinX, 0, openLeft, 0]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
                         <Line points={[wallMinX, -tickLen, wallMinX, tickLen]} stroke={lineColor} strokeWidth={swT} />
                         <Line points={[openLeft, -tickLen, openLeft, tickLen]} stroke={lineColor} strokeWidth={swT} />
-                        <Text
-                            text={`${(gapLeft / SCALE).toFixed(2)}m`}
-                            fontSize={9}
-                            fill={textColor}
-                            fontStyle="bold"
-                            x={(wallMinX + openLeft) / 2}
-                            y={-labelOff - 9 / zoom}
-                            offsetX={15}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
+                        <Group x={(wallMinX + openLeft) / 2} y={0} scaleX={textScale} scaleY={textScale}>
+                            <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                            <Text text={`${(gapLeft / SCALE).toFixed(2)}m`} fontSize={9} fill={textColor} fontStyle="bold" x={-20} y={-8} width={40} height={16} align="center" verticalAlign="middle" />
+                        </Group>
                     </Group>
                 )}
                 {/* Right gap: openRight → wallMaxX, drawn at midY */}
@@ -649,17 +648,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         <Line points={[openRight, 0, wallMaxX, 0]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
                         <Line points={[openRight, -tickLen, openRight, tickLen]} stroke={lineColor} strokeWidth={swT} />
                         <Line points={[wallMaxX, -tickLen, wallMaxX, tickLen]} stroke={lineColor} strokeWidth={swT} />
-                        <Text
-                            text={`${(gapRight / SCALE).toFixed(2)}m`}
-                            fontSize={9}
-                            fill={textColor}
-                            fontStyle="bold"
-                            x={(openRight + wallMaxX) / 2}
-                            y={-labelOff - 9 / zoom}
-                            offsetX={15}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
+                        <Group x={(openRight + wallMaxX) / 2} y={0} scaleX={textScale} scaleY={textScale}>
+                            <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                            <Text text={`${(gapRight / SCALE).toFixed(2)}m`} fontSize={9} fill={textColor} fontStyle="bold" x={-20} y={-8} width={40} height={16} align="center" verticalAlign="middle" />
+                        </Group>
                     </Group>
                 )}
                 {/* Top gap: wallMinY → openTop, drawn at midX */}
@@ -668,16 +660,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         <Line points={[0, wallMinY, 0, openTop]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
                         <Line points={[-tickLen, wallMinY, tickLen, wallMinY]} stroke={lineColor} strokeWidth={swT} />
                         <Line points={[-tickLen, openTop, tickLen, openTop]} stroke={lineColor} strokeWidth={swT} />
-                        <Text
-                            text={`${(gapTop / SCALE).toFixed(2)}m`}
-                            fontSize={9}
-                            fill={textColor}
-                            fontStyle="bold"
-                            x={labelOff}
-                            y={(wallMinY + openTop) / 2}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
+                        <Group x={0} y={(wallMinY + openTop) / 2} rotation={-90} scaleX={textScale} scaleY={textScale}>
+                            <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                            <Text text={`${(gapTop / SCALE).toFixed(2)}m`} fontSize={9} fill={textColor} fontStyle="bold" x={-20} y={-8} width={40} height={16} align="center" verticalAlign="middle" />
+                        </Group>
                     </Group>
                 )}
                 {/* Bottom gap: openBottom → wallMaxY, drawn at midX */}
@@ -686,16 +672,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         <Line points={[0, openBottom, 0, wallMaxY]} stroke={lineColor} strokeWidth={sw} dash={[4 / zoom, 3 / zoom]} />
                         <Line points={[-tickLen, openBottom, tickLen, openBottom]} stroke={lineColor} strokeWidth={swT} />
                         <Line points={[-tickLen, wallMaxY, tickLen, wallMaxY]} stroke={lineColor} strokeWidth={swT} />
-                        <Text
-                            text={`${(gapBottom / SCALE).toFixed(2)}m`}
-                            fontSize={9}
-                            fill={textColor}
-                            fontStyle="bold"
-                            x={labelOff}
-                            y={(openBottom + wallMaxY) / 2}
-                            scaleX={textScale}
-                            scaleY={textScale}
-                        />
+                        <Group x={0} y={(openBottom + wallMaxY) / 2} rotation={-90} scaleX={textScale} scaleY={textScale}>
+                            <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                            <Text text={`${(gapBottom / SCALE).toFixed(2)}m`} fontSize={9} fill={textColor} fontStyle="bold" x={-20} y={-8} width={40} height={16} align="center" verticalAlign="middle" />
+                        </Group>
                     </Group>
                 )}
             </Group>
@@ -1162,7 +1142,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 {/* Draw unclipped dimensions */}
                 {allElements.map(el => {
                     if (el.renderType === 'area') {
-                        return <MemoizedAreaDimensions key={`dim-${el.id}`} area={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />;
+                        return null; // Dimensions now handled by renderedAreaDimensions
                     } else if (el.renderType === 'opening') {
                         return (
                             <React.Fragment key={`dim-${el.id}`}>
@@ -1192,6 +1172,191 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         setSelectedDesignAreaId, setSelectedWallId,
         listDrawingType, renderListContent, renderAreaContent, renderOpeningContent
     ]);
+
+    const renderedAreaDimensions = useMemo(() => {
+        if (shouldHideText || designAreas.length === 0) return null;
+
+        const TOLERANCE = 2; // px tolerance to consider same size/position
+
+        type DimGroup = { start: number; end: number; labels: { text: string; color: string }[] };
+        const horizontalGroups = new Map<string, DimGroup>();
+        const verticalGroups = new Map<string, DimGroup>();
+
+        designAreas.forEach((area: any) => {
+            if (!('productId' in area)) return;
+            
+            // horizontal
+            const xMin = area.x;
+            const xMax = area.x + area.width;
+            const hLengthPx = Math.abs(area.width);
+            if (hLengthPx > 1) {
+                const hTextLabel = `${(hLengthPx / SCALE).toFixed(2)}m`;
+                let foundH = false;
+                horizontalGroups.forEach((g) => {
+                    if (!foundH && Math.abs(g.start - xMin) < TOLERANCE && Math.abs(g.end - xMax) < TOLERANCE) {
+                        if (!g.labels.some(l => l.text === hTextLabel)) {
+                            g.labels.push({ text: hTextLabel, color: "#475569" });
+                        }
+                        foundH = true;
+                    }
+                });
+                if (!foundH) {
+                    const key = `${Math.round(xMin)},${Math.round(xMax)}`;
+                    horizontalGroups.set(key, { start: xMin, end: xMax, labels: [{ text: hTextLabel, color: "#475569" }] });
+                }
+            }
+
+            // vertical
+            const yMin = area.y;
+            const yMax = area.y + area.height;
+            const vLengthPx = Math.abs(area.height);
+            if (vLengthPx > 1) {
+                const vTextLabel = `${(vLengthPx / SCALE).toFixed(2)}m`;
+                let foundV = false;
+                verticalGroups.forEach((g) => {
+                    if (!foundV && Math.abs(g.start - yMin) < TOLERANCE && Math.abs(g.end - yMax) < TOLERANCE) {
+                        if (!g.labels.some(l => l.text === vTextLabel)) {
+                            g.labels.push({ text: vTextLabel, color: "#475569" });
+                        }
+                        foundV = true;
+                    }
+                });
+                if (!foundV) {
+                    const key = `${Math.round(yMin)},${Math.round(yMax)}`;
+                    verticalGroups.set(key, { start: yMin, end: yMax, labels: [{ text: vTextLabel, color: "#475569" }] });
+                }
+            }
+        });
+
+        const spacing = 18 / zoom;
+        const fontSize = 10;
+        const tickLen = 4 / zoom;
+        const elements: React.ReactNode[] = [];
+        const TEXT_PADDING = 50 / zoom;
+
+        // Horizontal packing (drawn at the bottom)
+        const hDims: { start: number, end: number, label: any, rowIndex?: number }[] = [];
+        horizontalGroups.forEach((group) => {
+            group.labels.forEach(label => hDims.push({ start: group.start, end: group.end, label }));
+        });
+        hDims.sort((a, b) => (a.end - a.start) - (b.end - b.start));
+        const hRows: { start: number, end: number }[][] = [];
+        hDims.forEach(dim => {
+            let placed = false;
+            for (let r = 0; r < hRows.length; r++) {
+                const row = hRows[r];
+                const overlaps = row.some(existing => {
+                    const lineOverlaps = (dim.start < existing.end - 1) && (dim.end > existing.start + 1);
+                    const mid1 = (dim.start + dim.end) / 2;
+                    const mid2 = (existing.start + existing.end) / 2;
+                    const textOverlaps = Math.abs(mid1 - mid2) < TEXT_PADDING;
+                    return lineOverlaps || textOverlaps;
+                });
+                if (!overlaps) {
+                    row.push(dim);
+                    dim.rowIndex = r;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                dim.rowIndex = hRows.length;
+                hRows.push([dim]);
+            }
+        });
+
+        hDims.forEach((dim, idx) => {
+            const midX = (dim.start + dim.end) / 2;
+            const rowIdx = dim.rowIndex || 0;
+            // Draw below the wall
+            const lineY = bounds.minY + bounds.height + (spacing * (rowIdx + 1));
+            elements.push(
+                <Group key={`hdim-area-${dim.start}-${dim.end}-${idx}`} listening={false}>
+                    <Line points={[dim.start, lineY, dim.end, lineY]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[dim.start, lineY + tickLen, dim.start, lineY - tickLen]} stroke="#64748b" strokeWidth={1.5 / zoom} />
+                    <Line points={[dim.end, lineY + tickLen, dim.end, lineY - tickLen]} stroke="#64748b" strokeWidth={1.5 / zoom} />
+                    <Group x={midX} y={lineY} scaleX={textScale} scaleY={textScale}>
+                        <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                        <Text
+                            x={-20}
+                            y={-8}
+                            width={40}
+                            height={16}
+                            text={dim.label.text}
+                            fontSize={fontSize}
+                            fill={dim.label.color}
+                            fontStyle="bold"
+                            align="center"
+                            verticalAlign="middle"
+                        />
+                    </Group>
+                </Group>
+            );
+        });
+
+        // Vertical packing (drawn at the right)
+        const vDims: { start: number, end: number, label: any, colIndex?: number }[] = [];
+        verticalGroups.forEach((group) => {
+            group.labels.forEach(label => vDims.push({ start: group.start, end: group.end, label }));
+        });
+        vDims.sort((a, b) => (a.end - a.start) - (b.end - b.start));
+        const vCols: { start: number, end: number }[][] = [];
+        vDims.forEach(dim => {
+            let placed = false;
+            for (let c = 0; c < vCols.length; c++) {
+                const col = vCols[c];
+                const overlaps = col.some(existing => {
+                    const lineOverlaps = (dim.start < existing.end - 1) && (dim.end > existing.start + 1);
+                    const mid1 = (dim.start + dim.end) / 2;
+                    const mid2 = (existing.start + existing.end) / 2;
+                    const textOverlaps = Math.abs(mid1 - mid2) < TEXT_PADDING;
+                    return lineOverlaps || textOverlaps;
+                });
+                if (!overlaps) {
+                    col.push(dim);
+                    dim.colIndex = c;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                dim.colIndex = vCols.length;
+                vCols.push([dim]);
+            }
+        });
+
+        vDims.forEach((dim, idx) => {
+            const midY = (dim.start + dim.end) / 2;
+            const colIdx = dim.colIndex || 0;
+            // Draw right of the wall
+            const lineX = bounds.minX + bounds.width + (spacing * (colIdx + 1));
+            elements.push(
+                <Group key={`vdim-area-${dim.start}-${dim.end}-${idx}`} listening={false}>
+                    <Line points={[lineX, dim.start, lineX, dim.end]} stroke="#64748b" strokeWidth={1 / zoom} />
+                    <Line points={[lineX - tickLen, dim.start, lineX + tickLen, dim.start]} stroke="#64748b" strokeWidth={1.5 / zoom} />
+                    <Line points={[lineX - tickLen, dim.end, lineX + tickLen, dim.end]} stroke="#64748b" strokeWidth={1.5 / zoom} />
+                    <Group x={lineX} y={midY} rotation={90} scaleX={textScale} scaleY={textScale}>
+                        <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                        <Text
+                            x={-20}
+                            y={-8}
+                            width={40}
+                            height={16}
+                            text={dim.label.text}
+                            fontSize={fontSize}
+                            fill={dim.label.color}
+                            fontStyle="bold"
+                            align="center"
+                            verticalAlign="middle"
+                        />
+                    </Group>
+                </Group>
+            );
+        });
+
+        if (elements.length === 0) return null;
+        return <Group listening={false}>{elements}</Group>;
+    }, [designAreas, zoom, textScale, shouldHideText, bounds]);
 
     const renderedMouldingDimensions = useMemo(() => {
         if (shouldHideText || lists.length === 0) return null;
@@ -1310,25 +1475,27 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         hDims.forEach((dim, idx) => {
             const midX = (dim.start + dim.end) / 2;
             const rowIdx = dim.rowIndex || 0;
-            const yPos = bounds.minY - (spacing * (rowIdx + 1));
-            const lineY = yPos + 12 / zoom;
+            const lineY = bounds.minY - (spacing * (rowIdx + 1));
             elements.push(
                 <Group key={`hdim-${dim.start}-${dim.end}-${idx}`} listening={false}>
                     <Line points={[dim.start, lineY, dim.end, lineY]} stroke="#94a3b8" strokeWidth={1 / zoom} />
                     <Line points={[dim.start, lineY + tickLen, dim.start, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
                     <Line points={[dim.end, lineY + tickLen, dim.end, lineY - tickLen]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
-                    <Text
-                        x={midX}
-                        y={yPos}
-                        text={dim.label.text}
-                        fontSize={fontSize}
-                        fill={dim.label.color}
-                        fontStyle="bold"
-                        align="center"
-                        offsetX={30}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
+                    <Group x={midX} y={lineY} scaleX={textScale} scaleY={textScale}>
+                        <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                        <Text
+                            x={-20}
+                            y={-8}
+                            width={40}
+                            height={16}
+                            text={dim.label.text}
+                            fontSize={fontSize}
+                            fill={dim.label.color}
+                            fontStyle="bold"
+                            align="center"
+                            verticalAlign="middle"
+                        />
+                    </Group>
                 </Group>
             );
         });
@@ -1371,26 +1538,27 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         vDims.forEach((dim, idx) => {
             const midY = (dim.start + dim.end) / 2;
             const colIdx = dim.colIndex || 0;
-            const xPos = bounds.minX - (spacing * (colIdx + 1));
-            const lineX = xPos + 12 / zoom;
+            const lineX = bounds.minX - (spacing * (colIdx + 1));
             elements.push(
                 <Group key={`vdim-${dim.start}-${dim.end}-${idx}`} listening={false}>
                     <Line points={[lineX, dim.start, lineX, dim.end]} stroke="#94a3b8" strokeWidth={1 / zoom} />
                     <Line points={[lineX - tickLen, dim.start, lineX + tickLen, dim.start]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
                     <Line points={[lineX - tickLen, dim.end, lineX + tickLen, dim.end]} stroke="#94a3b8" strokeWidth={1.5 / zoom} />
-                    <Text
-                        x={xPos}
-                        y={midY}
-                        text={dim.label.text}
-                        fontSize={fontSize}
-                        fill={dim.label.color}
-                        fontStyle="bold"
-                        align="center"
-                        offsetX={30}
-                        rotation={-90}
-                        scaleX={textScale}
-                        scaleY={textScale}
-                    />
+                    <Group x={lineX} y={midY} rotation={-90} scaleX={textScale} scaleY={textScale}>
+                        <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                        <Text
+                            x={-20}
+                            y={-8}
+                            width={40}
+                            height={16}
+                            text={dim.label.text}
+                            fontSize={fontSize}
+                            fill={dim.label.color}
+                            fontStyle="bold"
+                            align="center"
+                            verticalAlign="middle"
+                        />
+                    </Group>
                 </Group>
             );
         });
@@ -1948,6 +2116,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     )}
 
                     {isClosed && renderedAreas}
+                    {isClosed && renderedAreaDimensions}
                     {isClosed && renderedMouldingDimensions}
 
                     {/* Measurements & Dimensions */}
@@ -2032,21 +2201,35 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     strokeWidth={1.5 / zoom}
                                 />
 
-                                {!isEditing && (
-                                    <Text
-                                        x={(dimX1 + dimX2) / 2}
-                                        y={(dimY1 + dimY2) / 2}
-                                        text={`${lengthM}m`}
-                                        fontSize={11}
-                                        fill="#1e293b"
-                                        fontStyle="bold"
-                                        offsetX={15}
-                                        offsetY={15}
-                                        rotation={(angle * 180) / Math.PI}
-                                        scaleX={textScale}
-                                        scaleY={textScale}
-                                    />
-                                )}
+                                {!isEditing && (() => {
+                                    let textAngle = (angle * 180) / Math.PI;
+                                    if (textAngle > 90 || textAngle < -90) {
+                                        textAngle += 180;
+                                    }
+                                    return (
+                                        <Group 
+                                            x={(dimX1 + dimX2) / 2} 
+                                            y={(dimY1 + dimY2) / 2} 
+                                            rotation={textAngle} 
+                                            scaleX={textScale} 
+                                            scaleY={textScale}
+                                        >
+                                            <Rect x={-20} y={-8} width={40} height={16} fill="#f8fafc" />
+                                            <Text
+                                                x={-20}
+                                                y={-8}
+                                                width={40}
+                                                height={16}
+                                                text={`${lengthM}m`}
+                                                fontSize={11}
+                                                fill="#1e293b"
+                                                fontStyle="bold"
+                                                align="center"
+                                                verticalAlign="middle"
+                                            />
+                                        </Group>
+                                    );
+                                })()}
                             </Group>
                         );
                     })}
