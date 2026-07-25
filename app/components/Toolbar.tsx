@@ -151,7 +151,7 @@ const UserHeader = memo(
           )}
         </div>
         <div className="p-4 flex items-center justify-between">
-          <div className="flex space-x-[0.5rem] md:space-x-[0.5rem]">
+          <div className="flex space-x-[1rem] md:space-x-[0.5rem]">
             <button
               onClick={isMobile ? undo : reset}
               disabled={isMobile && past.length === 0}
