@@ -113,7 +113,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         selectedDesignAreaId, setSelectedDesignAreaId,
         selectedWallId, setSelectedWallId,
         isSnapEnabled,
-        resizeListGroup
+        resizeListGroup,
+        resizeListLine
     } = useCanvasStore();
 
     const activeWallId = props.wallId || storeActiveWallId;
@@ -147,6 +148,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const [selectedListGroupId, setSelectedListGroupId] = useState<string | null>(null);
     const [resizeListDraft, setResizeListDraft] = useState<{
         groupId: string; x1: number; y1: number; x2: number; y2: number;
+    } | null>(null);
+
+    // Resize state for single-line mouldings
+    const [selectedListLineId, setSelectedListLineId] = useState<string | null>(null);
+    const [resizeLineDraft, setResizeLineDraft] = useState<{
+        id: string; x1: number; y1: number; x2: number; y2: number;
     } | null>(null);
 
     // Dynamic Text Scale: Text grows slightly as you zoom in
@@ -1032,6 +1039,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     removeList(list.id);
                 } else if (interactionMode === 'resize' && list.groupId) {
                     setSelectedListGroupId(list.groupId);
+                    setSelectedListLineId(null);
+                } else if (interactionMode === 'resize' && !list.groupId) {
+                    setSelectedListLineId(list.id);
+                    setSelectedListGroupId(null);
                 }
             }}
         />;
@@ -1666,6 +1677,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
             if (isStage) {
                 setSelectedDesignAreaId(null);
                 setSelectedListGroupId(null);
+                setSelectedListLineId(null);
             }
         } else if (interactionMode === 'place') {
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
@@ -2655,6 +2667,100 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                         }}
                                     />
                                 ))}
+                            </Group>
+                        );
+                    })()}
+
+                    {/* Resize handles for single-line mouldings */}
+                    {interactionMode === 'resize' && !props.readOnly && selectedListLineId && (() => {
+                        const lineSeg = lists.find((l: any) => l.id === selectedListLineId);
+                        if (!lineSeg || lineSeg.groupId) return null;
+
+                        const draft = resizeLineDraft && resizeLineDraft.id === selectedListLineId ? resizeLineDraft : lineSeg;
+                        const { x1, y1, x2, y2 } = draft;
+
+                        const HANDLE_R = 5 / zoom;
+                        const lengthPx = Math.hypot(x2 - x1, y2 - y1);
+                        const lengthM = (lengthPx / SCALE).toFixed(2);
+                        const textScale2 = 1 / Math.pow(zoom, 0.7);
+
+                        const prod = products.find((p: any) => p.id === lineSeg.productId);
+                        const color = prod ? prod.color.replace('0.4', '1') : '#8b5cf6';
+
+                        // Dimension label position (middle of the line)
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2;
+                        const angle = Math.atan2(y2 - y1, x2 - x1);
+                        
+                        // Offset the label slightly so it doesn't overlap the line
+                        const offsetDist = 15 / zoom;
+                        const offsetX = Math.cos(angle - Math.PI / 2) * offsetDist;
+                        const offsetY = Math.sin(angle - Math.PI / 2) * offsetDist;
+
+                        return (
+                            <Group listening={true}>
+                                {/* Live length label */}
+                                <Group x={midX + offsetX} y={midY + offsetY} rotation={angle * (180 / Math.PI)} scaleX={textScale2} scaleY={textScale2}>
+                                    <Rect x={-24} y={-9} width={48} height={18} fill="#f5f3ff" cornerRadius={3} />
+                                    <Text x={-24} y={-9} width={48} height={18}
+                                        text={`${lengthM}m`}
+                                        fontSize={10} fill="#5b21b6" fontStyle="bold"
+                                        align="center" verticalAlign="middle" />
+                                </Group>
+
+                                {/* Drag handle 1 (Start) */}
+                                <Circle
+                                    x={x1} y={y1} radius={HANDLE_R * 1.5}
+                                    fill="white" stroke={color} strokeWidth={1.5 / zoom}
+                                    draggable
+                                    onMouseEnter={(e: any) => { e.target.getStage().container().style.cursor = 'move'; }}
+                                    onMouseLeave={(e: any) => { e.target.getStage().container().style.cursor = 'default'; }}
+                                    onDragMove={(e: any) => {
+                                        e.cancelBubble = true;
+                                        const px = e.target.x();
+                                        const py = e.target.y();
+                                        setResizeLineDraft({ id: lineSeg.id, x1: px, y1: py, x2, y2 });
+                                        useCanvasStore.getState().resizeListLine(lineSeg.id, px, py, x2, y2, false);
+                                    }}
+                                    onDragEnd={(e: any) => {
+                                        e.cancelBubble = true;
+                                        if (resizeLineDraft && resizeLineDraft.id === lineSeg.id) {
+                                            useCanvasStore.getState().resizeListLine(
+                                                resizeLineDraft.id,
+                                                resizeLineDraft.x1, resizeLineDraft.y1,
+                                                resizeLineDraft.x2, resizeLineDraft.y2, true
+                                            );
+                                        }
+                                        setResizeLineDraft(null);
+                                    }}
+                                />
+                                
+                                {/* Drag handle 2 (End) */}
+                                <Circle
+                                    x={x2} y={y2} radius={HANDLE_R * 1.5}
+                                    fill="white" stroke={color} strokeWidth={1.5 / zoom}
+                                    draggable
+                                    onMouseEnter={(e: any) => { e.target.getStage().container().style.cursor = 'move'; }}
+                                    onMouseLeave={(e: any) => { e.target.getStage().container().style.cursor = 'default'; }}
+                                    onDragMove={(e: any) => {
+                                        e.cancelBubble = true;
+                                        const px = e.target.x();
+                                        const py = e.target.y();
+                                        setResizeLineDraft({ id: lineSeg.id, x1, y1, x2: px, y2: py });
+                                        useCanvasStore.getState().resizeListLine(lineSeg.id, x1, y1, px, py, false);
+                                    }}
+                                    onDragEnd={(e: any) => {
+                                        e.cancelBubble = true;
+                                        if (resizeLineDraft && resizeLineDraft.id === lineSeg.id) {
+                                            useCanvasStore.getState().resizeListLine(
+                                                resizeLineDraft.id,
+                                                resizeLineDraft.x1, resizeLineDraft.y1,
+                                                resizeLineDraft.x2, resizeLineDraft.y2, true
+                                            );
+                                        }
+                                        setResizeLineDraft(null);
+                                    }}
+                                />
                             </Group>
                         );
                     })()}

@@ -167,6 +167,7 @@ type CanvasState = {
     updateList: (x: number, y: number) => void;
     finishList: () => void;
     removeList: (id: string) => void;
+    resizeListLine: (id: string, x1: number, y1: number, x2: number, y2: number, saveHistory?: boolean) => void;
 
     // History Actions
     undo: () => void;
@@ -885,6 +886,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 }));
                 return { ...w, lists: [...others, ...updated] };
             })
+        }));
+    },
+
+    resizeListLine: (id, x1, y1, x2, y2, saveHistory = true) => {
+        if (saveHistory) get()._saveHistory();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? { ...w, lists: w.lists.map(l => l.id === id ? { ...l, x1, y1, x2, y2 } : l) }
+                    : w
+            )
         }));
     },
 
