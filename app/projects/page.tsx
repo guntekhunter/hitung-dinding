@@ -114,10 +114,8 @@ export default function ProjectsPage() {
               Loading projects...
             </div>
           ) : projects.length === 0 ? (
-            <div className="text-center text-gray-400 py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed shadow-sm">
-              <p className="text-base font-medium text-gray-600">
-                Belum ada Proyek
-              </p>
+            <div className="text-center py-12 rounded-xl">
+              <p className="text-base font-medium">Belum ada Proyek</p>
               <p className="text-sm mt-1">
                 Silahkan buat proyek dulu untuk lihat proyekmu disini
               </p>
