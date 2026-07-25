@@ -45,7 +45,7 @@ export default function LoginPage() {
             const companyInfo = await getUserCompany(userProfile.company_id);
 
             setSession(userProfile, companyInfo);
-            router.push("/");
+            router.push("/wall-editor");
         } catch (err: any) {
             console.error("Login process error:", err);
             const errorMessage =
@@ -63,7 +63,7 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f5f5] px-4 py-8">
-            <div className="w-full max-w-[600px] bg-white rounded-md shadow-sm border border-gray-100 p-8 sm:p-12">
+            <div className="w-full max-w-150 bg-white rounded-md shadow-sm border border-gray-100 p-8 sm:p-12">
                 <div className="text-center mb-10">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">
                         Login
