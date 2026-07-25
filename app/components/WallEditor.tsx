@@ -1,7 +1,7 @@
 'use client';
 import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 export const dynamic = 'force-static';
-import { Stage, Layer, Line, Circle, Text, Group, Rect, Label, Tag } from 'react-konva';
+import { Stage, Layer, Line, Circle, Text, Group, Rect, Label, Tag, Transformer } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { usePathname } from 'next/navigation';
 
@@ -136,6 +136,21 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const [mounted, setMounted] = useState(false);
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const trRef = useRef<any>(null);
+
+    // Attach transformer when in resize mode
+    useEffect(() => {
+        if (interactionMode === 'resize' && selectedDesignAreaId && stageRef.current) {
+            const node = stageRef.current.findOne('#' + selectedDesignAreaId);
+            if (node && trRef.current) {
+                trRef.current.nodes([node]);
+                trRef.current.getLayer().batchDraw();
+            }
+        } else if (trRef.current) {
+            trRef.current.nodes([]);
+            trRef.current.getLayer().batchDraw();
+        }
+    }, [interactionMode, selectedDesignAreaId]);
 
     // Dynamic Text Scale: Text grows slightly as you zoom in
     const textScale = 1 / Math.pow(zoom, 0.7);
@@ -778,6 +793,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
         return (
             <Group
+                id={area.id}
                 x={area.x}
                 y={area.y}
                 draggable={!readOnly && interactionMode !== 'list'}
@@ -795,6 +811,26 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 onDragEnd={readOnly ? undefined : (e) => {
                     onSaveHistory();
                     onMove(area.id, e.target.x(), e.target.y());
+                }}
+                onTransformEnd={(e) => {
+                    const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    
+                    // Reset scale to 1 and apply to width/height instead
+                    node.scaleX(1);
+                    node.scaleY(1);
+                    
+                    const newWidth = Math.max(5, area.width * scaleX);
+                    const newHeight = Math.max(5, area.height * scaleY);
+                    
+                    useCanvasStore.getState().resizeDesignArea(
+                        area.id,
+                        node.x(),
+                        node.y(),
+                        newWidth,
+                        newHeight
+                    );
                 }}
             >
                 <Rect
@@ -982,7 +1018,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
             selectedWallId={selectedWallId}
             setSelectedWallId={setSelectedWallId}
             wallId={activeWallId}
-            onClick={() => interactionMode === 'delete' && removeDesignArea(area.id)}
+            onClick={() => {
+                if (interactionMode === 'delete') {
+                    removeDesignArea(area.id);
+                } else if (interactionMode === 'resize') {
+                    setSelectedDesignAreaId(area.id);
+                }
+            }}
         />;
     };
 
@@ -1621,6 +1663,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         if (!isClosed) {
             if (isWallLocked) return; // Prevent adding points when locked
             addPoint(pos.x, pos.y);
+        } else if (interactionMode === 'resize') {
+            if (isStage) {
+                setSelectedDesignAreaId(null);
+            }
         } else if (interactionMode === 'place') {
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
             if (!selectedProduct) return;
@@ -2338,6 +2384,19 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             </Group>
                         );
                     })}
+
+                    {interactionMode === 'resize' && !props.readOnly && (
+                        <Transformer 
+                            ref={trRef} 
+                            boundBoxFunc={(oldBox, newBox) => {
+                                // Limit resize to a minimum size
+                                if (newBox.width < 10 || newBox.height < 10) {
+                                    return oldBox;
+                                }
+                                return newBox;
+                            }}
+                        />
+                    )}
                 </Layer>
             </Stage>
 

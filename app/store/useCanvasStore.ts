@@ -89,7 +89,7 @@ type CanvasState = {
     setProductColor: (productId: string, color: string) => void;
 
     // Interaction mode
-    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan';
+    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan' | 'resize';
 
     // Product state
     selectedProductId: string;
@@ -143,13 +143,14 @@ type CanvasState = {
 
     // Product actions
     setSelectedProduct: (id: string) => void;
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan') => void;
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan' | 'resize') => void;
 
     // Area Actions
     startDesignArea: (x: number, y: number) => void;
     updateDesignArea: (x: number, y: number) => void;
     finishDesignArea: () => void;
     moveDesignArea: (id: string, x: number, y: number) => void;
+    resizeDesignArea: (id: string, x: number, y: number, width: number, height: number) => void;
     removeDesignArea: (id: string) => void;
     clearDesignAreas: () => void;
 
@@ -667,7 +668,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan') => set({ interactionMode: mode }),
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan' | 'resize') => set({ interactionMode: mode }),
 
     startDesignArea: (x, y) => {
         const { selectedProductId } = get();
@@ -872,18 +873,37 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     moveDesignArea: (id, x, y) => {
-        const { activeWallId } = get();
+        get()._saveHistory();
         set((state) => ({
             walls: state.walls.map(w =>
-                w.id === activeWallId
+                w.id === state.activeWallId
                     ? {
                         ...w,
-                        designAreas: w.designAreas.map(a => a.id === id ? { ...a, x, y } : a)
+                        designAreas: w.designAreas.map(a =>
+                            a.id === id ? { ...a, x, y } : a
+                        )
                     }
                     : w
             )
         }));
     },
+
+    resizeDesignArea: (id, x, y, width, height) => {
+        get()._saveHistory();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? {
+                        ...w,
+                        designAreas: w.designAreas.map(a =>
+                            a.id === id ? { ...a, x, y, width, height } : a
+                        )
+                    }
+                    : w
+            )
+        }));
+    },
+
     removeDesignArea: (id) => {
         set((state) => ({
             past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],

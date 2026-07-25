@@ -39,6 +39,7 @@ import {
   ImagePlus,
   LayoutTemplate,
   Magnet,
+  Scaling,
 } from "lucide-react";
 
 // --- Split into smaller memoized components to prevent global re-renders ---
@@ -150,7 +151,7 @@ const UserHeader = memo(
           )}
         </div>
         <div className="p-4 flex items-center justify-between">
-          <div className="flex space-x-[0.5rem] md:space-x-[0.75rem]">
+          <div className="flex space-x-[0.5rem] md:space-x-[0.5rem]">
             <button
               onClick={isMobile ? undo : reset}
               disabled={isMobile && past.length === 0}
@@ -158,9 +159,9 @@ const UserHeader = memo(
               title={isMobile ? "Undo" : "Clear All"}
             >
               {isMobile ? (
-                <Undo className="w-[1rem]" />
+                <Undo className="w-[.8rem]" />
               ) : (
-                <RotateCcw className="w-[1rem]" />
+                <RotateCcw className="w-[.8rem]" />
               )}
             </button>
             {!isMobile && (
@@ -170,7 +171,7 @@ const UserHeader = memo(
                 className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Undo"
               >
-                <Undo className="w-[1rem]" />
+                <Undo className="w-[.8rem]" />
               </button>
             )}
             <button
@@ -180,9 +181,9 @@ const UserHeader = memo(
               title={isWallLocked ? "Unlock" : "Lock"}
             >
               {isWallLocked ? (
-                <Lock className="w-[1rem]" />
+                <Lock className="w-[.8rem]" />
               ) : (
-                <Unlock className="w-[1rem]" />
+                <Unlock className="w-[.8rem]" />
               )}
             </button>
             <button
@@ -190,21 +191,28 @@ const UserHeader = memo(
               className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${isSnapEnabled ? "bg-slate-700 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title={isSnapEnabled ? "Snap On" : "Snap Off"}
             >
-              <Magnet className="w-[1rem]" />
+              <Magnet className="w-[.8rem]" />
             </button>
             <button
               onClick={() => setInteractionMode("pan")}
               className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "pan" ? "bg-slate-800 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title="Pan Mode"
             >
-              <Move className="w-[1rem]" />
+              <Move className="w-[.8rem]" />
+            </button>
+            <button
+              onClick={() => setInteractionMode("resize")}
+              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "resize" ? "bg-slate-800 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              title="Resize Mode"
+            >
+              <Scaling className="w-[.8rem]" />
             </button>
             <button
               onClick={() => setInteractionMode("delete")}
               className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "delete" ? "bg-rose-600 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title="Delete"
             >
-              <Trash2 className="w-[1rem]" />
+              <Trash2 className="w-[.8rem]" />
             </button>
             {/* mockup */}
             <button
@@ -212,7 +220,7 @@ const UserHeader = memo(
               className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
               title="Mockup"
             >
-              <ImagePlus className="w-[1rem]" />
+              <ImagePlus className="w-[.8rem]" />
             </button>
           </div>
         </div>
@@ -1393,19 +1401,24 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                         <div key={productId} className="flex flex-col gap-1.5">
                           {/* PVC Panel */}
                           {(() => {
-                            const breakdown = p.optimization?.panelsByGroup || {};
+                            const breakdown =
+                              p.optimization?.panelsByGroup || {};
                             const groups = Object.keys(breakdown);
 
                             if (groups.length > 0) {
                               return (
                                 <>
-                                  {groups.map(groupName => {
+                                  {groups.map((groupName) => {
                                     const panels = breakdown[groupName];
                                     if (panels <= 0) return null;
                                     return (
-                                      <div key={groupName} className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                      <div
+                                        key={groupName}
+                                        className="flex items-center gap-4 text-[.8rem] text-[#303030]"
+                                      >
                                         <span>
-                                          Plafon {p.length}m ({groupName}) - {w.name}
+                                          Plafon {p.length}m ({groupName}) -{" "}
+                                          {w.name}
                                         </span>
                                         <span className="font-bold">
                                           {panels} Lembar
