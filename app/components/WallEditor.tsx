@@ -1,7 +1,7 @@
 'use client';
 import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 export const dynamic = 'force-static';
-import { Stage, Layer, Line, Circle, Text, Group, Rect, Label, Tag, Transformer } from 'react-konva';
+import { Stage, Layer, Line, Circle, Text, Group, Rect, Label, Tag } from 'react-konva';
 import { useCanvasStore, SCALE, DesignArea, Product } from '../store/useCanvasStore';
 import { usePathname } from 'next/navigation';
 
@@ -136,21 +136,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const [mounted, setMounted] = useState(false);
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
-    const trRef = useRef<any>(null);
 
-    // Attach transformer when in resize mode
-    useEffect(() => {
-        if (interactionMode === 'resize' && selectedDesignAreaId && stageRef.current) {
-            const node = stageRef.current.findOne('#' + selectedDesignAreaId);
-            if (node && trRef.current) {
-                trRef.current.nodes([node]);
-                trRef.current.getLayer().batchDraw();
-            }
-        } else if (trRef.current) {
-            trRef.current.nodes([]);
-            trRef.current.getLayer().batchDraw();
-        }
-    }, [interactionMode, selectedDesignAreaId]);
+    // Resize state for drag-handle based resizing
+    const [resizeDraft, setResizeDraft] = useState<{
+        id: string; x: number; y: number; width: number; height: number;
+    } | null>(null);
 
     // Dynamic Text Scale: Text grows slightly as you zoom in
     const textScale = 1 / Math.pow(zoom, 0.7);
@@ -812,26 +802,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     onSaveHistory();
                     onMove(area.id, e.target.x(), e.target.y());
                 }}
-                onTransformEnd={(e) => {
-                    const node = e.target;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    
-                    // Reset scale to 1 and apply to width/height instead
-                    node.scaleX(1);
-                    node.scaleY(1);
-                    
-                    const newWidth = Math.max(5, area.width * scaleX);
-                    const newHeight = Math.max(5, area.height * scaleY);
-                    
-                    useCanvasStore.getState().resizeDesignArea(
-                        area.id,
-                        node.x(),
-                        node.y(),
-                        newWidth,
-                        newHeight
-                    );
-                }}
             >
                 <Rect
                     name="design-area"
@@ -843,7 +813,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
                     fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
                     stroke={
-                        isSelected
+                        (isSelected && interactionMode === 'resize')
                             ? "#7B6DED"
                             : isWallSelected && readOnly
                                 ? "#22c55e"
@@ -852,7 +822,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     : isColoringMode ? "transparent" : "#1e293b"
                     }
                     strokeWidth={
-                        isSelected
+                        (isSelected && interactionMode === 'resize')
                             ? 4 / zoom
                             : isWallSelected && readOnly
                                 ? 2 / zoom
@@ -863,6 +833,15 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     dash={isWallSelected && !isSelected && readOnly ? [6 / zoom, 3 / zoom] : undefined}
                     onClick={handleClick}
                     onTap={handleClick}
+                    onMouseDown={(e) => {
+                        // Directly select the area when clicking in resize mode
+                        if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
+                            e.cancelBubble = true;
+                            setSelectedDesignAreaId(area.id);
+                        } else {
+                            handleClick();
+                        }
+                    }}
                     onMouseEnter={(e: any) => {
                         const container = e.target.getStage()?.container();
                         if (container) container.style.cursor = readOnly ? 'pointer' : 'move';
@@ -2385,18 +2364,148 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         );
                     })}
 
-                    {interactionMode === 'resize' && !props.readOnly && (
-                        <Transformer 
-                            ref={trRef} 
-                            boundBoxFunc={(oldBox, newBox) => {
-                                // Limit resize to a minimum size
-                                if (newBox.width < 10 || newBox.height < 10) {
-                                    return oldBox;
-                                }
-                                return newBox;
-                            }}
-                        />
-                    )}
+                    {/* Custom resize handles when in resize mode */}
+                    {interactionMode === 'resize' && !props.readOnly && (() => {
+                        const area = designAreas.find((a: any) => a.id === selectedDesignAreaId);
+                        if (!area || !('productId' in area)) return null;
+
+                        // Use live draft if dragging, else committed area
+                        const draft = resizeDraft && resizeDraft.id === area.id ? resizeDraft : {
+                            id: area.id, x: area.x, y: area.y,
+                            width: area.width, height: area.height
+                        };
+
+                        const { x, y, width: w, height: h } = draft;
+
+                        // 8 handle positions: [cx, cy, cursor, dx, dy] where dx/dy indicate which edges move
+                        const HANDLE_R = 5 / zoom;
+                        const handles = [
+                            // corners
+                            { pos: [x, y],         cur: 'nw-resize', name: 'nw' },
+                            { pos: [x + w, y],     cur: 'ne-resize', name: 'ne' },
+                            { pos: [x, y + h],     cur: 'sw-resize', name: 'sw' },
+                            { pos: [x + w, y + h], cur: 'se-resize', name: 'se' },
+                            // edges
+                            { pos: [x + w/2, y],     cur: 'n-resize', name: 'n' },
+                            { pos: [x + w/2, y + h], cur: 's-resize', name: 's' },
+                            { pos: [x, y + h/2],     cur: 'w-resize', name: 'w' },
+                            { pos: [x + w, y + h/2], cur: 'e-resize', name: 'e' },
+                        ];
+
+                        const dimOffset = 22 / zoom;
+                        const tickLen = 4 / zoom;
+                        const absW = Math.abs(w);
+                        const absH = Math.abs(h);
+                        const textScale2 = 1 / Math.pow(zoom, 0.7);
+
+                        return (
+                            <Group listening={true}>
+                                {/* Dashed border around selected panel */}
+                                <Rect
+                                    x={x} y={y} width={w} height={h}
+                                    stroke="#7B6DED"
+                                    strokeWidth={1.5 / zoom}
+                                    dash={[6 / zoom, 4 / zoom]}
+                                    fill="transparent"
+                                    listening={false}
+                                />
+
+                                {/* Live dimension labels */}
+                                {/* Width below */}
+                                <Group x={x} y={y + h + dimOffset} listening={false}>
+                                    <Line points={[0, 0, w, 0]} stroke="#7B6DED" strokeWidth={0.8 / zoom} />
+                                    <Line points={[0, tickLen, 0, -tickLen]} stroke="#7B6DED" strokeWidth={1 / zoom} />
+                                    <Line points={[w, tickLen, w, -tickLen]} stroke="#7B6DED" strokeWidth={1 / zoom} />
+                                    <Group x={w/2} y={0} scaleX={textScale2} scaleY={textScale2}>
+                                        <Rect x={-24} y={-9} width={48} height={18} fill="#ede9fe" cornerRadius={3} />
+                                        <Text x={-24} y={-9} width={48} height={18}
+                                            text={`${(absW / SCALE).toFixed(2)}m`}
+                                            fontSize={10} fill="#5b21b6" fontStyle="bold"
+                                            align="center" verticalAlign="middle" />
+                                    </Group>
+                                </Group>
+                                {/* Height right */}
+                                <Group x={x + w + dimOffset} y={y} listening={false}>
+                                    <Line points={[0, 0, 0, h]} stroke="#7B6DED" strokeWidth={0.8 / zoom} />
+                                    <Line points={[-tickLen, 0, tickLen, 0]} stroke="#7B6DED" strokeWidth={1 / zoom} />
+                                    <Line points={[-tickLen, h, tickLen, h]} stroke="#7B6DED" strokeWidth={1 / zoom} />
+                                    <Group x={0} y={h/2} rotation={90} scaleX={textScale2} scaleY={textScale2}>
+                                        <Rect x={-24} y={-9} width={48} height={18} fill="#ede9fe" cornerRadius={3} />
+                                        <Text x={-24} y={-9} width={48} height={18}
+                                            text={`${(absH / SCALE).toFixed(2)}m`}
+                                            fontSize={10} fill="#5b21b6" fontStyle="bold"
+                                            align="center" verticalAlign="middle" />
+                                    </Group>
+                                </Group>
+
+                                {/* Drag handles */}
+                                {handles.map(({ pos, cur, name }) => (
+                                    <Rect
+                                        key={name}
+                                        x={pos[0] - HANDLE_R}
+                                        y={pos[1] - HANDLE_R}
+                                        width={HANDLE_R * 2}
+                                        height={HANDLE_R * 2}
+                                        fill="white"
+                                        stroke="#7B6DED"
+                                        strokeWidth={1.5 / zoom}
+                                        draggable
+                                        onMouseEnter={(e: any) => {
+                                            e.target.getStage().container().style.cursor = cur;
+                                        }}
+                                        onMouseLeave={(e: any) => {
+                                            e.target.getStage().container().style.cursor = 'default';
+                                        }}
+                                        onDragMove={(e: any) => {
+                                            e.cancelBubble = true;
+                                            const px = e.target.x() + HANDLE_R;
+                                            const py = e.target.y() + HANDLE_R;
+
+                                            const current = resizeDraft && resizeDraft.id === area.id ? resizeDraft : {
+                                                id: area.id, x: area.x, y: area.y,
+                                                width: area.width, height: area.height
+                                            };
+
+                                            let nx = current.x, ny = current.y;
+                                            let nw = current.width, nh = current.height;
+                                            const MIN = 10;
+
+                                            if (name === 'nw') { nx = px; ny = py; nw = (current.x + current.width) - px; nh = (current.y + current.height) - py; }
+                                            else if (name === 'ne') { ny = py; nw = px - current.x; nh = (current.y + current.height) - py; }
+                                            else if (name === 'sw') { nx = px; nw = (current.x + current.width) - px; nh = py - current.y; }
+                                            else if (name === 'se') { nw = px - current.x; nh = py - current.y; }
+                                            else if (name === 'n')  { ny = py; nh = (current.y + current.height) - py; }
+                                            else if (name === 's')  { nh = py - current.y; }
+                                            else if (name === 'w')  { nx = px; nw = (current.x + current.width) - px; }
+                                            else if (name === 'e')  { nw = px - current.x; }
+
+                                            if (nw < MIN) { if (name.includes('w')) nx = current.x + current.width - MIN; nw = MIN; }
+                                            if (nh < MIN) { if (name.includes('n')) ny = current.y + current.height - MIN; nh = MIN; }
+
+                                            const newDraft = { id: area.id, x: nx, y: ny, width: nw, height: nh };
+                                            setResizeDraft(newDraft);
+                                            // Realtime update to store without history spam
+                                            useCanvasStore.getState().resizeDesignArea(area.id, nx, ny, nw, nh, false);
+                                        }}
+                                        onDragEnd={(e: any) => {
+                                            e.cancelBubble = true;
+                                            // Reset handle position (we handle coords manually)
+                                            e.target.x(pos[0] - HANDLE_R);
+                                            e.target.y(pos[1] - HANDLE_R);
+                                            // Commit with history
+                                            if (resizeDraft && resizeDraft.id === area.id) {
+                                                useCanvasStore.getState().resizeDesignArea(
+                                                    resizeDraft.id, resizeDraft.x, resizeDraft.y,
+                                                    resizeDraft.width, resizeDraft.height, true
+                                                );
+                                            }
+                                            setResizeDraft(null);
+                                        }}
+                                    />
+                                ))}
+                            </Group>
+                        );
+                    })()}
                 </Layer>
             </Stage>
 

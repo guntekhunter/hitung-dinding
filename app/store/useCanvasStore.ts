@@ -150,7 +150,7 @@ type CanvasState = {
     updateDesignArea: (x: number, y: number) => void;
     finishDesignArea: () => void;
     moveDesignArea: (id: string, x: number, y: number) => void;
-    resizeDesignArea: (id: string, x: number, y: number, width: number, height: number) => void;
+    resizeDesignArea: (id: string, x: number, y: number, width: number, height: number, saveHistory?: boolean) => void;
     removeDesignArea: (id: string) => void;
     clearDesignAreas: () => void;
 
@@ -888,8 +888,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         }));
     },
 
-    resizeDesignArea: (id, x, y, width, height) => {
-        get()._saveHistory();
+    resizeDesignArea: (id, x, y, width, height, saveHistory = true) => {
+        if (saveHistory) {
+            get()._saveHistory();
+        }
         set((state) => ({
             walls: state.walls.map(w =>
                 w.id === state.activeWallId
