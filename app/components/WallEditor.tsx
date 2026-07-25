@@ -856,6 +856,14 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             handleClick();
                         }
                     }}
+                    onTouchStart={(e) => {
+                        if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
+                            e.cancelBubble = true;
+                            setSelectedDesignAreaId(area.id);
+                        } else {
+                            handleClick();
+                        }
+                    }}
                     onMouseEnter={(e: any) => {
                         const container = e.target.getStage()?.container();
                         if (container) container.style.cursor = readOnly ? 'pointer' : 'move';
@@ -986,6 +994,18 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     lineCap="square"
                     onClick={onClick}
                     onTap={onClick}
+                    onMouseDown={(e) => {
+                        if (onClick) {
+                            e.cancelBubble = true;
+                            onClick(e);
+                        }
+                    }}
+                    onTouchStart={(e) => {
+                        if (onClick) {
+                            e.cancelBubble = true;
+                            onClick(e);
+                        }
+                    }}
                 />
             </Group>
         );
