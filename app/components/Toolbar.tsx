@@ -67,7 +67,7 @@ const UserHeader = memo(
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     return (
-      <div className="bg-white border-b border-slate-100 flex flex-col shrink-0 border-b border-slate-100">
+      <div className="bg-white border-b border-slate-100 flex flex-col shrink-0 border-b border-slate-100 text-black">
         <div className="p-4 flex justify-between items-center border-b border-slate-50 relative">
           {/* User Dropdown Trigger */}
           {/* User Dropdown Trigger */}
