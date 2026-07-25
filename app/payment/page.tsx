@@ -70,6 +70,10 @@ export default function PaymentPage() {
         return;
       }
 
+      // Save credentials temporarily so we can auto-login after successful payment
+      sessionStorage.setItem("pendingPaymentEmail", form.email);
+      sessionStorage.setItem("pendingPaymentPassword", form.password);
+
       // Redirect to Duitku payment page
       window.location.href = data.paymentUrl;
     } catch {

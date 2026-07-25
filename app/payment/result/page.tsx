@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { signInUser, getCurrentUser, getUserCompany } from "../../utils/auth";
+import { useAuthStore } from "../../store/useAuthStore";
 
 type OrderStatus = "PENDING" | "PAID" | "FAILED" | "EXPIRED" | null;
 
@@ -25,12 +27,16 @@ function formatRupiah(amount: number) {
 export default function PaymentResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const setSession = useAuthStore((state) => state.setSession);
   const orderId = searchParams.get("id");
+  // Duitku passes these in the returnUrl
+  const resultCode = searchParams.get("resultCode");
+  const reference = searchParams.get("reference") ?? "";
 
   const [orderData, setOrderData] = useState<OrderData>({ status: null });
   const [dots, setDots] = useState(".");
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const didRedirect = useRef(false);
 
   // Animated dots for the loading state
   useEffect(() => {
@@ -40,11 +46,58 @@ export default function PaymentResultPage() {
     return () => clearInterval(d);
   }, []);
 
+  // Redirect to wall-editor once payment is confirmed PAID
+  useEffect(() => {
+    if (orderData.status === "PAID" && !didRedirect.current) {
+      didRedirect.current = true;
+      
+      const autoLogin = async () => {
+        try {
+          const email = sessionStorage.getItem("pendingPaymentEmail");
+          const password = sessionStorage.getItem("pendingPaymentPassword");
+          
+          if (email && password) {
+            // Auto login user
+            const authResponse = await signInUser(email, password);
+            const userId = authResponse.user?.id;
+            
+            if (userId) {
+              const userProfile = await getCurrentUser(userId);
+              if (userProfile.company_id) {
+                const companyInfo = await getUserCompany(userProfile.company_id);
+                setSession(userProfile, companyInfo);
+              }
+            }
+            
+            // Clear credentials
+            sessionStorage.removeItem("pendingPaymentEmail");
+            sessionStorage.removeItem("pendingPaymentPassword");
+          }
+        } catch (err) {
+          console.error("Auto login failed:", err);
+        } finally {
+          // Small delay so user sees the success flash before redirect
+          setTimeout(() => {
+            router.push("/wall-editor");
+          }, 2000);
+        }
+      };
+      
+      autoLogin();
+    }
+  }, [orderData.status, router, setSession]);
+
   useEffect(() => {
     if (!orderId) return;
 
     async function fetchStatus() {
-      const res = await fetch(`/api/payment/status?id=${orderId}`);
+      // Pass resultCode & reference from Duitku's returnUrl so the server
+      // can immediately process the payment without needing transactionStatus
+      const params = new URLSearchParams({ id: orderId! });
+      if (resultCode) params.set("resultCode", resultCode);
+      if (reference) params.set("reference", reference);
+
+      const res = await fetch(`/api/payment/status?${params.toString()}`);
       if (!res.ok) return;
       const data: OrderData = await res.json();
       setOrderData(data);
@@ -59,7 +112,7 @@ export default function PaymentResultPage() {
       }
     }
 
-    // Immediate fetch
+    // Immediate fetch on mount
     fetchStatus();
 
     // Then poll every 3 seconds
@@ -68,7 +121,7 @@ export default function PaymentResultPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [orderId]);
+  }, [orderId, resultCode, reference]);
 
   // ── UI States ────────────────────────────────────────────────────────────
 
@@ -90,50 +143,14 @@ export default function PaymentResultPage() {
     );
   }
 
-  // ─── PENDING ──────────────────────────────────────────────────────────────
-  if (orderData.status === null || orderData.status === "PENDING") {
-    return (
-      <div className="min-h-screen bg-[#F7F6FF] flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl p-10 shadow-sm max-w-md w-full text-center border border-[#E8E3FF]">
-          {/* Spinner */}
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full border-4 border-[#E8E3FF] border-t-[#7B6DED] animate-spin" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-800">
-            Menunggu Pembayaran{dots}
-          </h1>
-          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            Selesaikan pembayaran di halaman Duitku. Halaman ini akan otomatis
-            terupdate setelah pembayaran dikonfirmasi.
-          </p>
-          <div className="mt-6 bg-[#F7F6FF] rounded-xl p-4 text-left space-y-2">
-            <p className="text-xs text-gray-500">
-              <span className="font-medium text-gray-700">Order ID:</span>{" "}
-              <span className="font-mono">{orderId}</span>
-            </p>
-            {orderData.amount && (
-              <p className="text-xs text-gray-500">
-                <span className="font-medium text-gray-700">Total:</span>{" "}
-                {formatRupiah(orderData.amount)}
-              </p>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 mt-4">
-            Mengecek status setiap 3 detik…
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── PAID ─────────────────────────────────────────────────────────────────
+  // ─── PAID (brief success flash before redirect) ────────────────────────────
   if (orderData.status === "PAID") {
     return (
       <div className="min-h-screen bg-[#F7F6FF] flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl p-10 shadow-sm max-w-md w-full text-center border border-[#E8E3FF]">
           {/* Success icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-[#E8F8F0] flex items-center justify-center animate-[pop_0.4s_ease-out]">
+            <div className="w-20 h-20 rounded-full bg-[#E8F8F0] flex items-center justify-center animate-bounce">
               <svg
                 className="w-10 h-10 text-[#22C55E]"
                 fill="none"
@@ -154,9 +171,7 @@ export default function PaymentResultPage() {
             ✅ Pembayaran Berhasil!
           </h1>
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            Akun <strong>Rapi Studio PRO</strong> kamu sudah dibuat dan aktif
-            selama 1 tahun. Silakan masuk dengan email & password yang kamu
-            daftarkan tadi.
+            Menyiapkan akun dan mengalihkan ke halaman wall editor…
           </p>
 
           <div className="mt-6 bg-[#F7F6FF] rounded-xl p-4 text-left space-y-2">
@@ -179,11 +194,46 @@ export default function PaymentResultPage() {
           </div>
 
           <Link
-            href="/login"
+            href="/wall-editor"
             className="mt-8 inline-block bg-[#7B6DED] text-white px-8 py-3 rounded-full text-sm font-semibold hover:bg-[#6B5CE7] transition-colors shadow-md shadow-[#7B6DED]/30"
           >
-            Masuk ke Akun →
+            Buka Wall Editor →
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PENDING ──────────────────────────────────────────────────────────────
+  if (orderData.status === null || orderData.status === "PENDING") {
+    return (
+      <div className="min-h-screen bg-[#F7F6FF] flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-10 shadow-sm max-w-md w-full text-center border border-[#E8E3FF]">
+          {/* Spinner */}
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full border-4 border-[#E8E3FF] border-t-[#7B6DED] animate-spin" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-800">
+            Menunggu Konfirmasi{dots}
+          </h1>
+          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+            Pembayaran sedang diproses. Halaman ini akan otomatis terupdate.
+          </p>
+          <div className="mt-6 bg-[#F7F6FF] rounded-xl p-4 text-left space-y-2">
+            <p className="text-xs text-gray-500">
+              <span className="font-medium text-gray-700">Order ID:</span>{" "}
+              <span className="font-mono">{orderId}</span>
+            </p>
+            {orderData.amount && (
+              <p className="text-xs text-gray-500">
+                <span className="font-medium text-gray-700">Total:</span>{" "}
+                {formatRupiah(orderData.amount)}
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mt-4">
+            Mengecek status setiap 3 detik…
+          </p>
         </div>
       </div>
     );
