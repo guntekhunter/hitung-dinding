@@ -112,7 +112,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         products, isExporting, isColoringPreview,
         selectedDesignAreaId, setSelectedDesignAreaId,
         selectedWallId, setSelectedWallId,
-        isSnapEnabled
+        isSnapEnabled,
+        resizeListGroup
     } = useCanvasStore();
 
     const activeWallId = props.wallId || storeActiveWallId;
@@ -137,9 +138,15 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Resize state for drag-handle based resizing
+    // Resize state for drag-handle based resizing (panels)
     const [resizeDraft, setResizeDraft] = useState<{
         id: string; x: number; y: number; width: number; height: number;
+    } | null>(null);
+
+    // Resize state for rectangle moulding groups
+    const [selectedListGroupId, setSelectedListGroupId] = useState<string | null>(null);
+    const [resizeListDraft, setResizeListDraft] = useState<{
+        groupId: string; x1: number; y1: number; x2: number; y2: number;
     } | null>(null);
 
     // Dynamic Text Scale: Text grows slightly as you zoom in
@@ -1014,7 +1021,20 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     const renderListContent = (list: any) => {
         const product = products.find(p => p.id === list.productId);
-        return <MemoizedListContent list={list} product={product} zoom={zoom} textScale={textScale} isExporting={shouldHideText} onClick={() => interactionMode === 'delete' && removeList(list.id)} />;
+        return <MemoizedListContent
+            list={list}
+            product={product}
+            zoom={zoom}
+            textScale={textScale}
+            isExporting={shouldHideText}
+            onClick={() => {
+                if (interactionMode === 'delete') {
+                    removeList(list.id);
+                } else if (interactionMode === 'resize' && list.groupId) {
+                    setSelectedListGroupId(list.groupId);
+                }
+            }}
+        />;
     };
 
     const wallCenter = useMemo(() => ({
@@ -1645,6 +1665,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         } else if (interactionMode === 'resize') {
             if (isStage) {
                 setSelectedDesignAreaId(null);
+                setSelectedListGroupId(null);
             }
         } else if (interactionMode === 'place') {
             const selectedProduct = products.find(p => p.id === useCanvasStore.getState().selectedProductId);
@@ -2500,6 +2521,137 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                                 );
                                             }
                                             setResizeDraft(null);
+                                        }}
+                                    />
+                                ))}
+                            </Group>
+                        );
+                    })()}
+
+                    {/* Resize handles for rectangle moulding groups */}
+                    {interactionMode === 'resize' && !props.readOnly && selectedListGroupId && (() => {
+                        const groupSegs = lists.filter((l: any) => l.groupId === selectedListGroupId);
+                        if (groupSegs.length < 4) return null;
+
+                        // Compute bounding box from live draft or committed segments
+                        let bx1: number, by1: number, bx2: number, by2: number;
+                        if (resizeListDraft && resizeListDraft.groupId === selectedListGroupId) {
+                            bx1 = resizeListDraft.x1; by1 = resizeListDraft.y1;
+                            bx2 = resizeListDraft.x2; by2 = resizeListDraft.y2;
+                        } else {
+                            const xs = groupSegs.flatMap((l: any) => [l.x1, l.x2]);
+                            const ys = groupSegs.flatMap((l: any) => [l.y1, l.y2]);
+                            bx1 = Math.min(...xs); by1 = Math.min(...ys);
+                            bx2 = Math.max(...xs); by2 = Math.max(...ys);
+                        }
+
+                        const w = bx2 - bx1;
+                        const h = by2 - by1;
+                        const HANDLE_R = 5 / zoom;
+                        const dimOffset = 22 / zoom;
+                        const tickLen = 4 / zoom;
+                        const textScale2 = 1 / Math.pow(zoom, 0.7);
+
+                        const handles = [
+                            { pos: [bx1, by1],         cur: 'nw-resize', name: 'nw' },
+                            { pos: [bx2, by1],         cur: 'ne-resize', name: 'ne' },
+                            { pos: [bx1, by2],         cur: 'sw-resize', name: 'sw' },
+                            { pos: [bx2, by2],         cur: 'se-resize', name: 'se' },
+                            { pos: [bx1 + w/2, by1],   cur: 'n-resize',  name: 'n' },
+                            { pos: [bx1 + w/2, by2],   cur: 's-resize',  name: 's' },
+                            { pos: [bx1, by1 + h/2],   cur: 'w-resize',  name: 'w' },
+                            { pos: [bx2, by1 + h/2],   cur: 'e-resize',  name: 'e' },
+                        ];
+
+                        const productColor = (() => {
+                            const seg = groupSegs[0] as any;
+                            const prod = products.find((p: any) => p.id === seg.productId);
+                            return prod ? prod.color.replace('0.4', '1') : '#8b5cf6';
+                        })();
+
+                        return (
+                            <Group listening={true}>
+                                {/* Dashed border */}
+                                <Rect
+                                    x={bx1} y={by1} width={w} height={h}
+                                    stroke={productColor}
+                                    strokeWidth={1.5 / zoom}
+                                    dash={[6 / zoom, 4 / zoom]}
+                                    fill="transparent"
+                                    listening={false}
+                                />
+                                {/* Width label below */}
+                                <Group x={bx1} y={by2 + dimOffset} listening={false}>
+                                    <Line points={[0, 0, w, 0]} stroke={productColor} strokeWidth={0.8 / zoom} />
+                                    <Line points={[0, tickLen, 0, -tickLen]} stroke={productColor} strokeWidth={1 / zoom} />
+                                    <Line points={[w, tickLen, w, -tickLen]} stroke={productColor} strokeWidth={1 / zoom} />
+                                    <Group x={w/2} y={0} scaleX={textScale2} scaleY={textScale2}>
+                                        <Rect x={-24} y={-9} width={48} height={18} fill="#f5f3ff" cornerRadius={3} />
+                                        <Text x={-24} y={-9} width={48} height={18}
+                                            text={`${(Math.abs(w) / SCALE).toFixed(2)}m`}
+                                            fontSize={10} fill="#5b21b6" fontStyle="bold"
+                                            align="center" verticalAlign="middle" />
+                                    </Group>
+                                </Group>
+                                {/* Height label right */}
+                                <Group x={bx2 + dimOffset} y={by1} listening={false}>
+                                    <Line points={[0, 0, 0, h]} stroke={productColor} strokeWidth={0.8 / zoom} />
+                                    <Line points={[-tickLen, 0, tickLen, 0]} stroke={productColor} strokeWidth={1 / zoom} />
+                                    <Line points={[-tickLen, h, tickLen, h]} stroke={productColor} strokeWidth={1 / zoom} />
+                                    <Group x={0} y={h/2} rotation={90} scaleX={textScale2} scaleY={textScale2}>
+                                        <Rect x={-24} y={-9} width={48} height={18} fill="#f5f3ff" cornerRadius={3} />
+                                        <Text x={-24} y={-9} width={48} height={18}
+                                            text={`${(Math.abs(h) / SCALE).toFixed(2)}m`}
+                                            fontSize={10} fill="#5b21b6" fontStyle="bold"
+                                            align="center" verticalAlign="middle" />
+                                    </Group>
+                                </Group>
+                                {/* Drag handles */}
+                                {handles.map(({ pos, cur, name }) => (
+                                    <Rect
+                                        key={name}
+                                        x={pos[0] - HANDLE_R} y={pos[1] - HANDLE_R}
+                                        width={HANDLE_R * 2} height={HANDLE_R * 2}
+                                        fill="white" stroke={productColor} strokeWidth={1.5 / zoom}
+                                        draggable
+                                        onMouseEnter={(e: any) => { e.target.getStage().container().style.cursor = cur; }}
+                                        onMouseLeave={(e: any) => { e.target.getStage().container().style.cursor = 'default'; }}
+                                        onDragMove={(e: any) => {
+                                            e.cancelBubble = true;
+                                            const px = e.target.x() + HANDLE_R;
+                                            const py = e.target.y() + HANDLE_R;
+                                            const cur_draft = resizeListDraft && resizeListDraft.groupId === selectedListGroupId
+                                                ? resizeListDraft
+                                                : { groupId: selectedListGroupId, x1: bx1, y1: by1, x2: bx2, y2: by2 };
+                                            let nx1 = cur_draft.x1, ny1 = cur_draft.y1;
+                                            let nx2 = cur_draft.x2, ny2 = cur_draft.y2;
+                                            const MIN = 10;
+                                            if (name === 'nw') { nx1 = px; ny1 = py; }
+                                            else if (name === 'ne') { nx2 = px; ny1 = py; }
+                                            else if (name === 'sw') { nx1 = px; ny2 = py; }
+                                            else if (name === 'se') { nx2 = px; ny2 = py; }
+                                            else if (name === 'n') { ny1 = py; }
+                                            else if (name === 's') { ny2 = py; }
+                                            else if (name === 'w') { nx1 = px; }
+                                            else if (name === 'e') { nx2 = px; }
+                                            if (nx2 - nx1 < MIN) { if (name.includes('w')) nx1 = nx2 - MIN; else nx2 = nx1 + MIN; }
+                                            if (ny2 - ny1 < MIN) { if (name.includes('n')) ny1 = ny2 - MIN; else ny2 = ny1 + MIN; }
+                                            const nd = { groupId: selectedListGroupId, x1: nx1, y1: ny1, x2: nx2, y2: ny2 };
+                                            setResizeListDraft(nd);
+                                            useCanvasStore.getState().resizeListGroup(selectedListGroupId, nx1, ny1, nx2, ny2, false);
+                                        }}
+                                        onDragEnd={(e: any) => {
+                                            e.cancelBubble = true;
+                                            e.target.x(pos[0] - HANDLE_R);
+                                            e.target.y(pos[1] - HANDLE_R);
+                                            if (resizeListDraft && resizeListDraft.groupId === selectedListGroupId) {
+                                                useCanvasStore.getState().resizeListGroup(
+                                                    resizeListDraft.groupId,
+                                                    resizeListDraft.x1, resizeListDraft.y1,
+                                                    resizeListDraft.x2, resizeListDraft.y2, true
+                                                );
+                                            }
+                                            setResizeListDraft(null);
                                         }}
                                     />
                                 ))}

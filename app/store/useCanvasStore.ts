@@ -47,6 +47,7 @@ export type ListElement = {
     x2: number;
     y2: number;
     createdAt?: number;
+    groupId?: string; // for rectangle moulding groups
 };
 
 export interface TrapConfig {
@@ -209,6 +210,7 @@ type CanvasState = {
 
     // Moulding Drawing Mode
     listDrawingType: 'line' | 'rectangle';
+    resizeListGroup: (groupId: string, x1: number, y1: number, x2: number, y2: number, saveHistory?: boolean) => void;
     setListDrawingType: (type: 'line' | 'rectangle') => void;
 
     // Database ID
@@ -822,16 +824,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     createdAt: now
                 });
             } else {
-                // Rectangle: 4 segments
-                const points = [
+                // Rectangle: 4 segments with a shared groupId
+                const groupId = Math.random().toString(36).substr(2, 9);
+                const pts = [
                     { x: list.x1, y: list.y1 },
                     { x: list.x2, y: list.y1 },
                     { x: list.x2, y: list.y2 },
                     { x: list.x1, y: list.y2 }
                 ];
                 for (let i = 0; i < 4; i++) {
-                    const p1 = points[i];
-                    const p2 = points[(i + 1) % 4];
+                    const p1 = pts[i];
+                    const p2 = pts[(i + 1) % 4];
                     newLists.push({
                         id: Math.random().toString(36).substr(2, 9),
                         type: 'list',
@@ -840,7 +843,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                         y1: p1.y,
                         x2: p2.x,
                         y2: p2.y,
-                        createdAt: now
+                        createdAt: now,
+                        groupId
                     });
                 }
             }
@@ -858,6 +862,30 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 currentDrawingList: null
             };
         });
+    },
+
+    resizeListGroup: (groupId, x1, y1, x2, y2, saveHistory = true) => {
+        if (saveHistory) get()._saveHistory();
+        // Rebuild the 4 segments from the new bounding box
+        const pts = [
+            { x: x1, y: y1 },
+            { x: x2, y: y1 },
+            { x: x2, y: y2 },
+            { x: x1, y: y2 }
+        ];
+        set((state) => ({
+            walls: state.walls.map(w => {
+                if (w.id !== state.activeWallId) return w;
+                const groupLists = w.lists.filter(l => l.groupId === groupId);
+                const others = w.lists.filter(l => l.groupId !== groupId);
+                const updated = groupLists.map((l, i) => ({
+                    ...l,
+                    x1: pts[i].x, y1: pts[i].y,
+                    x2: pts[(i + 1) % 4].x, y2: pts[(i + 1) % 4].y
+                }));
+                return { ...w, lists: [...others, ...updated] };
+            })
+        }));
     },
 
     removeList: (id) => {
