@@ -209,14 +209,14 @@ function ProjectCard({
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-[12px] border border-gray-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group cursor-pointer w-full relative ${isLoading ? "pointer-events-none opacity-80" : ""}`}
+      className={`bg-white rounded-xl border border-gray-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group cursor-pointer w-full relative ${isLoading ? "pointer-events-none opacity-80" : ""}`}
     >
       {isLoading && (
         <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-[#7B6DED]/30 border-t-[#7B6DED] rounded-full animate-spin"></div>
         </div>
       )}
-      <div className="aspect-[16/10] bg-[#f5f5f5] flex items-center justify-center relative overflow-hidden border-b border-gray-100">
+      <div className="aspect-16/10 bg-[#f5f5f5] flex items-center justify-center relative overflow-hidden border-b border-gray-100">
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
