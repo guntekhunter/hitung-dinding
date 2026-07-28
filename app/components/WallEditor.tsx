@@ -1996,7 +1996,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 ref={stageRef}
                 width={width}
                 height={height}
-                pixelRatio={Math.min(window.devicePixelRatio || 1, 1.5)}
+                pixelRatio={isMobile ? Math.min(window.devicePixelRatio || 1, 1.5) : (window.devicePixelRatio || 2)}
                 onMouseDown={props.readOnly ? undefined : handleMouseDown}
                 onMouseMove={props.readOnly ? undefined : handleMouseMove}
                 onMouseUp={props.readOnly ? undefined : handleMouseUp}
