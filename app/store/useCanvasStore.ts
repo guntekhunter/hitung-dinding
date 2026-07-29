@@ -26,6 +26,8 @@ export type DesignArea = {
     height: number;
     createdAt?: number;
     customColor?: string;
+    patternOffsetX?: number;
+    patternOffsetY?: number;
 };
 
 export type Opening = {
@@ -723,14 +725,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 return { currentDrawingArea: null };
             }
 
+            const nx = area.width > 0 ? area.x : area.x + area.width;
+            const ny = area.height > 0 ? area.y : area.y + area.height;
             const normalized: DesignArea = {
                 id: Math.random().toString(36).substr(2, 9),
                 productId: area.productId,
-                x: area.width > 0 ? area.x : area.x + area.width,
-                y: area.height > 0 ? area.y : area.y + area.height,
+                x: nx,
+                y: ny,
                 width: Math.abs(area.width),
                 height: Math.abs(area.height),
                 createdAt: Date.now(),
+                patternOffsetX: nx,
+                patternOffsetY: ny,
             };
 
             const updatedWalls = state.walls.map(w =>
@@ -920,7 +926,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     ? {
                         ...w,
                         designAreas: w.designAreas.map(a =>
-                            a.id === id ? { ...a, x, y } : a
+                            a.id === id ? { 
+                                ...a, 
+                                x, 
+                                y,
+                                patternOffsetX: (a.patternOffsetX ?? a.x) + (x - a.x),
+                                patternOffsetY: (a.patternOffsetY ?? a.y) + (y - a.y)
+                            } : a
                         )
                     }
                     : w

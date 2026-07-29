@@ -743,34 +743,46 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
         const lines = useMemo(() => {
             const result = [];
-            const startX = Math.min(0, area.width);
-            for (let i = 1; i < horizontalCount; i++) {
-                const x = startX + i * panelWidthPx;
-                result.push(
-                    <Line
-                        key={`vline-${i}`}
-                        points={[x, 0, x, area.height]}
-                        stroke="rgba(255,255,255,0.5)"
-                        strokeWidth={1 / zoom}
-                        dash={[5 / zoom, 5 / zoom]}
-                    />
-                );
+            const pOffsetX = area.patternOffsetX ?? area.x;
+            const pOffsetY = area.patternOffsetY ?? area.y;
+
+            const firstN_x = Math.floor((area.x - pOffsetX) / panelWidthPx) + 1;
+            const lastN_x = Math.ceil((area.x + area.width - pOffsetX) / panelWidthPx) - 1;
+            
+            for (let n = firstN_x; n <= lastN_x; n++) {
+                const x = pOffsetX + n * panelWidthPx - area.x;
+                if (x > 0 && x < area.width) {
+                    result.push(
+                        <Line
+                            key={`vline-${n}`}
+                            points={[x, 0, x, area.height]}
+                            stroke="rgba(255,255,255,0.5)"
+                            strokeWidth={1 / zoom}
+                            dash={[5 / zoom, 5 / zoom]}
+                        />
+                    );
+                }
             }
-            const startY = Math.max(0, area.height);
-            for (let i = 1; i < verticalCount; i++) {
-                const y = startY - i * panelHeightPx;
-                result.push(
-                    <Line
-                        key={`hline-${i}`}
-                        points={[0, y, area.width, y]}
-                        stroke="rgba(255,255,255,0.5)"
-                        strokeWidth={1 / zoom}
-                        dash={[5 / zoom, 5 / zoom]}
-                    />
-                );
+
+            const firstN_y = Math.floor((area.y - pOffsetY) / panelHeightPx) + 1;
+            const lastN_y = Math.ceil((area.y + area.height - pOffsetY) / panelHeightPx) - 1;
+            
+            for (let n = firstN_y; n <= lastN_y; n++) {
+                const y = pOffsetY + n * panelHeightPx - area.y;
+                if (y > 0 && y < area.height) {
+                    result.push(
+                        <Line
+                            key={`hline-${n}`}
+                            points={[0, y, area.width, y]}
+                            stroke="rgba(255,255,255,0.5)"
+                            strokeWidth={1 / zoom}
+                            dash={[5 / zoom, 5 / zoom]}
+                        />
+                    );
+                }
             }
             return result;
-        }, [horizontalCount, verticalCount, area.width, area.height, panelWidthPx, panelHeightPx, zoom]);
+        }, [area.width, area.height, area.x, area.y, area.patternOffsetX, area.patternOffsetY, panelWidthPx, panelHeightPx, zoom]);
 
         const color = product.color.replace('0.4', '1');
         const absWidth = Math.abs(area.width);
