@@ -841,8 +841,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     fillPatternRepeat="repeat"
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
                     fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
-                    fillPatternOffsetX={isPattern ? ((area.x - wallMinX) % panelWidthPx) : 0}
-                    fillPatternOffsetY={isPattern ? (panelHeightPx - ((wallMaxY - area.y) % panelHeightPx)) % panelHeightPx : 0}
+                    fillPatternOffsetX={isPattern ? ((area.x - pOffsetX) % panelWidthPx) : 0}
+                    fillPatternOffsetY={isPattern ? (panelHeightPx - ((pOffsetY - area.y) % panelHeightPx)) % panelHeightPx : 0}
                     stroke={
                         (isSelected && interactionMode === 'resize')
                             ? "#7B6DED"
