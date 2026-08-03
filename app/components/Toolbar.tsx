@@ -1721,56 +1721,16 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     </div>
                                   )}
 
-                                  {/* Bagian Luar (Flat Utama) */}
-                                  <div className="py-3 border-t border-[#E5E5E5]">
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="text-[#00A2E8] font-bold text-[10px]">
-                                        BAGIAN LUAR (FLAT UTAMA)
-                                      </span>
-                                      <span className="text-[#FF9900] font-bold text-[10px]">
-                                        {(
-                                          100 -
-                                          ceilingData.optimization.wasteOuter
-                                        ).toFixed(1)}
-                                        % Efisien
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className="text-[#A3A3A3] text-[.8rem]">
-                                        Papan {ceilingData.panelLength}m
-                                      </span>
-                                      <div className="text-[#303030] text-[.8rem] font-bold">
-                                        {ceilingData.optimization.outerPanels}{" "}
-                                        btg
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-[#A3A3A3] text-[.8rem]">
-                                        Total Sampah (Waste)
-                                      </span>
-                                      <div className="text-[#E74C3C] text-[.8rem] font-bold">
-                                        {(
-                                          ceilingData.optimization.outerPanels *
-                                          ceilingData.panelLength *
-                                          (ceilingData.optimization.wasteOuter /
-                                            100)
-                                        ).toFixed(2)}
-                                        m
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Bagian Dalam (Drop/Trap) */}
-                                  {ceilingData.optimization.innerPanels > 0 && (
+                                  {(!wall.ceilingTraps || wall.ceilingTraps.length === 0) ? (
                                     <div className="py-3 border-t border-[#E5E5E5]">
                                       <div className="flex justify-between items-center mb-2">
-                                        <span className="text-[#FF9900] font-bold text-[10px]">
-                                          BAGIAN DALAM (DROP/TRAP)
+                                        <span className="text-[#00A2E8] font-bold text-[10px]">
+                                          PLAFON UTAMA
                                         </span>
                                         <span className="text-[#2ECC71] font-bold text-[10px]">
                                           {(
                                             100 -
-                                            ceilingData.optimization.wasteInner
+                                            ceilingData.optimization.wastePercentage
                                           ).toFixed(1)}
                                           % Efisien
                                         </span>
@@ -1780,7 +1740,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                           Papan {ceilingData.panelLength}m
                                         </span>
                                         <div className="text-[#303030] text-[.8rem] font-bold">
-                                          {ceilingData.optimization.innerPanels}{" "}
+                                          {ceilingData.count}{" "}
                                           btg
                                         </div>
                                       </div>
@@ -1789,18 +1749,95 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                           Total Sampah (Waste)
                                         </span>
                                         <div className="text-[#E74C3C] text-[.8rem] font-bold">
-                                          {(
-                                            ceilingData.optimization
-                                              .innerPanels *
-                                            ceilingData.panelLength *
-                                            (ceilingData.optimization
-                                              .wasteInner /
-                                              100)
-                                          ).toFixed(2)}
+                                          {(ceilingData.optimization.totalWasteCm / 100).toFixed(2)}
                                           m
                                         </div>
                                       </div>
                                     </div>
+                                  ) : (
+                                    <>
+                                      {/* Bagian Luar (Flat Utama) */}
+                                      <div className="py-3 border-t border-[#E5E5E5]">
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-[#00A2E8] font-bold text-[10px]">
+                                            BAGIAN LUAR (FLAT UTAMA)
+                                          </span>
+                                          <span className="text-[#FF9900] font-bold text-[10px]">
+                                            {(
+                                              100 -
+                                              ceilingData.optimization.wasteOuter
+                                            ).toFixed(1)}
+                                            % Efisien
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between items-center mb-1">
+                                          <span className="text-[#A3A3A3] text-[.8rem]">
+                                            Papan {ceilingData.panelLength}m
+                                          </span>
+                                          <div className="text-[#303030] text-[.8rem] font-bold">
+                                            {ceilingData.optimization.outerPanels}{" "}
+                                            btg
+                                          </div>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-[#A3A3A3] text-[.8rem]">
+                                            Total Sampah (Waste)
+                                          </span>
+                                          <div className="text-[#E74C3C] text-[.8rem] font-bold">
+                                            {(
+                                              ceilingData.optimization.outerPanels *
+                                              ceilingData.panelLength *
+                                              (ceilingData.optimization.wasteOuter /
+                                                100)
+                                            ).toFixed(2)}
+                                            m
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Bagian Dalam (Drop/Trap) */}
+                                      {ceilingData.optimization.innerPanels > 0 && (
+                                        <div className="py-3 border-t border-[#E5E5E5]">
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="text-[#FF9900] font-bold text-[10px]">
+                                              BAGIAN DALAM (DROP/TRAP)
+                                            </span>
+                                            <span className="text-[#2ECC71] font-bold text-[10px]">
+                                              {(
+                                                100 -
+                                                ceilingData.optimization.wasteInner
+                                              ).toFixed(1)}
+                                              % Efisien
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[#A3A3A3] text-[.8rem]">
+                                              Papan {ceilingData.panelLength}m
+                                            </span>
+                                            <div className="text-[#303030] text-[.8rem] font-bold">
+                                              {ceilingData.optimization.innerPanels}{" "}
+                                              btg
+                                            </div>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[#A3A3A3] text-[.8rem]">
+                                              Total Sampah (Waste)
+                                            </span>
+                                            <div className="text-[#E74C3C] text-[.8rem] font-bold">
+                                              {(
+                                                ceilingData.optimization
+                                                  .innerPanels *
+                                                ceilingData.panelLength *
+                                                (ceilingData.optimization
+                                                  .wasteInner /
+                                                  100)
+                                              ).toFixed(2)}
+                                              m
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </>
                               )}

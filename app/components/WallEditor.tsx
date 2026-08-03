@@ -2191,7 +2191,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                                 y={bounds.minY + currentInset}
                                                 width={tw}
                                                 height={th}
-                                                stroke={activeWall.trapLineColor || "transparent"}
+                                                stroke={activeWall.trapLineColor || "#3b82f6"}
                                                 strokeWidth={3 / zoom}
                                                 listening={false}
                                             />
