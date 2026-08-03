@@ -3,43 +3,52 @@
 import React, { useMemo } from "react";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Save, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Download, FolderOpen, PenLine, MonitorPlay } from "lucide-react";
 import { saveProjectToDatabase } from "../utils/saveProject";
 import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../../lib/supabase";
 
 export default function ColoringToolbar({ wallEditorRef }: any) {
     const router = useRouter();
-    const { walls, activeWallId, setActiveWall, products, setProductColor, customerInfo, materialPrices, projectId } = useCanvasStore();
+    const { walls, activeWallId, setActiveWall, products, setProductColor, customerInfo, materialPrices, projectId, setCeilingColor, setTrapLineColor } = useCanvasStore();
     const company = useAuthStore(state => state.company);
     const [isSaving, setIsSaving] = React.useState(false);
     const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
     const [isLoadingMaterials, setIsLoadingMaterials] = React.useState(false);
     const fetchedProductIds = React.useRef<Set<string>>(new Set());
 
+    const activeWall = walls.find(w => w.id === activeWallId);
+
     // Get all products used in the current design
     const usedProducts = useMemo(() => {
         const productIds = new Set<string>();
-
         walls.forEach(wall => {
             wall.designAreas.forEach(area => productIds.add(area.productId));
             wall.lists.forEach(list => productIds.add(list.productId));
         });
-
         return products.filter(p => productIds.has(p.id));
     }, [walls, products]);
 
+    // Detect if any wall is a ceiling type
+    const hasCeilingWalls = useMemo(() => walls.some((w: any) => w.type === 'ceiling'), [walls]);
+
+    // Plafon products — only shown when there are ceiling walls
+    const plafonProducts = useMemo(() => {
+        if (!hasCeilingWalls) return [];
+        return products.filter((p: any) => p.category?.toLowerCase() === 'plafon');
+    }, [products, hasCeilingWalls]);
+
     React.useEffect(() => {
         const fetchMaterialColors = async () => {
-            if (usedProducts.length === 0) return;
+            const allProductsToFetch = [...usedProducts, ...plafonProducts];
+            if (allProductsToFetch.length === 0) return;
 
-            const newProducts = usedProducts.filter(p => !fetchedProductIds.current.has(p.id));
+            const newProducts = allProductsToFetch.filter(p => !fetchedProductIds.current.has(p.id));
             if (newProducts.length === 0) return;
 
             setIsLoadingMaterials(true);
 
             for (const product of newProducts) {
-                // Mark as fetched so we don't fetch again
                 fetchedProductIds.current.add(product.id);
 
                 const { data, error } = await supabase
@@ -58,7 +67,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
             setIsLoadingMaterials(false);
         };
         fetchMaterialColors();
-    }, [usedProducts]);
+    }, [usedProducts, plafonProducts]);
 
     const handleSave = async () => {
         if (!company?.id || !projectId) return;
@@ -101,7 +110,6 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
 
     const handleDownload = () => {
         useCanvasStore.getState().setIsExporting(true);
-        // Wait for React to re-render and hide the dashed lines
         setTimeout(() => {
             const stage = wallEditorRef.current?.getStage();
             if (stage) {
@@ -119,16 +127,35 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
 
     return (
         <div className="flex flex-col h-full bg-white relative w-full md:w-[320px]">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            {/* Header nav */}
+            <div className="px-3 py-3 border-b border-gray-100 flex items-center justify-between gap-1">
                 <button
                     onClick={() => router.push('/projects')}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                    title="Back to Projects"
+                    className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
                 >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back to Projects
+                    <FolderOpen className="w-[.7rem]" />
                 </button>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => router.push(projectId ? `/wall-editor?id=${projectId}` : '/wall-editor')}
+                        title="Wall Editor"
+                        className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
+                    >
+                        <PenLine className="w-[.7rem]" />
+                    </button>
+                    <button
+                        onClick={() => router.push(projectId ? `/mockup?id=${projectId}` : '/mockup')}
+                        title="Mockup"
+                        className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
+                    >
+                        <MonitorPlay className="w-[.7rem]" />
+                    </button>
+                </div>
             </div>
-            
+
+
+            {/* Wall selector */}
             {walls.length > 1 && (
                 <div className="p-4 border-b border-gray-100 flex flex-col gap-2 bg-gray-50/50">
                     <label className="text-sm font-medium text-gray-700">Select Wall</label>
@@ -146,6 +173,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                 </div>
             )}
 
+            {/* Action buttons */}
             <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex gap-2">
                     <button
@@ -166,6 +194,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                 </div>
             </div>
 
+            {/* Scrollable content */}
             <div className="p-4 flex-1 overflow-y-auto">
                 <h2 className="text-lg font-bold mb-4 text-gray-800">Material Colors</h2>
                 {isLoadingMaterials ? (
@@ -204,19 +233,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                                                 : "#cccccc"
                                         }
                                         onChange={(e) => setProductColor(product.id, e.target.value)}
-                                        className="
-    w-10 h-10
-    cursor-pointer
-    p-0
-    border-none
-    bg-transparent
-    appearance-none
-    [&::-webkit-color-swatch-wrapper]:p-0
-    [&::-webkit-color-swatch]:border-none
-    [&::-webkit-color-swatch]:rounded-full
-    [&::-moz-color-swatch]:border-none
-    [&::-moz-color-swatch]:rounded-full
-  "
+                                        className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
                                     />
                                 </div>
                                 {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
@@ -225,7 +242,7 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                                             <button
                                                 key={mc.id}
                                                 onClick={() => setProductColor(product.id, mc.image)}
-                                                className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden ${product.color === mc.image ? 'border-[#7B6DED]' : 'border-transparent hover:border-gray-300'}`}
+                                                className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${product.color === mc.image ? 'border-[#7B6DED] scale-105' : 'border-transparent hover:border-gray-300'}`}
                                                 title="Apply Texture"
                                             >
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -236,6 +253,85 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
                                 )}
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {/* Plafon / Ceiling texture section */}
+                {hasCeilingWalls && plafonProducts.length > 0 && (
+                    <div className="mt-6 border-t border-gray-100 pt-4">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Tekstur Plafon</h3>
+                        <div className="flex flex-col gap-4">
+                            {plafonProducts.map((product: any) => {
+                                const defaultColor = products.find((p: any) => p.id === product.id)?.color || '#ffffff';
+                                const numZones = (activeWall?.type === 'ceiling' && activeWall.ceilingTraps) ? activeWall.ceilingTraps.length + 1 : 1;
+
+                                return (
+                                    <div key={product.id} className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
+                                        {Array.from({ length: numZones }).map((_, idx) => {
+                                            const currentColor = (activeWall?.type === 'ceiling' && activeWall.ceilingColors && activeWall.ceilingColors[idx]) ? activeWall.ceilingColors[idx] : defaultColor;
+
+                                            let zoneName = 'Luar / Base';
+                                            if (idx > 0 && idx < numZones - 1) zoneName = `Trap ${idx}`;
+                                            if (idx > 0 && idx === numZones - 1) zoneName = 'Dalam / Plafon Utama';
+                                            if (numZones === 1) zoneName = 'Plafon Utama';
+
+                                            const handleSetColor = (c: string) => {
+                                                if (activeWall?.type === 'ceiling') setCeilingColor(activeWall.id, idx, c);
+                                                if (idx === 0) setProductColor(product.id, c);
+                                            };
+
+                                            return (
+                                                <div key={idx} className={`flex flex-col gap-2 ${idx > 0 ? 'border-t border-indigo-100 pt-3' : ''}`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm font-medium text-gray-700 truncate mr-2">
+                                                            {product.name} ({zoneName})
+                                                        </span>
+                                                        <input
+                                                            type="color"
+                                                            value={(!currentColor.startsWith("data:") && !currentColor.startsWith("http")) ? currentColor : "#ffffff"}
+                                                            onChange={e => handleSetColor(e.target.value)}
+                                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                                        />
+                                                    </div>
+                                                    {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
+                                                        <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                                            {materialColorsData[product.id].map((mc: any) => (
+                                                                <button
+                                                                    key={mc.id}
+                                                                    onClick={() => handleSetColor(mc.image)}
+                                                                    className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${currentColor === mc.image ? 'border-[#7B6DED] scale-105' : 'border-transparent hover:border-gray-300'}`}
+                                                                    title={`Apply Texture to ${zoneName}`}
+                                                                >
+                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                    <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
+
+                            {/* Trap line color */}
+                            {activeWall?.type === 'ceiling' && activeWall.ceilingTraps && activeWall.ceilingTraps.length > 0 && (
+                                <div className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-gray-700 mr-2">
+                                            Warna Garis Trap
+                                        </span>
+                                        <input
+                                            type="color"
+                                            value={activeWall.trapLineColor || "#3b82f6"}
+                                            onChange={e => setTrapLineColor(activeWall.id, e.target.value)}
+                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

@@ -40,6 +40,7 @@ import {
   LayoutTemplate,
   Magnet,
   Scaling,
+  Palette,
 } from "lucide-react";
 
 // --- Split into smaller memoized components to prevent global re-renders ---
@@ -228,7 +229,7 @@ const UserHeader = memo(
               className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
               title="Draft"
             >
-              <ImagePlus className="w-[.7rem]" />
+              <Palette className="w-[.7rem]" />
             </button>
           </div>
         </div>
