@@ -741,10 +741,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const wastePercentage = useCanvasStore.getState().wastePercentage;
         const count = Math.ceil((areaM2 / (productAreaM2 || 1)) * (1 + wastePercentage / 100));
 
+        const wallMinX = points && points.length > 0 ? Math.min(...points.map((p: any) => p.x)) : area.x;
+        const wallMaxY = points && points.length > 0 ? Math.max(...points.map((p: any) => p.y)) : (area.y + area.height);
+
         const lines = useMemo(() => {
             const result = [];
-            const pOffsetX = area.patternOffsetX ?? area.x;
-            const pOffsetY = area.patternOffsetY ?? (area.y + area.height);
+            const pOffsetX = area.patternOffsetX ?? wallMinX;
+            const pOffsetY = area.patternOffsetY ?? wallMaxY;
 
             const firstN_x = Math.floor((area.x - pOffsetX) / panelWidthPx) + 1;
             const lastN_x = Math.ceil((area.x + area.width - pOffsetX) / panelWidthPx) - 1;
@@ -838,7 +841,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     fillPatternRepeat="repeat"
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
                     fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
-                    fillPatternOffsetY={isPattern ? (panelHeightPx - (area.height % panelHeightPx)) % panelHeightPx : 0}
+                    fillPatternOffsetX={isPattern ? ((area.x - wallMinX) % panelWidthPx) : 0}
+                    fillPatternOffsetY={isPattern ? (panelHeightPx - ((wallMaxY - area.y) % panelHeightPx)) % panelHeightPx : 0}
                     stroke={
                         (isSelected && interactionMode === 'resize')
                             ? "#7B6DED"
