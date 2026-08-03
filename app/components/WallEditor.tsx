@@ -123,7 +123,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     const pathname = usePathname();
     const isColoringMode = pathname === '/coloring' || isColoringPreview;
-    const shouldHideText = isExporting || isColoringMode;
+    const shouldHideText = isExporting;
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
     const {
