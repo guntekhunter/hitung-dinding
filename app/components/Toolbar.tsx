@@ -63,6 +63,7 @@ const UserHeader = memo(
     onMockupClick,
     isSnapEnabled,
     setIsSnapEnabled,
+    onDraftClick,
   }: any) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -155,72 +156,79 @@ const UserHeader = memo(
             <button
               onClick={isMobile ? undo : reset}
               disabled={isMobile && past.length === 0}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? "bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700" : "bg-[#F5F5F5] hover:bg-rose-100 text-rose-600"}`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? "bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700" : "bg-[#F5F5F5] hover:bg-rose-100 text-rose-600"}`}
               title={isMobile ? "Undo" : "Clear All"}
             >
               {isMobile ? (
-                <Undo className="w-[.8rem]" />
+                <Undo className="w-[.7rem]" />
               ) : (
-                <RotateCcw className="w-[.8rem]" />
+                <RotateCcw className="w-[.7rem]" />
               )}
             </button>
             {!isMobile && (
               <button
                 onClick={undo}
                 disabled={past.length === 0}
-                className="flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2] text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Undo"
               >
-                <Undo className="w-[.8rem]" />
+                <Undo className="w-[.7rem]" />
               </button>
             )}
             <button
               onClick={() => toggleWallLock()}
               disabled={!isClosed}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 ${isWallLocked ? "bg-slate-700 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 disabled:opacity-50 ${isWallLocked ? "bg-slate-700 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title={isWallLocked ? "Unlock" : "Lock"}
             >
               {isWallLocked ? (
-                <Lock className="w-[.8rem]" />
+                <Lock className="w-[.7rem]" />
               ) : (
-                <Unlock className="w-[.8rem]" />
+                <Unlock className="w-[.7rem]" />
               )}
             </button>
             <button
               onClick={() => setIsSnapEnabled(!isSnapEnabled)}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${isSnapEnabled ? "bg-slate-700 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 ${isSnapEnabled ? "bg-slate-700 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title={isSnapEnabled ? "Snap On" : "Snap Off"}
             >
-              <Magnet className="w-[.8rem]" />
+              <Magnet className="w-[.7rem]" />
             </button>
             <button
               onClick={() => setInteractionMode("pan")}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "pan" ? "bg-slate-800 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "pan" ? "bg-slate-800 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title="Pan Mode"
             >
-              <Move className="w-[.8rem]" />
+              <Move className="w-[.7rem]" />
             </button>
             <button
               onClick={() => setInteractionMode("resize")}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "resize" ? "bg-slate-800 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "resize" ? "bg-slate-800 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title="Resize Mode"
             >
-              <Scaling className="w-[.8rem]" />
+              <Scaling className="w-[.7rem]" />
             </button>
             <button
               onClick={() => setInteractionMode("delete")}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "delete" ? "bg-rose-600 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 ${interactionMode === "delete" ? "bg-rose-600 text-white" : "bg-[#F5F5F5] hover:bg-[#E2E2E2]"}`}
               title="Delete"
             >
-              <Trash2 className="w-[.8rem]" />
+              <Trash2 className="w-[.7rem]" />
             </button>
             {/* mockup */}
             <button
               onClick={onMockupClick}
-              className={`flex py-2 px-3 rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
               title="Mockup"
             >
-              <ImagePlus className="w-[.8rem]" />
+              <ImagePlus className="w-[.7rem]" />
+            </button>
+            <button
+              onClick={onDraftClick}
+              className={`flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]`}
+              title="Draft"
+            >
+              <ImagePlus className="w-[.7rem]" />
             </button>
           </div>
         </div>
@@ -1161,6 +1169,13 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             alert("Silahkan simpan project terlebih dahulu!");
           }
         }}
+        onDraftClick={() => {
+          if (projectId) {
+            router.push(`/coloring?id=${projectId}`);
+          } else {
+            alert("Silahkan simpan project terlebih dahulu!");
+          }
+        }}
       />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 md:pb-8">
@@ -1721,7 +1736,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     </div>
                                   )}
 
-                                  {(!wall.ceilingTraps || wall.ceilingTraps.length === 0) ? (
+                                  {!wall.ceilingTraps ||
+                                  wall.ceilingTraps.length === 0 ? (
                                     <div className="py-3 border-t border-[#E5E5E5]">
                                       <div className="flex justify-between items-center mb-2">
                                         <span className="text-[#00A2E8] font-bold text-[10px]">
@@ -1730,7 +1746,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                         <span className="text-[#2ECC71] font-bold text-[10px]">
                                           {(
                                             100 -
-                                            ceilingData.optimization.wastePercentage
+                                            ceilingData.optimization
+                                              .wastePercentage
                                           ).toFixed(1)}
                                           % Efisien
                                         </span>
@@ -1740,8 +1757,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                           Papan {ceilingData.panelLength}m
                                         </span>
                                         <div className="text-[#303030] text-[.8rem] font-bold">
-                                          {ceilingData.count}{" "}
-                                          btg
+                                          {ceilingData.count} btg
                                         </div>
                                       </div>
                                       <div className="flex justify-between items-center">
@@ -1749,7 +1765,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                           Total Sampah (Waste)
                                         </span>
                                         <div className="text-[#E74C3C] text-[.8rem] font-bold">
-                                          {(ceilingData.optimization.totalWasteCm / 100).toFixed(2)}
+                                          {(
+                                            ceilingData.optimization
+                                              .totalWasteCm / 100
+                                          ).toFixed(2)}
                                           m
                                         </div>
                                       </div>
@@ -1765,7 +1784,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                           <span className="text-[#FF9900] font-bold text-[10px]">
                                             {(
                                               100 -
-                                              ceilingData.optimization.wasteOuter
+                                              ceilingData.optimization
+                                                .wasteOuter
                                             ).toFixed(1)}
                                             % Efisien
                                           </span>
@@ -1775,7 +1795,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                             Papan {ceilingData.panelLength}m
                                           </span>
                                           <div className="text-[#303030] text-[.8rem] font-bold">
-                                            {ceilingData.optimization.outerPanels}{" "}
+                                            {
+                                              ceilingData.optimization
+                                                .outerPanels
+                                            }{" "}
                                             btg
                                           </div>
                                         </div>
@@ -1785,9 +1808,11 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                           </span>
                                           <div className="text-[#E74C3C] text-[.8rem] font-bold">
                                             {(
-                                              ceilingData.optimization.outerPanels *
+                                              ceilingData.optimization
+                                                .outerPanels *
                                               ceilingData.panelLength *
-                                              (ceilingData.optimization.wasteOuter /
+                                              (ceilingData.optimization
+                                                .wasteOuter /
                                                 100)
                                             ).toFixed(2)}
                                             m
@@ -1796,7 +1821,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                       </div>
 
                                       {/* Bagian Dalam (Drop/Trap) */}
-                                      {ceilingData.optimization.innerPanels > 0 && (
+                                      {ceilingData.optimization.innerPanels >
+                                        0 && (
                                         <div className="py-3 border-t border-[#E5E5E5]">
                                           <div className="flex justify-between items-center mb-2">
                                             <span className="text-[#FF9900] font-bold text-[10px]">
@@ -1805,7 +1831,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                             <span className="text-[#2ECC71] font-bold text-[10px]">
                                               {(
                                                 100 -
-                                                ceilingData.optimization.wasteInner
+                                                ceilingData.optimization
+                                                  .wasteInner
                                               ).toFixed(1)}
                                               % Efisien
                                             </span>
@@ -1815,7 +1842,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                               Papan {ceilingData.panelLength}m
                                             </span>
                                             <div className="text-[#303030] text-[.8rem] font-bold">
-                                              {ceilingData.optimization.innerPanels}{" "}
+                                              {
+                                                ceilingData.optimization
+                                                  .innerPanels
+                                              }{" "}
                                               btg
                                             </div>
                                           </div>
