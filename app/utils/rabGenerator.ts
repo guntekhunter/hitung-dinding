@@ -32,7 +32,8 @@ export const generateRAB = async (
     companyLogoUrl?: string,
     wallImages?: string[],
     companyName?: string,
-    ceilingPanels?: Record<string, any>
+    ceilingPanels?: Record<string, any>,
+    manualMaterials?: Array<{ id: string, name: string, quantity: number, price: number }>
 ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -189,6 +190,24 @@ export const generateRAB = async (
                         formatIDR(lisSikuSubtotal).replace("Rp ", "")
                     ]);
                 }
+            }
+        });
+    }
+
+    if (manualMaterials && manualMaterials.length > 0) {
+        manualMaterials.forEach((m) => {
+            if (m.name && m.quantity > 0) {
+                const subtotal = m.quantity * m.price;
+                grandTotalCount += subtotal;
+
+                materialRows.push([
+                    (materialRows.length + 1).toString(),
+                    m.name,
+                    m.quantity.toString(),
+                    'Pcs', // Default unit for manual materials as used in Toolbar.tsx
+                    formatIDR(m.price).replace("Rp ", ""),
+                    formatIDR(subtotal).replace("Rp ", "")
+                ]);
             }
         });
     }

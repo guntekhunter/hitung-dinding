@@ -221,6 +221,10 @@ type CanvasState = {
     setProjectId: (id: string | null) => void;
     loadProject: (id: string, data: any) => void;
 
+    // Manual Materials
+    manualMaterials: Array<{ id: string, name: string, quantity: number, price: number }>;
+    setManualMaterials: (materials: Array<{ id: string, name: string, quantity: number, price: number }>) => void;
+
     // Internal
     _saveHistory: () => void;
 };
@@ -256,6 +260,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
     past: [],
     future: [],
+
+    manualMaterials: [],
+    setManualMaterials: (materials) => set({ manualMaterials: materials }),
 
     // Zoom and Pan
     zoom: 1,
@@ -624,7 +631,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             currentDrawingList: null,
             projectId: null,
             customerInfo: { name: "", phone: "", address: "", surveyorName: "" },
-            materialPrices: defaultPrices // Reset to default db prices
+            materialPrices: defaultPrices, // Reset to default db prices
+            manualMaterials: []
         });
     },
 
@@ -642,6 +650,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             data.rab.materials.forEach((m: any) => {
                 if (m.id && m.unitPrice) {
                     currentPrices[m.id] = m.unitPrice;
+                }
+            });
+        }
+
+        const loadedManualMaterials: Array<{ id: string, name: string, quantity: number, price: number }> = [];
+        if (data?.rab?.materials && Array.isArray(data.rab.materials)) {
+            data.rab.materials.forEach((m: any) => {
+                if (m.id && m.id.startsWith("manual-")) {
+                    loadedManualMaterials.push({
+                        id: m.id,
+                        name: m.name || "",
+                        quantity: m.quantity || 1,
+                        price: m.unitPrice || 0
+                    });
                 }
             });
         }
@@ -668,7 +690,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             interactionMode: 'draw',
             currentDrawingArea: null,
             currentDrawingList: null,
-            materialPrices: currentPrices
+            materialPrices: currentPrices,
+            manualMaterials: loadedManualMaterials
         });
     },
 

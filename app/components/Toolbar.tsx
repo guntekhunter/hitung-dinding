@@ -752,6 +752,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     setCeilingPanelDirection,
     isSnapEnabled,
     setIsSnapEnabled,
+    manualMaterials,
+    setManualMaterials,
   } = useCanvasStore();
 
   useEffect(() => {
@@ -906,6 +908,10 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
       grandTotal += (p.optimization?.lisSikuSticks || 0) * lisSikuPrice;
     });
 
+    manualMaterials.forEach((m) => {
+      grandTotal += m.quantity * m.price;
+    });
+
     const totalDesignArea = wallMetrics.reduce((sum: number, m: any) => {
       const areas = Object.values(m.productAreas || {}) as number[];
       return sum + areas.reduce((a: number, b: number) => a + b, 0);
@@ -931,6 +937,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     products,
     totalProductCounts,
     materialPrices,
+    manualMaterials,
   ]);
 
   const handleSaveProject = async () => {
@@ -959,6 +966,21 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             totalPrice: subtotal,
           });
 
+          grandTotal += subtotal;
+        }
+      });
+
+      manualMaterials.forEach((m) => {
+        if (m.name && m.quantity > 0) {
+          const subtotal = m.quantity * m.price;
+          materialsList.push({
+            id: m.id,
+            name: m.name,
+            quantity: m.quantity,
+            unit: "Pcs",
+            unitPrice: m.price,
+            totalPrice: subtotal,
+          });
           grandTotal += subtotal;
         }
       });
@@ -1346,9 +1368,11 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
               <div
                 className={`space-y-6 transition-all ${!user ? "filter blur-md select-none pointer-events-none opacity-40" : ""}`}
               >
-                <h3 className="font-medium uppercase text-[10px] tracking-widest">
-                  Total Kebutuhan
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium uppercase text-[10px] tracking-widest">
+                    Total Kebutuhan
+                  </h3>
+                </div>
                 <div className="grid grid-cols-1 gap-x-4 gap-y-4">
                   {products
                     .filter(
@@ -1576,6 +1600,106 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                     }
                     return null;
                   })}
+
+                  {manualMaterials.map((material, index) => (
+                    <div
+                      key={material.id}
+                      className="flex flex-col gap-1.5 relative"
+                    >
+                      <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                        <input
+                          type="text"
+                          value={material.name}
+                          onChange={(e) => {
+                            const newMaterials = [...manualMaterials];
+                            newMaterials[index].name = e.target.value;
+                            setManualMaterials(newMaterials);
+                          }}
+                          placeholder="Nama Material"
+                          className="flex-1 bg-white border border-[#E5E5E5] rounded px-2 py-1 outline-none focus:border-indigo-400"
+                        />
+                        <div className="flex items-center gap-1 font-bold">
+                          <input
+                            type="number"
+                            value={
+                              material.quantity === 0 ? "" : material.quantity
+                            }
+                            onChange={(e) => {
+                              const newMaterials = [...manualMaterials];
+                              newMaterials[index].quantity = Number(
+                                e.target.value,
+                              );
+                              setManualMaterials(newMaterials);
+                            }}
+                            placeholder="0"
+                            className="w-16 bg-white border border-[#E5E5E5] rounded px-2 py-1 outline-none focus:border-indigo-400 text-center"
+                          />
+                        </div>
+                        <button
+                          onClick={() =>
+                            setManualMaterials(
+                              manualMaterials.filter(
+                                (m) => m.id !== material.id,
+                              ),
+                            )
+                          }
+                          className="text-slate-400 hover:text-rose-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white mt-1">
+                        <span className="text-[.8rem] text-[#303030]">
+                          Harga Produk
+                        </span>
+                        <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                          <span>Rp</span>
+                          <input
+                            type="number"
+                            value={material.price === 0 ? "" : material.price}
+                            onChange={(e) => {
+                              const newMaterials = [...manualMaterials];
+                              newMaterials[index].price = Number(
+                                e.target.value,
+                              );
+                              setManualMaterials(newMaterials);
+                            }}
+                            className="w-24 bg-transparent outline-none font-medium p-0"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                        <span>Subtotal</span>
+                        <span className="font-bold">
+                          Rp{" "}
+                          {(material.quantity * material.price).toLocaleString(
+                            "id-ID",
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <button
+                    onClick={() => {
+                      setManualMaterials([
+                        ...manualMaterials,
+                        {
+                          id: `manual-${Date.now()}`,
+                          name: "",
+                          quantity: 1,
+                          price: 0,
+                        },
+                      ]);
+                    }}
+                    className="px-3 py-[.4rem] rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                    title="Tambah Material Manual"
+                  >
+                    <Plus className="w-[.8rem]" />
+                  </button>
                 </div>
 
                 {totals.grandTotalPrice > 0 && (
@@ -1999,6 +2123,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
               wallImages,
               company?.name,
               ceilingPanels,
+              manualMaterials
             );
           } catch (e) {
             alert("PDF Error: " + e);
