@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from "react";
 import { useCanvasStore, SCALE, Wall, Product } from "../store/useCanvasStore";
 import { generateRAB } from "../utils/rabGenerator";
+import { generatePenawaran } from "../utils/penawaranGenerator";
 import { saveProjectToDatabase, ProjectData } from "../utils/saveProject";
 import Link from "next/link";
 import { useAuthStore } from "../store/useAuthStore";
@@ -41,6 +42,7 @@ import {
   Magnet,
   Scaling,
   Palette,
+  HandCoins,
 } from "lucide-react";
 
 // --- Split into smaller memoized components to prevent global re-renders ---
@@ -686,6 +688,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calcResults, setCalcResults] = useState<any>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfType, setPdfType] = useState<'rab' | 'penawaran'>('rab');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -2038,13 +2041,14 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
           <h3 className="font-medium uppercase text-[10px] tracking-widest mb-3">
             Export
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => {
                 if (!company?.logo_url) {
                   alert("Upload logo first!");
                   return;
                 }
+                setPdfType('rab');
                 setShowPdfModal(true);
               }}
               disabled={!isClosed || !user}
@@ -2061,6 +2065,17 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             >
               <Grid className="w-4 h-4 text-[#303030]" />
               <span className="text-[.8rem] text-[#303030]">Desain</span>
+            </button>
+            <button
+              onClick={() => {
+                setPdfType('penawaran');
+                setShowPdfModal(true);
+              }}
+              disabled={!isClosed || !user}
+              className="flex items-center gap-3 p-3 bg-white border border-[#E5E5E5] rounded-md active:scale-95 disabled:opacity-50 transition-transform hover:bg-gray-50"
+            >
+              <HandCoins className="w-4 h-4 text-[#303030]" />
+              <span className="text-[.8rem] text-[#303030]">Penawaran</span>
             </button>
           </div>
         </div>
@@ -2111,20 +2126,37 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
               await new Promise((r) => setTimeout(r, 100));
             }
 
-            await generateRAB(
-              walls,
-              customerInfo,
-              wastePercentage,
-              wallMetrics,
-              totalProductCounts,
-              materialPrices,
-              products,
-              company?.logo_url,
-              wallImages,
-              company?.name,
-              ceilingPanels,
-              manualMaterials
-            );
+            if (pdfType === 'penawaran') {
+              await generatePenawaran(
+                walls,
+                customerInfo,
+                wastePercentage,
+                wallMetrics,
+                totalProductCounts,
+                materialPrices,
+                products,
+                company?.logo_url,
+                wallImages,
+                company?.name,
+                ceilingPanels,
+                manualMaterials
+              );
+            } else {
+              await generateRAB(
+                walls,
+                customerInfo,
+                wastePercentage,
+                wallMetrics,
+                totalProductCounts,
+                materialPrices,
+                products,
+                company?.logo_url,
+                wallImages,
+                company?.name,
+                ceilingPanels,
+                manualMaterials
+              );
+            }
           } catch (e) {
             alert("PDF Error: " + e);
           }
