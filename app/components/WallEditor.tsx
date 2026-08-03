@@ -744,7 +744,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const lines = useMemo(() => {
             const result = [];
             const pOffsetX = area.patternOffsetX ?? area.x;
-            const pOffsetY = area.patternOffsetY ?? area.y;
+            const pOffsetY = area.patternOffsetY ?? (area.y + area.height);
 
             const firstN_x = Math.floor((area.x - pOffsetX) / panelWidthPx) + 1;
             const lastN_x = Math.ceil((area.x + area.width - pOffsetX) / panelWidthPx) - 1;
@@ -838,6 +838,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     fillPatternRepeat="repeat"
                     fillPatternScaleX={isPattern && patternImage ? panelWidthPx / patternImage.naturalWidth : 1}
                     fillPatternScaleY={isPattern && patternImage ? panelHeightPx / patternImage.naturalHeight : 1}
+                    fillPatternOffsetY={isPattern ? (panelHeightPx - (area.height % panelHeightPx)) % panelHeightPx : 0}
                     stroke={
                         (isSelected && interactionMode === 'resize')
                             ? "#7B6DED"
