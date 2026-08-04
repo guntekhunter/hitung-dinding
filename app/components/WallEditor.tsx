@@ -744,10 +744,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const wallMinX = points && points.length > 0 ? Math.min(...points.map((p: any) => p.x)) : area.x;
         const wallMaxY = points && points.length > 0 ? Math.max(...points.map((p: any) => p.y)) : (area.y + area.height);
 
+        const pOffsetX = area.patternOffsetX ?? wallMinX;
+        const pOffsetY = area.patternOffsetY ?? wallMaxY;
+
         const lines = useMemo(() => {
             const result = [];
-            const pOffsetX = area.patternOffsetX ?? wallMinX;
-            const pOffsetY = area.patternOffsetY ?? wallMaxY;
 
             const firstN_x = Math.floor((area.x - pOffsetX) / panelWidthPx) + 1;
             const lastN_x = Math.ceil((area.x + area.width - pOffsetX) / panelWidthPx) - 1;
@@ -1169,11 +1170,18 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         }
                         return null;
                     })}
-                    {currentDrawingArea && (
-                        'productId' in currentDrawingArea
-                            ? renderAreaContent(currentDrawingArea)
-                            : renderOpeningContent(currentDrawingArea)
-                    )}
+                    {currentDrawingArea && (() => {
+                        const normalized = {
+                            ...currentDrawingArea,
+                            x: currentDrawingArea.width < 0 ? currentDrawingArea.x + currentDrawingArea.width : currentDrawingArea.x,
+                            y: currentDrawingArea.height < 0 ? currentDrawingArea.y + currentDrawingArea.height : currentDrawingArea.y,
+                            width: Math.abs(currentDrawingArea.width),
+                            height: Math.abs(currentDrawingArea.height),
+                        };
+                        return 'productId' in currentDrawingArea
+                            ? renderAreaContent(normalized)
+                            : renderOpeningContent(normalized);
+                    })()}
                     {currentDrawingList && (
                         listDrawingType === 'line' ? renderListContent(currentDrawingList) : (() => {
                             const minX = Math.min(currentDrawingList.x1, currentDrawingList.x2);
@@ -1242,15 +1250,25 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     }
                     return null;
                 })}
-                {currentDrawingArea && 'productId' in currentDrawingArea && (
-                    <MemoizedAreaDimensions area={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
-                )}
-                {currentDrawingArea && !('productId' in currentDrawingArea) && (
-                    <React.Fragment>
-                        <MemoizedOpeningDimensions opening={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
-                        <MemoizedOpeningGapDimensions opening={currentDrawingArea} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
-                    </React.Fragment>
-                )}
+                {currentDrawingArea && (() => {
+                    const normalized = {
+                        ...currentDrawingArea,
+                        x: currentDrawingArea.width < 0 ? currentDrawingArea.x + currentDrawingArea.width : currentDrawingArea.x,
+                        y: currentDrawingArea.height < 0 ? currentDrawingArea.y + currentDrawingArea.height : currentDrawingArea.y,
+                        width: Math.abs(currentDrawingArea.width),
+                        height: Math.abs(currentDrawingArea.height),
+                    };
+                    if ('productId' in currentDrawingArea) {
+                        return <MemoizedAreaDimensions area={normalized} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />;
+                    } else {
+                        return (
+                            <React.Fragment>
+                                <MemoizedOpeningDimensions opening={normalized} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                                <MemoizedOpeningGapDimensions opening={normalized} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                            </React.Fragment>
+                        );
+                    }
+                })()}
             </Group>
         );
     }, [
