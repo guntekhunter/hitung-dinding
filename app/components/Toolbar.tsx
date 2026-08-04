@@ -688,7 +688,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calcResults, setCalcResults] = useState<any>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
-  const [pdfType, setPdfType] = useState<'rab' | 'penawaran'>('rab');
+  const [pdfType, setPdfType] = useState<"rab" | "penawaran">("rab");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -2048,7 +2048,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                   alert("Upload logo first!");
                   return;
                 }
-                setPdfType('rab');
+                setPdfType("rab");
                 setShowPdfModal(true);
               }}
               disabled={!isClosed || !user}
@@ -2068,7 +2068,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
             </button>
             <button
               onClick={() => {
-                setPdfType('penawaran');
+                setPdfType("penawaran");
                 setShowPdfModal(true);
               }}
               disabled={!isClosed || !user}
@@ -2126,7 +2126,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
               await new Promise((r) => setTimeout(r, 100));
             }
 
-            if (pdfType === 'penawaran') {
+            if (pdfType === "penawaran") {
               await generatePenawaran(
                 walls,
                 customerInfo,
@@ -2139,7 +2139,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 wallImages,
                 company?.name,
                 ceilingPanels,
-                manualMaterials
+                manualMaterials,
               );
             } else {
               await generateRAB(
@@ -2154,7 +2154,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                 wallImages,
                 company?.name,
                 ceilingPanels,
-                manualMaterials
+                manualMaterials,
               );
             }
           } catch (e) {

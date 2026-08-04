@@ -66,6 +66,18 @@ export const generatePenawaran = async (
         }
     });
 
+    if (companyLogoUrl) {
+        try {
+            const logoLeft = await loadImage(companyLogoUrl);
+            const logoHeight = 10;
+            const leftRatio = logoLeft.width / logoLeft.height;
+            const leftWidth = logoHeight * leftRatio;
+            doc.addImage(logoLeft, 'PNG', 14, 10, leftWidth, logoHeight);
+        } catch (error) {
+            console.error("Error loading custom company logo", error);
+        }
+    }
+
     let cursorY = 20;
 
     // Header
