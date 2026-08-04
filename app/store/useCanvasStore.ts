@@ -707,7 +707,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 x,
                 y,
                 width: 0,
-                height: 0
+                height: 0,
+                patternOffsetX: x,
+                patternOffsetY: y
             }
         });
     },
@@ -758,8 +760,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 width: Math.abs(area.width),
                 height: Math.abs(area.height),
                 createdAt: Date.now(),
-                patternOffsetX: nx,
-                patternOffsetY: ny + Math.abs(area.height),
+                patternOffsetX: area.x,
+                patternOffsetY: area.y,
             };
 
             const updatedWalls = state.walls.map(w =>
