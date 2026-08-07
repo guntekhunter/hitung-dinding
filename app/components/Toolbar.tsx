@@ -384,6 +384,11 @@ const CeilingSettingsManager = memo(
       setCeilingTraps(activeWall.id, newTraps);
     };
 
+    const updateHollowGap = (hollowGap: number) => {
+      const newTraps = traps.map((t) => ({ ...t, hollowGap }));
+      setCeilingTraps(activeWall.id, newTraps);
+    };
+
     return (
       <div className="space-y-[1rem] mt-4">
         <hr className="border-[#E8E8E8]" />
@@ -531,6 +536,21 @@ const CeilingSettingsManager = memo(
                 type="number"
                 value={traps[0]?.dropHeight || 15}
                 onChange={(e) => updateDropHeight(Number(e.target.value))}
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400"
+              />
+            </div>
+          )}
+
+          {/* Hollow Gap */}
+          {model !== "FLAT" && (
+            <div>
+              <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                Hollow Gap (cm)
+              </label>
+              <input
+                type="number"
+                value={traps[0]?.hollowGap || 60}
+                onChange={(e) => updateHollowGap(Number(e.target.value))}
                 className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400"
               />
             </div>
@@ -977,6 +997,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
       grandTotal += (p.optimization?.lisDindingSticks || 0) * lisDindingPrice;
       grandTotal += (p.optimization?.lisSikuSticks || 0) * lisSikuPrice;
+      grandTotal += (p.optimization?.hollowSticks || 0) * (materialPrices[`hollow-${wallId}`] || 0);
     });
 
     manualMaterials.forEach((m) => {
@@ -1101,6 +1122,20 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
               totalPrice: lisSikuSubtotal,
             });
             grandTotal += lisSikuSubtotal;
+          }
+
+          const hollowPrice = materialPrices[`hollow-${w.id}`] || 0;
+          if (p.optimization?.hollowSticks > 0) {
+            const hollowSubtotal = p.optimization.hollowSticks * hollowPrice;
+            materialsList.push({
+              id: `hollow-${w.id}`,
+              name: `Hollow (4m) - ${w.name}`,
+              quantity: p.optimization.hollowSticks,
+              unit: "Batang",
+              unitPrice: hollowPrice,
+              totalPrice: hollowSubtotal,
+            });
+            grandTotal += hollowSubtotal;
           }
         }
       });
@@ -1509,6 +1544,9 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                       const lisDindingCount =
                         p.optimization?.lisDindingSticks || 0;
                       const lisSikuCount = p.optimization?.lisSikuSticks || 0;
+                      const hollowCount = p.optimization?.hollowSticks || 0;
+                      const hollowId = `hollow-${w.id}`;
+                      const hollowPrice = materialPrices[hollowId] || 0;
 
                       return (
                         <div key={productId} className="flex flex-col gap-1.5">
@@ -1713,6 +1751,47 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                 <span className="font-bold">
                                   Rp{" "}
                                   {(lisSikuCount * lisSikuPrice).toLocaleString(
+                                    "id-ID",
+                                  )}
+                                </span>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Hollow */}
+                          {hollowCount > 0 && (
+                            <>
+                              <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
+                                <span>Hollow 4m ({w.name})</span>
+                                <span className="font-bold">
+                                  {hollowCount} Batang
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                <span className="text-[.8rem] text-[#303030]">
+                                  Harga Produk
+                                </span>
+                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                  <span>Rp</span>
+                                  <input
+                                    type="number"
+                                    value={hollowPrice === 0 ? "" : hollowPrice}
+                                    onChange={(e) =>
+                                      setMaterialPrice(
+                                        hollowId,
+                                        Number(e.target.value),
+                                      )
+                                    }
+                                    className="w-24 bg-transparent outline-none font-medium p-0"
+                                    placeholder="0"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                <span>Subtotal</span>
+                                <span className="font-bold">
+                                  Rp{" "}
+                                  {(hollowCount * hollowPrice).toLocaleString(
                                     "id-ID",
                                   )}
                                 </span>
@@ -1980,6 +2059,20 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                       </div>
                                       <div className="text-[#303030] text-[.8rem] font-bold">
                                         {ceilingData.optimization.lisSikuSticks}{" "}
+                                        btg
+                                      </div>
+                                    </div>
+                                  )}
+                                  {ceilingData.optimization.hollowSticks >
+                                    0 && (
+                                    <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[#A3A3A3] text-[.8rem]">
+                                          Hollow (4m)
+                                        </span>
+                                      </div>
+                                      <div className="text-[#303030] text-[.8rem] font-bold">
+                                        {ceilingData.optimization.hollowSticks}{" "}
                                         btg
                                       </div>
                                     </div>

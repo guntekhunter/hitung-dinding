@@ -8,6 +8,7 @@ export interface TrapConfig {
   dropHeight: number; // cm
   gap: number;     // cm
   panelLength?: number; // cm
+  hollowGap?: number; // cm - spacing for hollow frame (default 60)
 }
 
 export interface CeilingInput {
@@ -36,6 +37,7 @@ export interface OptimizationResult {
   luasDropSqM: number;
   wasteOuter: number;
   wasteInner: number;
+  hollowSticks: number;
 }
 
 interface Rect { x: number; y: number; w: number; h: number; }
@@ -257,6 +259,41 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
   const lisDindingSticks = ffdBinPack(lisDindingCutsM, 4);
   const lisSikuSticks = ffdBinPack(lisSikuCutsM, 4);
 
+  // ========== HOLLOW FRAME CALCULATION ==========
+  // Formula: Hollow bidang (flat strips) + Horizontal (perimeter) + Vertikal (drop sides)
+  const defaultHollowGap = 60; // cm default spacing
+  const hollowS_cm = traps[0]?.hollowGap || defaultHollowGap; // use first trap's gap for bidang/horizontal
+  const S = hollowS_cm / 100; // convert to meters
+  const L_m = roomLength / 100;
+  const W_m = roomWidth / 100;
+  const kelilingOuter_m = 2 * (L_m + W_m);
+
+  // Hollow bidang: strips run along L, spaced S apart across W (+1 for edge strip)
+  const bidangStrips = Math.ceil(W_m / S) + 1;
+  const hollowBidangBatang = Math.ceil((bidangStrips * L_m) / 4);
+
+  // Hollow horizontal: perimeter of the outer ceiling
+  const hollowHorizontalBatang = Math.ceil(kelilingOuter_m / 4);
+
+  // Hollow vertikal: for each drop (trap), uses that trap's hollowGap
+  let hollowVertikalBatang = 0;
+  let insetForHollow = 0;
+  traps.forEach((trap) => {
+    insetForHollow += trap.width / 100;
+    const innerL_m = L_m - 2 * insetForHollow;
+    const innerW_m = W_m - 2 * insetForHollow;
+    if (innerL_m > 0 && innerW_m > 0 && trap.dropHeight > 0) {
+      const S_trap = (trap.hollowGap || defaultHollowGap) / 100;
+      const innerKeliling_m = 2 * (innerL_m + innerW_m);
+      const titik = Math.ceil(innerKeliling_m / S_trap);
+      const totalDropM = titik * (trap.dropHeight / 100);
+      hollowVertikalBatang += Math.ceil(totalDropM / 4);
+    }
+    insetForHollow += trap.gap / 100;
+  });
+
+  const hollowSticks = hollowBidangBatang + hollowHorizontalBatang + hollowVertikalBatang;
+
   // ========== AREA CALCULATION ==========
   let luasFlatSqM = (roomWidth * roomLength) / 10000;
   let luasDropSqM = 0;
@@ -391,6 +428,7 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
     luasFlatSqM,
     luasDropSqM,
     wasteOuter,
-    wasteInner
+    wasteInner,
+    hollowSticks,
   };
 }
