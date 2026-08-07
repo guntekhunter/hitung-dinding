@@ -371,6 +371,14 @@ const CeilingSettingsManager = memo(
       }
     };
 
+    const updateTrapPanelLength = (index: number, pLen: number) => {
+      const newTraps = [...traps];
+      if (newTraps[index]) {
+        newTraps[index] = { ...newTraps[index], panelLength: pLen };
+        setCeilingTraps(activeWall.id, newTraps);
+      }
+    };
+
     const updateDropHeight = (dropHeight: number) => {
       const newTraps = traps.map((t) => ({ ...t, dropHeight }));
       setCeilingTraps(activeWall.id, newTraps);
@@ -411,7 +419,7 @@ const CeilingSettingsManager = memo(
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">
-                Panjang Papan (cm)
+                Panjang Papan Luar
               </label>
               <select
                 value={panelLength}
@@ -453,31 +461,61 @@ const CeilingSettingsManager = memo(
             </div>
           </div>
 
-          {/* Trap Thickness */}
+          {/* Trap Settings */}
           {model !== "FLAT" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-                  Tebal Trap 1
-                </label>
-                <input
-                  type="number"
-                  value={traps[0]?.width || 60}
-                  onChange={(e) => updateTrapWidth(0, Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400"
-                />
-              </div>
-              {model === "DROP2" && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-                    Tebal Trap 2
+                    Tebal Trap 1
                   </label>
                   <input
                     type="number"
-                    value={traps[1]?.width || 40}
-                    onChange={(e) => updateTrapWidth(1, Number(e.target.value))}
+                    value={traps[0]?.width || 60}
+                    onChange={(e) => updateTrapWidth(0, Number(e.target.value))}
                     className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400"
                   />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                    Papan Trap 1
+                  </label>
+                  <select
+                    value={traps[0]?.panelLength || panelLength}
+                    onChange={(e) => updateTrapPanelLength(0, Number(e.target.value))}
+                    className="w-full h-[30px] border border-gray-200 rounded px-2 text-[10px] bg-white outline-none focus:border-indigo-400"
+                  >
+                    <option value={400}>400 cm</option>
+                    <option value={600}>600 cm</option>
+                  </select>
+                </div>
+              </div>
+              {model === "DROP2" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                      Tebal Trap 2
+                    </label>
+                    <input
+                      type="number"
+                      value={traps[1]?.width || 40}
+                      onChange={(e) => updateTrapWidth(1, Number(e.target.value))}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-[10px] outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                      Papan Trap 2
+                    </label>
+                    <select
+                      value={traps[1]?.panelLength || panelLength}
+                      onChange={(e) => updateTrapPanelLength(1, Number(e.target.value))}
+                      className="w-full h-[30px] border border-gray-200 rounded px-2 text-[10px] bg-white outline-none focus:border-indigo-400"
+                    >
+                      <option value={400}>400 cm</option>
+                      <option value={600}>600 cm</option>
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
@@ -902,11 +940,41 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
 
     Object.keys(ceilingPanels).forEach((wallId) => {
       const p = ceilingPanels[wallId];
-      const price = materialPrices[`ceiling-${wallId}`] || 0;
+      const defaultPrice = materialPrices[`ceiling-${wallId}`] || 0;
       const lisDindingPrice = materialPrices[`lisDinding-${wallId}`] || 0;
       const lisSikuPrice = materialPrices[`lisSiku-${wallId}`] || 0;
 
-      grandTotal += p.count * price;
+      const breakdown = p.optimization?.panelsByGroup || {};
+      const groups = Object.keys(breakdown);
+
+      if (groups.length > 0) {
+        // Check if there are multiple panel lengths in use
+        const uniqueLengths = [
+          ...new Set(
+            groups.map((g) => {
+              const m = g.match(/\((\d+)cm\)$/);
+              return m ? m[1] : null;
+            }),
+          ),
+        ].filter(Boolean);
+        const multiLength = uniqueLengths.length > 1;
+
+        groups.forEach((groupName) => {
+          const panels = breakdown[groupName];
+          if (panels <= 0) return;
+          const groupPriceId = multiLength
+            ? `ceiling-${wallId}-${groupName}`
+            : `ceiling-${wallId}`;
+          const groupPrice = materialPrices[groupPriceId] ?? defaultPrice;
+          const groupTotal = Math.ceil(
+            panels * (1 + wastePercentage / 100),
+          );
+          grandTotal += groupTotal * groupPrice;
+        });
+      } else {
+        grandTotal += p.count * defaultPrice;
+      }
+
       grandTotal += (p.optimization?.lisDindingSticks || 0) * lisDindingPrice;
       grandTotal += (p.optimization?.lisSikuSticks || 0) * lisSikuPrice;
     });
@@ -941,6 +1009,8 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
     totalProductCounts,
     materialPrices,
     manualMaterials,
+    ceilingPanels,
+    wastePercentage,
   ]);
 
   const handleSaveProject = async () => {
@@ -1449,23 +1519,71 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                             const groups = Object.keys(breakdown);
 
                             if (groups.length > 0) {
+                              // Check whether all groups use the same panel length
+                              const uniqueLengths = [
+                                ...new Set(
+                                  groups.map((g) => {
+                                    const m = g.match(/\((\d+)cm\)$/);
+                                    return m ? m[1] : null;
+                                  }),
+                                ),
+                              ].filter(Boolean);
+                              const multiLength = uniqueLengths.length > 1;
+
                               return (
                                 <>
                                   {groups.map((groupName) => {
                                     const panels = breakdown[groupName];
                                     if (panels <= 0) return null;
+                                    // Use a per-group price key when lengths differ
+                                    const groupPriceId = multiLength
+                                      ? `ceiling-${w.id}-${groupName}`
+                                      : productId;
+                                    const groupPrice =
+                                      materialPrices[groupPriceId] ?? price;
+                                    const groupTotal = Math.ceil(
+                                      panels * (1 + wastePercentage / 100),
+                                    );
                                     return (
-                                      <div
-                                        key={groupName}
-                                        className="flex items-center gap-4 text-[.8rem] text-[#303030]"
-                                      >
-                                        <span>
-                                          Plafon {p.length}m ({groupName}) -{" "}
-                                          {w.name}
-                                        </span>
-                                        <span className="font-bold">
-                                          {panels} Lembar
-                                        </span>
+                                      <div key={groupName} className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                          <span>
+                                            Plafon ({groupName}) -{" "}
+                                            {w.name}
+                                          </span>
+                                          <span className="font-bold">
+                                            {groupTotal} Lembar
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                          <span className="text-[.8rem] text-[#303030]">
+                                            Harga Produk
+                                          </span>
+                                          <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                            <span>Rp</span>
+                                            <input
+                                              type="number"
+                                              value={groupPrice === 0 ? "" : groupPrice}
+                                              onChange={(e) =>
+                                                setMaterialPrice(
+                                                  groupPriceId,
+                                                  Number(e.target.value),
+                                                )
+                                              }
+                                              className="w-24 bg-transparent outline-none font-medium p-0"
+                                              placeholder="0"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                          <span>Subtotal</span>
+                                          <span className="font-bold">
+                                            Rp{" "}
+                                            {(
+                                              groupTotal * groupPrice
+                                            ).toLocaleString("id-ID")}
+                                          </span>
+                                        </div>
                                       </div>
                                     );
                                   })}
@@ -1473,43 +1591,46 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                               );
                             }
 
+                            // Fallback: no breakdown
                             return (
-                              <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
-                                <span>
-                                  Plafon {p.length}m ({w.name})
-                                </span>
-                                <span className="font-bold">
-                                  {p.count} Lembar
-                                </span>
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-4 text-[.8rem] text-[#303030]">
+                                  <span>
+                                    Plafon {p.length}m ({w.name})
+                                  </span>
+                                  <span className="font-bold">
+                                    {p.count} Lembar
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                  <span className="text-[.8rem] text-[#303030]">
+                                    Harga Produk
+                                  </span>
+                                  <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                    <span>Rp</span>
+                                    <input
+                                      type="number"
+                                      value={price === 0 ? "" : price}
+                                      onChange={(e) =>
+                                        setMaterialPrice(
+                                          productId,
+                                          Number(e.target.value),
+                                        )
+                                      }
+                                      className="w-24 bg-transparent outline-none font-medium p-0"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                  <span>Subtotal</span>
+                                  <span className="font-bold">
+                                    Rp {(p.count * price).toLocaleString("id-ID")}
+                                  </span>
+                                </div>
                               </div>
                             );
                           })()}
-                          <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
-                            <span className="text-[.8rem] text-[#303030]">
-                              Harga Produk
-                            </span>
-                            <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
-                              <span>Rp</span>
-                              <input
-                                type="number"
-                                value={price === 0 ? "" : price}
-                                onChange={(e) =>
-                                  setMaterialPrice(
-                                    productId,
-                                    Number(e.target.value),
-                                  )
-                                }
-                                className="w-24 bg-transparent outline-none font-medium p-0"
-                                placeholder="0"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
-                            <span>Subtotal</span>
-                            <span className="font-bold">
-                              Rp {(p.count * price).toLocaleString("id-ID")}
-                            </span>
-                          </div>
 
                           {/* Lis Dinding */}
                           {lisDindingCount > 0 && (

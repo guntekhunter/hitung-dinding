@@ -7,6 +7,7 @@ export interface TrapConfig {
   width: number;   // cm
   dropHeight: number; // cm
   gap: number;     // cm
+  panelLength?: number; // cm
 }
 
 export interface CeilingInput {
@@ -271,45 +272,61 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
   
   const totalSurfaceAreaSqM = luasFlatSqM + luasDropSqM;
 
-  // ========== OPTIMIZE EACH POOL BY COLOR ==========
-  const colorPools = new Map<string, { cuts: number[], zones: string[] }>();
+  // ========== OPTIMIZE EACH POOL BY COLOR & PANEL LENGTH ==========
+  const colorPools = new Map<string, { cuts: number[], zones: string[], panelLengthM: number }>();
   
   for (let i = 0; i < numZones; i++) {
     const color = (colors && colors[i]) ? colors[i] : `Zone_${i}`;
     let zoneName = 'Luar / Base';
-    if (i > 0 && i < numZones - 1) zoneName = `Trap ${i}`;
-    if (i > 0 && i === numZones - 1) zoneName = 'Dalam / Plafon Utama';
-    if (numZones === 1) zoneName = 'Plafon Utama';
-
-    if (!colorPools.has(color)) {
-      colorPools.set(color, { cuts: [], zones: [] });
+    let zonePanelLength = panelLength;
+    
+    if (i > 0 && i < numZones - 1) {
+      zoneName = `Trap ${i}`;
+      zonePanelLength = traps[i - 1]?.panelLength || panelLength;
     }
-    colorPools.get(color)!.cuts.push(...zoneCuts[i]);
-    colorPools.get(color)!.zones.push(zoneName);
+    if (i > 0 && i === numZones - 1) {
+      zoneName = 'Dalam / Plafon Utama';
+      zonePanelLength = traps[i - 1]?.panelLength || panelLength;
+    }
+    if (numZones === 1) {
+      zoneName = 'Plafon Utama';
+      zonePanelLength = panelLength;
+    }
+
+    const poolKey = `${color}_${zonePanelLength}`;
+
+    if (!colorPools.has(poolKey)) {
+      colorPools.set(poolKey, { cuts: [], zones: [], panelLengthM: zonePanelLength / 100 });
+    }
+    colorPools.get(poolKey)!.cuts.push(...zoneCuts[i]);
+    // only push zoneName if not already in array
+    if (!colorPools.get(poolKey)!.zones.includes(zoneName)) {
+      colorPools.get(poolKey)!.zones.push(zoneName);
+    }
   }
 
   let totalPanels = 0;
   let totalUsedM = 0;
+  let totalMaterialM = 0;
   const panelsByGroup: Record<string, number> = {};
   const lengthByGroup: Record<string, number> = {};
 
-  const panelLengthM = panelLength / 100;
-
-  colorPools.forEach((pool, color) => {
+  colorPools.forEach((pool, poolKey) => {
     const cutsM = pool.cuts.map(c => parseFloat((c / 100).toFixed(4)));
-    const panels = ffdBinPack(cutsM, panelLengthM);
+    const panels = ffdBinPack(cutsM, pool.panelLengthM);
     
     totalPanels += panels;
     const usedM = cutsM.reduce((a, b) => a + b, 0);
     totalUsedM += usedM;
+    totalMaterialM += panels * pool.panelLengthM;
 
     // Use joined zone names as the group key
-    const groupName = pool.zones.join(' + ');
+    // Also include panel length in group name if we have multiple
+    const groupName = pool.zones.join(' + ') + ` (${pool.panelLengthM * 100}cm)`;
     panelsByGroup[groupName] = panels;
     lengthByGroup[groupName] = pool.cuts.reduce((a, b) => a + b, 0);
   });
 
-  const totalMaterialM = totalPanels * panelLengthM;
   const totalWasteCm = (totalMaterialM - totalUsedM) * 100;
   const wastePercentage = totalMaterialM > 0 ? ((totalMaterialM - totalUsedM) / totalMaterialM) * 100 : 0;
 
