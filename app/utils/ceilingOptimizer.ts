@@ -312,17 +312,55 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
   const lengthByGroup: Record<string, number> = {};
 
   colorPools.forEach((pool, poolKey) => {
-    const cutsM = pool.cuts.map(c => parseFloat((c / 100).toFixed(4)));
-    const panels = ffdBinPack(cutsM, pool.panelLengthM);
-    
-    totalPanels += panels;
-    const usedM = cutsM.reduce((a, b) => a + b, 0);
-    totalUsedM += usedM;
-    totalMaterialM += panels * pool.panelLengthM;
+    const plM = pool.panelLengthM;
 
-    // Use joined zone names as the group key
-    // Also include panel length in group name if we have multiple
-    const groupName = pool.zones.join(' + ') + ` (${pool.panelLengthM * 100}cm)`;
+    // ---------------------------------------------------------------
+    // Physical rule:
+    //   - Strip span > panel length  → strip needs multiple panels
+    //     end-to-end.  The tail offcut of the LAST panel in that strip
+    //     CANNOT be reused for any other strip (no gluing allowed).
+    //     Count: ceil(span / panelLength) per strip, waste is fixed.
+    //
+    //   - Strip span ≤ panel length  → offcuts CAN be reused for
+    //     other strips in the same colour / panel-length pool.
+    //     Use FFD bin-packing as before.
+    // ---------------------------------------------------------------
+
+    let directPanels = 0;   // for over-length strips
+    let directMaterialM = 0;
+    let directUsedM = 0;
+    const packableCutsM: number[] = [];  // for ≤-panel-length strips
+
+    pool.cuts.forEach(c => {
+      const cM = parseFloat((c / 100).toFixed(4));
+      if (cM > plM + 0.001) {
+        // Over-length strip: panels must join end-to-end.
+        // Each joining point is a waste point: the offcut from the
+        // final panel in the strip cannot be recycled.
+        const stripsNeeded = Math.ceil(cM / plM);
+        directPanels     += stripsNeeded;
+        directMaterialM  += stripsNeeded * plM;
+        directUsedM      += cM;            // only the actual span is "used"
+      } else {
+        packableCutsM.push(cM);
+      }
+    });
+
+    // FFD on the short cuts
+    const packedPanels = ffdBinPack(packableCutsM, plM);
+    const packedUsedM  = packableCutsM.reduce((a, b) => a + b, 0);
+    const packedMaterialM = packedPanels * plM;
+
+    const panels = directPanels + packedPanels;
+    const usedM  = directUsedM  + packedUsedM;
+    const materialM = directMaterialM + packedMaterialM;
+
+    totalPanels     += panels;
+    totalUsedM      += usedM;
+    totalMaterialM  += materialM;
+
+    // Use joined zone names as the group key, include panel length
+    const groupName = pool.zones.join(' + ') + ` (${plM * 100}cm)`;
     panelsByGroup[groupName] = panels;
     lengthByGroup[groupName] = pool.cuts.reduce((a, b) => a + b, 0);
   });
