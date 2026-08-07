@@ -230,9 +230,11 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
 
       const numStrips = Math.ceil(perimeterCm / panelWidth);
       
-      // Assign drop cuts to the inner zone (i+1)
+      // Drop 1 (i===0): assign drop cuts to zone 0 (Luar / Base)
+      // Drop 2+ (i>=1): assign drop cuts to innermost zone (Dalam / Plafon Utama)
+      const dropTargetZone = i === 0 ? 0 : numZones - 1;
       for (let j = 0; j < numStrips; j++) {
-        zoneCuts[i + 1].push(trap.dropHeight);
+        zoneCuts[dropTargetZone].push(trap.dropHeight);
       }
     }
     insetForDrop += trap.gap;
