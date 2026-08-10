@@ -235,6 +235,18 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 } else if (e.key === 'y') {
                     redo();
                     e.preventDefault();
+                } else if (e.key === '}' || e.key === ']') {
+                    const { selectedDesignAreaId } = useCanvasStore.getState();
+                    if (selectedDesignAreaId) {
+                        useCanvasStore.getState().reorderElement(selectedDesignAreaId, 'front');
+                        e.preventDefault();
+                    }
+                } else if (e.key === '{' || e.key === '[') {
+                    const { selectedDesignAreaId } = useCanvasStore.getState();
+                    if (selectedDesignAreaId) {
+                        useCanvasStore.getState().reorderElement(selectedDesignAreaId, 'back');
+                        e.preventDefault();
+                    }
                 }
             }
         };

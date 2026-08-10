@@ -165,6 +165,7 @@ type CanvasState = {
     moveOpening: (id: string, x: number, y: number) => void;
     resizeOpening: (id: string, x: number, y: number, width: number, height: number, saveHistory?: boolean) => void;
     removeOpening: (id: string) => void;
+    reorderElement: (id: string, direction: 'front' | 'back') => void;
 
     // List Actions
     startList: (x: number, y: number) => void;
@@ -993,6 +994,50 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     : w
             )
         }));
+    },
+
+    reorderElement: (id, direction) => {
+        set((state) => {
+            const wall = state.walls.find(w => w.id === state.activeWallId);
+            if (!wall) return state;
+
+            // Gather all elements with their createdAt timestamps
+            const allElements = [
+                ...wall.designAreas.map(a => ({ id: a.id, createdAt: a.createdAt || 0 })),
+                ...wall.openings.map(o => ({ id: o.id, createdAt: o.createdAt || 0 })),
+                ...wall.lists.map(l => ({ id: l.id, createdAt: l.createdAt || 0 })),
+            ].sort((a, b) => a.createdAt - b.createdAt);
+
+            const idx = allElements.findIndex(e => e.id === id);
+            if (idx === -1) return state;
+
+            let newCreatedAt: number;
+            if (direction === 'front') {
+                // Give it a timestamp 1ms after the current max
+                const maxTs = Math.max(...allElements.map(e => e.createdAt));
+                newCreatedAt = maxTs + 1;
+            } else {
+                // Give it a timestamp 1ms before the current min
+                const minTs = Math.min(...allElements.map(e => e.createdAt));
+                newCreatedAt = minTs - 1;
+            }
+
+            const updatedWalls = state.walls.map(w => {
+                if (w.id !== state.activeWallId) return w;
+                return {
+                    ...w,
+                    designAreas: w.designAreas.map(a => a.id === id ? { ...a, createdAt: newCreatedAt } : a),
+                    openings: w.openings.map(o => o.id === id ? { ...o, createdAt: newCreatedAt } : o),
+                    lists: w.lists.map(l => l.id === id ? { ...l, createdAt: newCreatedAt } : l),
+                };
+            });
+
+            return {
+                past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
+                future: [],
+                walls: updatedWalls,
+            };
+        });
     },
 
     moveOpening: (id, x, y) => {
