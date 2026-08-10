@@ -3,22 +3,17 @@ import { createSignature } from "@/lib/duitku";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const DUITKU_BASE_URL =
-  process.env.DUITKU_BASE_URL ?? "https://passport.duitku.com/webapi/api/merchant";
+  process.env.DUITKU_BASE_URL ??
+  "https://passport.duitku.com/webapi/api/merchant";
 const PLAN_PRICE = 89999; // Rp 89.999
+const PAYMENT_METHOD = "SQ"; // Nusapay QRIS
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
     // ── Pre-registration flow (from /payment page) ───────────────────────────
-    const {
-      companyName,
-      adminName,
-      email,
-      waNumber,
-      password,
-      paymentMethod,
-    } = body;
+    const { companyName, adminName, email, waNumber, password } = body;
 
     if (!companyName || !adminName || !email || !waNumber || !password) {
       return NextResponse.json(
@@ -34,14 +29,20 @@ export async function POST(req: Request) {
     );
     if (emailTaken) {
       return NextResponse.json(
-        { error: "Email sudah terdaftar. Silakan login atau gunakan email lain." },
+        {
+          error:
+            "Email sudah terdaftar. Silakan login atau gunakan email lain.",
+        },
         { status: 409 },
       );
     }
 
     // ── 2. Generate Order ID unik ────────────────────────────────────────────
     const timestamp = Date.now();
-    const slugEmail = email.replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase();
+    const slugEmail = email
+      .replace(/[^a-z0-9]/gi, "")
+      .slice(0, 8)
+      .toUpperCase();
     const merchantOrderId = `ORD-${slugEmail}-${timestamp}`;
 
     const merchantCode = process.env.DUITKU_MERCHANT_CODE!;
@@ -68,7 +69,10 @@ export async function POST(req: Request) {
       });
 
     if (pendingError) {
-      console.error("[create] pending_registrations insert error:", pendingError);
+      console.error(
+        "[create] pending_registrations insert error:",
+        pendingError,
+      );
       return NextResponse.json(
         { error: "Gagal menyimpan data. Coba lagi." },
         { status: 500 },
@@ -81,7 +85,7 @@ export async function POST(req: Request) {
       user_id: null, // akan diisi setelah akun dibuat di callback
       amount: PLAN_PRICE,
       status: "PENDING",
-      payment_method: paymentMethod ?? "VA",
+      payment_method: PAYMENT_METHOD,
     });
 
     if (insertError) {
@@ -96,7 +100,7 @@ export async function POST(req: Request) {
     const duitkuPayload = {
       merchantCode,
       paymentAmount: PLAN_PRICE,
-      paymentMethod: paymentMethod ?? "QR",
+      paymentMethod: PAYMENT_METHOD, // SQ = Nusapay QRIS
       merchantOrderId,
       productDetails: "Rapi Studio PRO — Akses 1 Bulan",
       customerVaName: adminName,
@@ -131,8 +135,14 @@ export async function POST(req: Request) {
         .update({ status: "FAILED" })
         .eq("merchant_order_id", merchantOrderId);
 
+      // Provide a user-friendly message for common Duitku errors
+      const rawMessage: string = duitkuData.Message ?? "";
+      const userMessage = rawMessage.toLowerCase().includes("not available")
+        ? "Metode pembayaran Nusapay QRIS (SQ) belum diaktifkan di akun Duitku. Silakan aktifkan di dashboard Duitku → Payment Channel."
+        : rawMessage || "Gagal membuat pembayaran. Silakan coba lagi.";
+
       return NextResponse.json(
-        { error: duitkuData.Message ?? "Gagal membuat pembayaran di Duitku." },
+        { error: userMessage, raw: rawMessage },
         { status: 502 },
       );
     }
