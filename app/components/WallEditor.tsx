@@ -1741,7 +1741,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
             if (!selectedProduct) return;
             const snappedPos = snapToGap(pos, false);
             startDesignArea(snappedPos.x, snappedPos.y);
-        } else if (interactionMode === 'window' || interactionMode === 'door') {
+        } else if (interactionMode === 'window' || interactionMode === 'door' || interactionMode === 'tv') {
             const snappedPos = snapToGap(pos, false);
             startOpening(snappedPos.x, snappedPos.y, interactionMode);
         } else if (interactionMode === 'list') {
