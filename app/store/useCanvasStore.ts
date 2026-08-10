@@ -32,7 +32,7 @@ export type DesignArea = {
 
 export type Opening = {
     id: string;
-    type: 'window' | 'door';
+    type: 'window' | 'door' | 'tv';
     x: number;
     y: number;
     width: number;
@@ -93,7 +93,7 @@ type CanvasState = {
     setProductColor: (productId: string, color: string) => void;
 
     // Interaction mode
-    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan' | 'resize';
+    interactionMode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'tv' | 'list' | 'pan' | 'resize';
 
     // Product state
     selectedProductId: string;
@@ -147,7 +147,7 @@ type CanvasState = {
 
     // Product actions
     setSelectedProduct: (id: string) => void;
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan' | 'resize') => void;
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'tv' | 'list' | 'pan' | 'resize') => void;
 
     // Area Actions
     startDesignArea: (x: number, y: number) => void;
@@ -159,7 +159,7 @@ type CanvasState = {
     clearDesignAreas: () => void;
 
     // Opening Actions
-    startOpening: (x: number, y: number, type: 'window' | 'door') => void;
+    startOpening: (x: number, y: number, type: 'window' | 'door' | 'tv') => void;
     updateOpening: (x: number, y: number) => void;
     finishOpening: () => void;
     moveOpening: (id: string, x: number, y: number) => void;
@@ -697,7 +697,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     setSelectedProduct: (id) => set({ selectedProductId: id }),
-    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'list' | 'pan' | 'resize') => set({ interactionMode: mode }),
+    setInteractionMode: (mode: 'draw' | 'place' | 'delete' | 'window' | 'door' | 'tv' | 'list' | 'pan' | 'resize') => set({ interactionMode: mode }),
 
     startDesignArea: (x, y) => {
         const { selectedProductId } = get();

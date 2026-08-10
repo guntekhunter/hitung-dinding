@@ -1401,7 +1401,7 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
           <h3 className="font-medium uppercase text-[10px] tracking-widest">
             Tambahan
           </h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setInteractionMode("window")}
               className={`flex items-center gap-2 p-2 rounded-[5px] font-medium text-[.8rem] transition-all border ${interactionMode === "window" ? "bg-[#E5E5E5] border-[#E5E5E5] text-[#303030] rounded-[2px] flex text-[.8rem] gap-2" : "bg-white border-[#E5E5E5] text-slate-600 flex text-[.8rem] gap-2"}`}
@@ -1413,6 +1413,12 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
               className={`flex items-center gap-2 p-2 rounded-[5px] font-medium text-[.8rem] transition-all border ${interactionMode === "door" ? "bg-[#E5E5E5] border-[#E5E5E5] text-[#303030] rounded-[2px] flex text-[.8rem] gap-2" : "bg-white border-[#E5E5E5] text-slate-600 flex text-[.8rem] gap-2"}`}
             >
               <DoorClosed className="w-[1rem]" /> Pintu
+            </button>
+            <button
+              onClick={() => setInteractionMode("tv")}
+              className={`flex items-center gap-2 p-2 rounded-[5px] font-medium text-[.8rem] transition-all border ${interactionMode === "tv" ? "bg-[#E5E5E5] border-[#E5E5E5] text-[#303030] rounded-[2px] flex text-[.8rem] gap-2" : "bg-white border-[#E5E5E5] text-slate-600 flex text-[.8rem] gap-2"}`}
+            >
+              <Square className="w-[1rem]" /> TV
             </button>
           </div>
         </div>

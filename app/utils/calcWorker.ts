@@ -75,7 +75,7 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
             });
 
             let finalRects = nonOverlappingMaterialRects;
-            wall.openings.map(op => normalizeRect(op)).forEach(opening => {
+            wall.openings.filter(op => op.type !== 'tv').map(op => normalizeRect(op)).forEach(opening => {
                 let nextFinal: Rect[] = [];
                 finalRects.forEach(r => { nextFinal.push(...subtractRect(r, opening)); });
                 finalRects = nextFinal;

@@ -123,7 +123,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     const pathname = usePathname();
     const isColoringMode = pathname === '/coloring' || isColoringPreview;
-    const shouldHideText = isExporting;
+    const shouldHideText = isExporting || isColoringMode;
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
     const {
@@ -928,8 +928,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
     const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onSaveHistory, wallCenter, interactionMode, isExporting }: any) => {
         const isWindow = opening.type === 'window';
-        const color = "#ffffff";
-        const label = isWindow ? "Window" : "Door";
+        const isTv = opening.type === 'tv';
+        const color = isTv ? "#000000" : "#ffffff";
+        const label = isWindow ? "Window" : (isTv ? "TV" : "Door");
+        const textColor = isTv ? "#ffffff" : "#1e293b";
         const absWidth = Math.abs(opening.width);
         const absHeight = Math.abs(opening.height);
         const dimOffset = 20 / zoom;
@@ -981,7 +983,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     }}
                 />
                 {!isExporting && (
-                    <Text text={label} fontSize={12} fill="#1e293b" fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
+                    <Text text={label} fontSize={12} fill={textColor} fontStyle="bold" align="center" width={opening.width} y={opening.height / 2 - 12 / zoom} scaleX={textScale} scaleY={textScale} listening={false} />
                 )}
             </Group>
         );
