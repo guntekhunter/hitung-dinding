@@ -926,22 +926,32 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         );
     });
 
-    const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, onClick, onMove, onSaveHistory, wallCenter, interactionMode, isExporting }: any) => {
+       const MemoizedOpeningContent = React.memo(({ opening, zoom, textScale, interactionMode, isExporting, onClick, selectedDesignAreaId, setSelectedDesignAreaId, readOnly, wallCenter }: any) => {
+        const isClosed = useCanvasStore(state => state.walls.find(w => w.id === state.activeWallId)?.isClosed);
+        const onSaveHistory = useCanvasStore(state => state._saveHistory);
+        const onMove = useCanvasStore(state => state.moveOpening);
+
         const isWindow = opening.type === 'window';
         const isTv = opening.type === 'tv';
         const color = isTv ? "#000000" : "#ffffff";
         const label = isWindow ? "Window" : (isTv ? "TV" : "Door");
         const textColor = isTv ? "#ffffff" : "#1e293b";
-        const absWidth = Math.abs(opening.width);
-        const absHeight = Math.abs(opening.height);
-        const dimOffset = 20 / zoom;
-        const tickLen = 4 / zoom;
+        const isSelected = selectedDesignAreaId === opening.id;
+
+        const handleClick = () => {
+            if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
+                setSelectedDesignAreaId(isSelected ? null : opening.id);
+            } else {
+                onClick();
+            }
+        };
 
         return (
             <Group
+                id={opening.id}
                 x={opening.x}
                 y={opening.y}
-                draggable={interactionMode !== 'list'}
+                draggable={interactionMode !== 'list' && !readOnly}
                 onDragMove={(e) => {
                     let newX = e.target.x();
                     let newY = e.target.y();
@@ -971,15 +981,33 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     width={opening.width}
                     height={opening.height}
                     fill={color}
-                    onClick={onClick}
-                    onTap={onClick}
+                    stroke={isSelected && interactionMode === 'resize' ? "#7B6DED" : undefined}
+                    strokeWidth={isSelected && interactionMode === 'resize' ? 4 / zoom : 0}
+                    onClick={handleClick}
+                    onTap={handleClick}
+                    onMouseDown={(e) => {
+                        if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
+                            e.cancelBubble = true;
+                            setSelectedDesignAreaId(opening.id);
+                        } else {
+                            handleClick();
+                        }
+                    }}
+                    onTouchStart={(e) => {
+                        if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
+                            e.cancelBubble = true;
+                            setSelectedDesignAreaId(opening.id);
+                        } else {
+                            handleClick();
+                        }
+                    }}
                     onMouseEnter={(e: any) => {
-                        const container = e.target.getStage().container();
-                        container.style.cursor = 'move';
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = 'move';
                     }}
                     onMouseLeave={(e: any) => {
-                        const container = e.target.getStage().container();
-                        container.style.cursor = isClosed ? 'default' : 'crosshair';
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = isClosed ? 'default' : 'crosshair';
                     }}
                 />
                 {!isExporting && (
@@ -1061,9 +1089,25 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         />;
     };
 
+    const wallCenter = useMemo(() => ({
+        x: bounds.minX + bounds.width / 2,
+        y: bounds.minY + bounds.height / 2
+    }), [bounds]);
+
     const renderOpeningContent = (opening: any) => {
         if (!('type' in opening)) return null;
-        return <MemoizedOpeningContent opening={opening} zoom={zoom} textScale={textScale} interactionMode={interactionMode} isExporting={shouldHideText} onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} />;
+        return <MemoizedOpeningContent 
+            opening={opening} 
+            zoom={zoom} 
+            textScale={textScale} 
+            interactionMode={interactionMode} 
+            isExporting={shouldHideText} 
+            selectedDesignAreaId={selectedDesignAreaId}
+            setSelectedDesignAreaId={setSelectedDesignAreaId}
+            readOnly={props.readOnly}
+            wallCenter={wallCenter}
+            onClick={() => interactionMode === 'delete' && removeOpening(opening.id)} 
+        />;
     };
 
     const renderListContent = (list: any) => {
@@ -1088,10 +1132,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         />;
     };
 
-    const wallCenter = useMemo(() => ({
-        x: bounds.minX + bounds.width / 2,
-        y: bounds.minY + bounds.height / 2
-    }), [bounds]);
 
     const renderedAreas = useMemo(() => {
         const moveDesignArea = useCanvasStore.getState().moveDesignArea;
@@ -1151,10 +1191,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     zoom={zoom}
                                     textScale={textScale}
                                     wallCenter={wallCenter}
-                                    onMove={moveOpening}
-                                    onSaveHistory={_saveHistory}
                                     interactionMode={interactionMode}
                                     isExporting={shouldHideText}
+                                    selectedDesignAreaId={selectedDesignAreaId}
+                                    setSelectedDesignAreaId={setSelectedDesignAreaId}
+                                    readOnly={props.readOnly}
                                     onClick={() => {
                                         if (interactionMode === 'delete') {
                                             useCanvasStore.getState().removeOpening(op.id);
@@ -2456,8 +2497,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
                     {/* Custom resize handles when in resize mode */}
                     {interactionMode === 'resize' && !props.readOnly && (() => {
-                        const area = designAreas.find((a: any) => a.id === selectedDesignAreaId);
-                        if (!area || !('productId' in area)) return null;
+                        const isOpening = openings.some((o: any) => o.id === selectedDesignAreaId);
+                        const area = isOpening 
+                            ? openings.find((o: any) => o.id === selectedDesignAreaId)
+                            : designAreas.find((a: any) => a.id === selectedDesignAreaId);
+                            
+                        if (!area) return null;
 
                         // Use live draft if dragging, else committed area
                         const draft = resizeDraft && resizeDraft.id === area.id ? resizeDraft : {
@@ -2499,6 +2544,35 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     fill="transparent"
                                     listening={false}
                                 />
+
+                                {/* Rotate Button */}
+                                <Group
+                                    x={x + w / 2}
+                                    y={y - 25 / zoom}
+                                    onClick={() => {
+                                        const newW = h;
+                                        const newH = w;
+                                        const newX = x + (w - newW) / 2;
+                                        const newY = y + (h - newH) / 2;
+                                        const store = useCanvasStore.getState();
+                                        if (isOpening) store.resizeOpening(area.id, newX, newY, newW, newH, true);
+                                        else store.resizeDesignArea(area.id, newX, newY, newW, newH, true);
+                                    }}
+                                    onTap={() => {
+                                        const newW = h;
+                                        const newH = w;
+                                        const newX = x + (w - newW) / 2;
+                                        const newY = y + (h - newH) / 2;
+                                        const store = useCanvasStore.getState();
+                                        if (isOpening) store.resizeOpening(area.id, newX, newY, newW, newH, true);
+                                        else store.resizeDesignArea(area.id, newX, newY, newW, newH, true);
+                                    }}
+                                    onMouseEnter={(e: any) => { e.target.getStage().container().style.cursor = 'pointer'; }}
+                                    onMouseLeave={(e: any) => { e.target.getStage().container().style.cursor = 'default'; }}
+                                >
+                                    <Circle radius={12 / zoom} fill="white" stroke="#7B6DED" strokeWidth={1.5 / zoom} />
+                                    <Text text="↻" fontSize={16 / zoom} fill="#7B6DED" fontStyle="bold" align="center" verticalAlign="middle" x={-8 / zoom} y={-8 / zoom} width={16 / zoom} height={16 / zoom} />
+                                </Group>
 
                                 {/* Live dimension labels */}
                                 {/* Width below */}
@@ -2575,7 +2649,9 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                             const newDraft = { id: area.id, x: nx, y: ny, width: nw, height: nh };
                                             setResizeDraft(newDraft);
                                             // Realtime update to store without history spam
-                                            useCanvasStore.getState().resizeDesignArea(area.id, nx, ny, nw, nh, false);
+                                            const store = useCanvasStore.getState();
+                                            if (isOpening) store.resizeOpening(area.id, nx, ny, nw, nh, false);
+                                            else store.resizeDesignArea(area.id, nx, ny, nw, nh, false);
                                         }}
                                         onDragEnd={(e: any) => {
                                             e.cancelBubble = true;
@@ -2584,10 +2660,18 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                             e.target.y(pos[1] - HANDLE_R);
                                             // Commit with history
                                             if (resizeDraft && resizeDraft.id === area.id) {
-                                                useCanvasStore.getState().resizeDesignArea(
-                                                    resizeDraft.id, resizeDraft.x, resizeDraft.y,
-                                                    resizeDraft.width, resizeDraft.height, true
-                                                );
+                                                const store = useCanvasStore.getState();
+                                                if (isOpening) {
+                                                    store.resizeOpening(
+                                                        resizeDraft.id, resizeDraft.x, resizeDraft.y,
+                                                        resizeDraft.width, resizeDraft.height, true
+                                                    );
+                                                } else {
+                                                    store.resizeDesignArea(
+                                                        resizeDraft.id, resizeDraft.x, resizeDraft.y,
+                                                        resizeDraft.width, resizeDraft.height, true
+                                                    );
+                                                }
                                             }
                                             setResizeDraft(null);
                                         }}

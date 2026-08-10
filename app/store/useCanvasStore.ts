@@ -163,6 +163,7 @@ type CanvasState = {
     updateOpening: (x: number, y: number) => void;
     finishOpening: () => void;
     moveOpening: (id: string, x: number, y: number) => void;
+    resizeOpening: (id: string, x: number, y: number, width: number, height: number, saveHistory?: boolean) => void;
     removeOpening: (id: string) => void;
 
     // List Actions
@@ -995,10 +996,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     moveOpening: (id, x, y) => {
-        const { activeWallId } = get();
         set((state) => ({
             walls: state.walls.map(w =>
-                w.id === activeWallId
+                w.id === state.activeWallId
                     ? {
                         ...w,
                         openings: w.openings.map(o => o.id === id ? { ...o, x, y } : o)
@@ -1007,6 +1007,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             )
         }));
     },
+
+    resizeOpening: (id, x, y, width, height, saveHistory = true) => {
+        if (saveHistory) get()._saveHistory();
+        set((state) => ({
+            walls: state.walls.map(w =>
+                w.id === state.activeWallId
+                    ? {
+                        ...w,
+                        openings: w.openings.map(o =>
+                            o.id === id ? { ...o, x, y, width, height } : o
+                        )
+                    }
+                    : w
+            )
+        }));
+    },
+
     removeOpening: (id) => {
         set((state) => ({
             past: [...state.past, { walls: JSON.parse(JSON.stringify(state.walls)) }],
