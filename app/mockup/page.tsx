@@ -84,6 +84,7 @@ function MockupPageContent() {
     const router = useRouter();
 
     const { loadProject, fetchProducts, walls, activeWallId, setActiveWall, setIsColoringPreview } = useCanvasStore();
+    const hasCeiling = walls.some(w => w.type === 'ceiling');
 
     // Always start with loading = true to prevent hydration mismatch between server and client
     // (searchParams is empty on server during static generation, but populated on client)
@@ -111,6 +112,7 @@ function MockupPageContent() {
 
     const [draggingHandle, setDraggingHandle] = useState<{ wallId: string, index: number } | null>(null);
     const [zoom, setZoom] = useState(1);
+    const [isUpCeiling, setIsUpCeiling] = useState(false);
     const [wallDropdownOpen, setWallDropdownOpen] = useState(false);
     const wallDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -997,6 +999,8 @@ function MockupPageContent() {
                                                     overrideZoom={1}
                                                     overrideOffset={{ x: -dims.minX, y: -dims.minY }}
                                                     readOnly={true}
+                                                    mockupCorners={wallCorners[wallId]}
+                                                    isUpCeiling={isUpCeiling}
                                                 />
                                             </div>
                                         </div>
@@ -1039,6 +1043,26 @@ function MockupPageContent() {
 
                 {/* Right Sidebar: Toolbar */}
                 <div className="w-full md:w-[320px] h-[45vh] md:h-full flex flex-col flex-shrink-0 border-t md:border-t-0 md:border-l border-gray-200 shadow-sm z-10 bg-white">
+
+                    {hasCeiling && (
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
+                            <span className="text-sm font-medium text-gray-700">Ceiling Mode</span>
+                            <div className="flex items-center bg-gray-200 rounded-lg p-1">
+                                <button
+                                    onClick={() => setIsUpCeiling(false)}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${!isUpCeiling ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Drop
+                                </button>
+                                <button
+                                    onClick={() => setIsUpCeiling(true)}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${isUpCeiling ? 'bg-white shadow-sm text-[#7B6DED]' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Up
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex justify-end p-4 gap-2">
                         <button

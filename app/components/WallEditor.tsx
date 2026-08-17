@@ -35,6 +35,7 @@ interface WallEditorProps {
     overrideZoom?: number;
     overrideOffset?: { x: number, y: number };
     readOnly?: boolean;
+    mockupCorners?: {x: number, y: number}[];
 }
 
 /** Renders a tiled texture image as the ceiling wall background fill */
@@ -2185,11 +2186,39 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 const dropHeight = traps[i - 1]?.dropHeight || 15;
                                 const lipSize = (dropHeight / 100) * SCALE;
                                 
+                                let offsetX = -lipSize; // default to left lip removed (camera on left)
+                                let offsetY = -lipSize; // default to top lip removed (camera on top)
+
+                                if (props.mockupCorners && props.mockupCorners.length === 4) {
+                                    const dist = (p1: any, p2: any) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+                                    const [c0, c1, c2, c3] = props.mockupCorners;
+                                    const lenTop = dist(c0, c1);
+                                    const lenBottom = dist(c3, c2);
+                                    const lenLeft = dist(c0, c3);
+                                    const lenRight = dist(c1, c2);
+
+                                    // If right edge is longer than left edge in screen space, camera is closer to the right.
+                                    // So left lip should be visible, right lip occluded. This means offsetX should be positive.
+                                    const ratioX = Math.max(-1, Math.min(1, ((lenRight - lenLeft) / (lenRight + lenLeft)) * 3));
+                                    
+                                    // If bottom edge is longer than top edge, camera is closer to the bottom.
+                                    // So top lip should be visible, bottom lip occluded. This means offsetY should be positive.
+                                    const ratioY = Math.max(-1, Math.min(1, ((lenBottom - lenTop) / (lenBottom + lenTop)) * 3));
+
+                                    offsetX = lipSize * ratioX;
+                                    offsetY = lipSize * ratioY;
+                                }
+
+                                const leftLip = (lipSize + offsetX) / 2;
+                                const rightLip = (lipSize - offsetX) / 2;
+                                const topLip = (lipSize + offsetY) / 2;
+                                const bottomLip = (lipSize - offsetY) / 2;
+                                
                                 const innerDropBounds = {
-                                    minX: trapBounds.minX,
-                                    minY: trapBounds.minY,
-                                    width: trapBounds.width - lipSize,
-                                    height: trapBounds.height - lipSize
+                                    minX: trapBounds.minX + leftLip,
+                                    minY: trapBounds.minY + topLip,
+                                    width: trapBounds.width - leftLip - rightLip,
+                                    height: trapBounds.height - topLip - bottomLip
                                 };
                                 
                                 const validInner = innerDropBounds.width > 0 && innerDropBounds.height > 0;
