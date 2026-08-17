@@ -36,7 +36,6 @@ interface WallEditorProps {
     overrideOffset?: { x: number, y: number };
     readOnly?: boolean;
     mockupCorners?: {x: number, y: number}[];
-    isUpCeiling?: boolean;
 }
 
 /** Renders a tiled texture image as the ceiling wall background fill */
@@ -2187,6 +2186,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 const dropHeight = traps[i - 1]?.dropHeight || 15;
                                 const lipSize = (dropHeight / 100) * SCALE;
                                 
+                                // The trap object defines whether this level is a Drop (false) or Up (true) ceiling.
+                                // i=1 corresponds to traps[0], i=2 corresponds to traps[1], etc.
+                                const currentTrapIsUp = traps[i - 1]?.isUpCeiling || false;
+
                                 let offsetX = -lipSize; // default to left lip removed (camera on left)
                                 let offsetY = -lipSize; // default to top lip removed (camera on top)
 
@@ -2206,10 +2209,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     // So top lip should be visible, bottom lip occluded. This means offsetY should be positive.
                                     const ratioY = Math.max(-1, Math.min(1, ((lenBottom - lenTop) / (lenBottom + lenTop)) * 3));
 
+                                    offsetX = lipSize * ratioX;
+                                    offsetY = lipSize * ratioY;
+
                                     // For Drop ceiling, the shadow should be on the walls closest to the camera (the near walls).
                                     // In standard perspective, the longer edges are closer. Our default offsets target the far walls.
                                     // We invert them here so the Drop shadow targets the near walls.
-                                    if (!props.isUpCeiling) {
+                                    if (!currentTrapIsUp) {
                                         offsetX = -offsetX;
                                         offsetY = -offsetY;
                                     }
@@ -2223,8 +2229,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 let tlOuter, trOuter, brOuter, blOuter;
                                 let tlInner, trInner, brInner, blInner;
                                 let nextTrapBounds;
-                                
-                                if (props.isUpCeiling) {
+
+                                if (currentTrapIsUp) {
                                     // UP CEILING: Lips go INWARD. Hole opening is trapBounds. Ceiling is innerDropBounds.
                                     const innerDropBounds = {
                                         minX: trapBounds.minX + leftLip,
@@ -2275,7 +2281,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     let bottomColor = "rgba(255,255,255,0.15)";
                                     let leftColor = "rgba(0,0,0,0.05)";
 
-                                    if (props.isUpCeiling) {
+                                    if (currentTrapIsUp) {
                                         // For UP ceiling, the vertical walls are inside a hole, so they are all in shadow.
                                         topColor = "rgba(0,0,0,0.3)";
                                         rightColor = "rgba(0,0,0,0.4)";
@@ -2285,10 +2291,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
                                     // For a Drop ceiling (hanging box), the near walls are occluded by the front face.
                                     // We only draw the walls that represent the visible drop shadow.
-                                    const showTop = props.isUpCeiling || offsetY >= -0.1;
-                                    const showBottom = props.isUpCeiling || offsetY <= 0.1;
-                                    const showLeft = props.isUpCeiling || offsetX >= -0.1;
-                                    const showRight = props.isUpCeiling || offsetX <= 0.1;
+                                    const showTop = currentTrapIsUp || offsetY >= -0.1;
+                                    const showBottom = currentTrapIsUp || offsetY <= 0.1;
+                                    const showLeft = currentTrapIsUp || offsetX >= -0.1;
+                                    const showRight = currentTrapIsUp || offsetX <= 0.1;
 
                                     // Top polygon
                                     if (showTop) {

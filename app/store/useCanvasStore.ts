@@ -57,6 +57,7 @@ export interface TrapConfig {
     dropHeight: number;
     gap: number;
     panelLength?: number;
+    isUpCeiling?: boolean;
 }
 
 export type Wall = {

@@ -379,6 +379,14 @@ const CeilingSettingsManager = memo(
       }
     };
 
+    const updateTrapIsUpCeiling = (index: number, isUp: boolean) => {
+      const newTraps = [...traps];
+      if (newTraps[index]) {
+        newTraps[index] = { ...newTraps[index], isUpCeiling: isUp };
+        setCeilingTraps(activeWall.id, newTraps);
+      }
+    };
+
     const updateDropHeight = (dropHeight: number) => {
       const newTraps = traps.map((t) => ({ ...t, dropHeight }));
       setCeilingTraps(activeWall.id, newTraps);
@@ -469,7 +477,7 @@ const CeilingSettingsManager = memo(
           {/* Trap Settings */}
           {model !== "FLAT" && (
             <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
                     Tebal Trap 1
@@ -494,9 +502,22 @@ const CeilingSettingsManager = memo(
                     <option value={600}>600 cm</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                    Tipe Trap 1
+                  </label>
+                  <select
+                    value={traps[0]?.isUpCeiling ? "UP" : "DROP"}
+                    onChange={(e) => updateTrapIsUpCeiling(0, e.target.value === "UP")}
+                    className="w-full h-[30px] border border-gray-200 rounded px-2 text-[10px] bg-white outline-none focus:border-indigo-400"
+                  >
+                    <option value="DROP">Drop</option>
+                    <option value="UP">Up</option>
+                  </select>
+                </div>
               </div>
               {model === "DROP2" && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
                       Tebal Trap 2
@@ -519,6 +540,19 @@ const CeilingSettingsManager = memo(
                     >
                       <option value={400}>400 cm</option>
                       <option value={600}>600 cm</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                      Tipe Trap 2
+                    </label>
+                    <select
+                      value={traps[1]?.isUpCeiling ? "UP" : "DROP"}
+                      onChange={(e) => updateTrapIsUpCeiling(1, e.target.value === "UP")}
+                      className="w-full h-[30px] border border-gray-200 rounded px-2 text-[10px] bg-white outline-none focus:border-indigo-400"
+                    >
+                      <option value="DROP">Drop</option>
+                      <option value="UP">Up</option>
                     </select>
                   </div>
                 </div>
