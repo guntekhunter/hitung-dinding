@@ -2209,6 +2209,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     offsetY = lipSize * ratioY;
                                 }
 
+                                if (props.isUpCeiling) {
+                                    offsetX = -offsetX;
+                                    offsetY = -offsetY;
+                                }
+
                                 const leftLip = (lipSize + offsetX) / 2;
                                 const rightLip = (lipSize - offsetX) / 2;
                                 const topLip = (lipSize + offsetY) / 2;
@@ -2234,21 +2239,35 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     const brInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY + innerDropBounds.height };
                                     const blInner = { x: innerDropBounds.minX, y: innerDropBounds.minY + innerDropBounds.height };
 
-                                    // Top polygon (darker)
+                                    let topColor = "rgba(0,0,0,0.15)";
+                                    let rightColor = "rgba(0,0,0,0.25)";
+                                    let bottomColor = "rgba(255,255,255,0.15)";
+                                    let leftColor = "rgba(0,0,0,0.05)";
+
+                                    if (props.isUpCeiling) {
+                                        // For UP ceiling, the vertical walls are inside a hole, so they are all in shadow.
+                                        // This removes the "drop part" bright highlight illusion.
+                                        topColor = "rgba(0,0,0,0.3)";
+                                        rightColor = "rgba(0,0,0,0.4)";
+                                        bottomColor = "rgba(0,0,0,0.15)";
+                                        leftColor = "rgba(0,0,0,0.2)";
+                                    }
+
+                                    // Top polygon
                                     elements.push(
-                                        <Line key={`lip-top-${i}`} points={[tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y]} fill="rgba(0,0,0,0.15)" closed={true} listening={false} />
+                                        <Line key={`lip-top-${i}`} points={[tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y]} fill={topColor} closed={true} listening={false} />
                                     );
-                                    // Right polygon (medium)
+                                    // Right polygon
                                     elements.push(
-                                        <Line key={`lip-right-${i}`} points={[trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y]} fill="rgba(0,0,0,0.25)" closed={true} listening={false} />
+                                        <Line key={`lip-right-${i}`} points={[trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y]} fill={rightColor} closed={true} listening={false} />
                                     );
-                                    // Bottom polygon (lighter)
+                                    // Bottom polygon
                                     elements.push(
-                                        <Line key={`lip-bottom-${i}`} points={[brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y]} fill="rgba(255,255,255,0.15)" closed={true} listening={false} />
+                                        <Line key={`lip-bottom-${i}`} points={[brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y]} fill={bottomColor} closed={true} listening={false} />
                                     );
-                                    // Left polygon (medium)
+                                    // Left polygon
                                     elements.push(
-                                        <Line key={`lip-left-${i}`} points={[blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y]} fill="rgba(0,0,0,0.05)" closed={true} listening={false} />
+                                        <Line key={`lip-left-${i}`} points={[blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y]} fill={leftColor} closed={true} listening={false} />
                                     );
                                     
                                     // Draw lines connecting corners for sharper 3D look
