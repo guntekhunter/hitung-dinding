@@ -36,6 +36,7 @@ interface WallEditorProps {
     overrideOffset?: { x: number, y: number };
     readOnly?: boolean;
     mockupCorners?: {x: number, y: number}[];
+    isUpCeiling?: boolean;
 }
 
 /** Renders a tiled texture image as the ceiling wall background fill */
@@ -2205,13 +2206,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     // So top lip should be visible, bottom lip occluded. This means offsetY should be positive.
                                     const ratioY = Math.max(-1, Math.min(1, ((lenBottom - lenTop) / (lenBottom + lenTop)) * 3));
 
-                                    offsetX = lipSize * ratioX;
-                                    offsetY = lipSize * ratioY;
-                                }
-
-                                if (props.isUpCeiling) {
-                                    offsetX = -offsetX;
-                                    offsetY = -offsetY;
+                                    // For Drop ceiling, the shadow should be on the walls closest to the camera (the near walls).
+                                    // In standard perspective, the longer edges are closer. Our default offsets target the far walls.
+                                    // We invert them here so the Drop shadow targets the near walls.
+                                    if (!props.isUpCeiling) {
+                                        offsetX = -offsetX;
+                                        offsetY = -offsetY;
+                                    }
                                 }
 
                                 const leftLip = (lipSize + offsetX) / 2;
@@ -2219,25 +2220,55 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                 const topLip = (lipSize + offsetY) / 2;
                                 const bottomLip = (lipSize - offsetY) / 2;
                                 
-                                const innerDropBounds = {
-                                    minX: trapBounds.minX + leftLip,
-                                    minY: trapBounds.minY + topLip,
-                                    width: trapBounds.width - leftLip - rightLip,
-                                    height: trapBounds.height - topLip - bottomLip
-                                };
+                                let tlOuter, trOuter, brOuter, blOuter;
+                                let tlInner, trInner, brInner, blInner;
+                                let nextTrapBounds;
                                 
-                                const validInner = innerDropBounds.width > 0 && innerDropBounds.height > 0;
+                                if (props.isUpCeiling) {
+                                    // UP CEILING: Lips go INWARD. Hole opening is trapBounds. Ceiling is innerDropBounds.
+                                    const innerDropBounds = {
+                                        minX: trapBounds.minX + leftLip,
+                                        minY: trapBounds.minY + topLip,
+                                        width: trapBounds.width - leftLip - rightLip,
+                                        height: trapBounds.height - topLip - bottomLip
+                                    };
+                                    
+                                    tlOuter = { x: trapBounds.minX, y: trapBounds.minY };
+                                    trOuter = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY };
+                                    brOuter = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY + trapBounds.height };
+                                    blOuter = { x: trapBounds.minX, y: trapBounds.minY + trapBounds.height };
+                                    
+                                    tlInner = { x: innerDropBounds.minX, y: innerDropBounds.minY };
+                                    trInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY };
+                                    brInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY + innerDropBounds.height };
+                                    blInner = { x: innerDropBounds.minX, y: innerDropBounds.minY + innerDropBounds.height };
+                                    
+                                    nextTrapBounds = innerDropBounds;
+                                } else {
+                                    // DROP CEILING: Pure geometric shift. Base acts as a solid drop shadow with uniform thickness.
+                                    const outerDropBounds = {
+                                        minX: trapBounds.minX - offsetX,
+                                        minY: trapBounds.minY - offsetY,
+                                        width: trapBounds.width,
+                                        height: trapBounds.height
+                                    };
+                                    
+                                    tlOuter = { x: outerDropBounds.minX, y: outerDropBounds.minY };
+                                    trOuter = { x: outerDropBounds.minX + outerDropBounds.width, y: outerDropBounds.minY };
+                                    brOuter = { x: outerDropBounds.minX + outerDropBounds.width, y: outerDropBounds.minY + outerDropBounds.height };
+                                    blOuter = { x: outerDropBounds.minX, y: outerDropBounds.minY + outerDropBounds.height };
+                                    
+                                    tlInner = { x: trapBounds.minX, y: trapBounds.minY };
+                                    trInner = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY };
+                                    brInner = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY + trapBounds.height };
+                                    blInner = { x: trapBounds.minX, y: trapBounds.minY + trapBounds.height };
+                                    
+                                    nextTrapBounds = trapBounds; // Texture drawn at trapBounds!
+                                }
+                                
+                                const validInner = nextTrapBounds.width > 0 && nextTrapBounds.height > 0;
                                 
                                 if (validInner) {
-                                    const tlOuter = { x: trapBounds.minX, y: trapBounds.minY };
-                                    const trOuter = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY };
-                                    const brOuter = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY + trapBounds.height };
-                                    const blOuter = { x: trapBounds.minX, y: trapBounds.minY + trapBounds.height };
-                                    
-                                    const tlInner = { x: innerDropBounds.minX, y: innerDropBounds.minY };
-                                    const trInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY };
-                                    const brInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY + innerDropBounds.height };
-                                    const blInner = { x: innerDropBounds.minX, y: innerDropBounds.minY + innerDropBounds.height };
 
                                     let topColor = "rgba(0,0,0,0.15)";
                                     let rightColor = "rgba(0,0,0,0.25)";
@@ -2246,38 +2277,52 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
                                     if (props.isUpCeiling) {
                                         // For UP ceiling, the vertical walls are inside a hole, so they are all in shadow.
-                                        // This removes the "drop part" bright highlight illusion.
                                         topColor = "rgba(0,0,0,0.3)";
                                         rightColor = "rgba(0,0,0,0.4)";
                                         bottomColor = "rgba(0,0,0,0.15)";
                                         leftColor = "rgba(0,0,0,0.2)";
                                     }
 
+                                    // For a Drop ceiling (hanging box), the near walls are occluded by the front face.
+                                    // We only draw the walls that represent the visible drop shadow.
+                                    const showTop = props.isUpCeiling || offsetY >= -0.1;
+                                    const showBottom = props.isUpCeiling || offsetY <= 0.1;
+                                    const showLeft = props.isUpCeiling || offsetX >= -0.1;
+                                    const showRight = props.isUpCeiling || offsetX <= 0.1;
+
                                     // Top polygon
-                                    elements.push(
-                                        <Line key={`lip-top-${i}`} points={[tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y]} fill={topColor} closed={true} listening={false} />
-                                    );
+                                    if (showTop) {
+                                        elements.push(
+                                            <Line key={`lip-top-${i}`} points={[tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y]} fill={topColor} closed={true} listening={false} />
+                                        );
+                                    }
                                     // Right polygon
-                                    elements.push(
-                                        <Line key={`lip-right-${i}`} points={[trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y]} fill={rightColor} closed={true} listening={false} />
-                                    );
+                                    if (showRight) {
+                                        elements.push(
+                                            <Line key={`lip-right-${i}`} points={[trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y]} fill={rightColor} closed={true} listening={false} />
+                                        );
+                                    }
                                     // Bottom polygon
-                                    elements.push(
-                                        <Line key={`lip-bottom-${i}`} points={[brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y]} fill={bottomColor} closed={true} listening={false} />
-                                    );
+                                    if (showBottom) {
+                                        elements.push(
+                                            <Line key={`lip-bottom-${i}`} points={[brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y]} fill={bottomColor} closed={true} listening={false} />
+                                        );
+                                    }
                                     // Left polygon
-                                    elements.push(
-                                        <Line key={`lip-left-${i}`} points={[blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y]} fill={leftColor} closed={true} listening={false} />
-                                    );
+                                    if (showLeft) {
+                                        elements.push(
+                                            <Line key={`lip-left-${i}`} points={[blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y]} fill={leftColor} closed={true} listening={false} />
+                                        );
+                                    }
                                     
                                     // Draw lines connecting corners for sharper 3D look
-                                    elements.push(<Line key={`edge-tl-${i}`} points={[tlOuter.x, tlOuter.y, tlInner.x, tlInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
-                                    elements.push(<Line key={`edge-tr-${i}`} points={[trOuter.x, trOuter.y, trInner.x, trInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
-                                    elements.push(<Line key={`edge-br-${i}`} points={[brOuter.x, brOuter.y, brInner.x, brInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
-                                    elements.push(<Line key={`edge-bl-${i}`} points={[blOuter.x, blOuter.y, blInner.x, blInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    if (showTop && showLeft) elements.push(<Line key={`edge-tl-${i}`} points={[tlOuter.x, tlOuter.y, tlInner.x, tlInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    if (showTop && showRight) elements.push(<Line key={`edge-tr-${i}`} points={[trOuter.x, trOuter.y, trInner.x, trInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    if (showBottom && showRight) elements.push(<Line key={`edge-br-${i}`} points={[brOuter.x, brOuter.y, brInner.x, brInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    if (showBottom && showLeft) elements.push(<Line key={`edge-bl-${i}`} points={[blOuter.x, blOuter.y, blInner.x, blInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
                                     
-                                    // Update trapBounds so the inner texture is drawn inside the lip
-                                    trapBounds = innerDropBounds;
+                                    // Update trapBounds so the inner texture is drawn inside/outside the lip
+                                    trapBounds = nextTrapBounds;
                                 }
                             }
 
