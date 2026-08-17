@@ -2155,6 +2155,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         
                         const elements = [];
                         let currentInset = 0;
+                        let lastBounds = bounds;
                         
                         for (let i = 0; i < numZones; i++) {
                             const color = (activeWall.ceilingColors && activeWall.ceilingColors[i]) ? activeWall.ceilingColors[i] : defaultFill;
@@ -2176,6 +2177,61 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                             
                             const validBounds = trapBounds.width > 0 && trapBounds.height > 0;
                             if (!validBounds) continue;
+
+                            if (i > 0 && props.readOnly) {
+                                // Draw shading polygons to create a 3D lip effect inside the trap.
+                                // The texture/color of the outer part is already underneath,
+                                // so we just overlay semi-transparent shading on the lip.
+                                const dropHeight = traps[i - 1]?.dropHeight || 15;
+                                const lipSize = (dropHeight / 100) * SCALE;
+                                
+                                const innerDropBounds = {
+                                    minX: trapBounds.minX,
+                                    minY: trapBounds.minY,
+                                    width: trapBounds.width - lipSize,
+                                    height: trapBounds.height - lipSize
+                                };
+                                
+                                const validInner = innerDropBounds.width > 0 && innerDropBounds.height > 0;
+                                
+                                if (validInner) {
+                                    const tlOuter = { x: trapBounds.minX, y: trapBounds.minY };
+                                    const trOuter = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY };
+                                    const brOuter = { x: trapBounds.minX + trapBounds.width, y: trapBounds.minY + trapBounds.height };
+                                    const blOuter = { x: trapBounds.minX, y: trapBounds.minY + trapBounds.height };
+                                    
+                                    const tlInner = { x: innerDropBounds.minX, y: innerDropBounds.minY };
+                                    const trInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY };
+                                    const brInner = { x: innerDropBounds.minX + innerDropBounds.width, y: innerDropBounds.minY + innerDropBounds.height };
+                                    const blInner = { x: innerDropBounds.minX, y: innerDropBounds.minY + innerDropBounds.height };
+
+                                    // Top polygon (darker)
+                                    elements.push(
+                                        <Line key={`lip-top-${i}`} points={[tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y]} fill="rgba(0,0,0,0.15)" closed={true} listening={false} />
+                                    );
+                                    // Right polygon (medium)
+                                    elements.push(
+                                        <Line key={`lip-right-${i}`} points={[trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y]} fill="rgba(0,0,0,0.25)" closed={true} listening={false} />
+                                    );
+                                    // Bottom polygon (lighter)
+                                    elements.push(
+                                        <Line key={`lip-bottom-${i}`} points={[brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y]} fill="rgba(255,255,255,0.15)" closed={true} listening={false} />
+                                    );
+                                    // Left polygon (medium)
+                                    elements.push(
+                                        <Line key={`lip-left-${i}`} points={[blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y]} fill="rgba(0,0,0,0.05)" closed={true} listening={false} />
+                                    );
+                                    
+                                    // Draw lines connecting corners for sharper 3D look
+                                    elements.push(<Line key={`edge-tl-${i}`} points={[tlOuter.x, tlOuter.y, tlInner.x, tlInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    elements.push(<Line key={`edge-tr-${i}`} points={[trOuter.x, trOuter.y, trInner.x, trInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    elements.push(<Line key={`edge-br-${i}`} points={[brOuter.x, brOuter.y, brInner.x, brInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    elements.push(<Line key={`edge-bl-${i}`} points={[blOuter.x, blOuter.y, blInner.x, blInner.y]} stroke="rgba(0,0,0,0.15)" strokeWidth={1/zoom} listening={false} />);
+                                    
+                                    // Update trapBounds so the inner texture is drawn inside the lip
+                                    trapBounds = innerDropBounds;
+                                }
+                            }
 
                             const clipF = i === 0 ? clipFunc : (ctx: any) => {
                                 ctx.rect(trapBounds.minX, trapBounds.minY, trapBounds.width, trapBounds.height);
@@ -2207,6 +2263,9 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     />
                                 );
                             }
+
+
+                            lastBounds = trapBounds;
                         }
                         return <>{elements}</>;
                     })()}
