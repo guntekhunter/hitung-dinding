@@ -2296,29 +2296,56 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     const showLeft = currentTrapIsUp || offsetX >= -0.1;
                                     const showRight = currentTrapIsUp || offsetX <= 0.1;
 
+                                    const outerColor = (activeWall.ceilingColors && activeWall.ceilingColors[i - 1]) ? activeWall.ceilingColors[i - 1] : defaultFill;
+                                    const lipColor = currentTrapIsUp ? outerColor : color;
+                                    const lipIsTexture = !!lipColor && (lipColor.startsWith('http') || lipColor.startsWith('data:'));
+
+                                    // Helper to draw the base color/texture + shadow for a lip
+                                    const drawLip = (keyName: string, pts: number[], shadowColor: string) => {
+                                        if (lipIsTexture) {
+                                            elements.push(
+                                                <CeilingTextureRect
+                                                    key={`lip-tex-${keyName}-${i}`}
+                                                    clipFunc={(ctx: any) => {
+                                                        ctx.beginPath();
+                                                        ctx.moveTo(pts[0], pts[1]);
+                                                        ctx.lineTo(pts[2], pts[3]);
+                                                        ctx.lineTo(pts[4], pts[5]);
+                                                        ctx.lineTo(pts[6], pts[7]);
+                                                        ctx.closePath();
+                                                    }}
+                                                    bounds={bounds} // Use the room bounds so the texture is seamless
+                                                    textureUrl={lipColor}
+                                                    panelWidth={productPanelWidth}
+                                                    panelHeight={productPanelWidth} // Use panelWidth for panelHeight since it's an alias in CeilingTextureRect
+                                                    direction={direction}
+                                                />
+                                            );
+                                        } else {
+                                            elements.push(
+                                                <Line key={`lip-color-${keyName}-${i}`} points={pts} fill={lipColor} closed={true} listening={false} />
+                                            );
+                                        }
+                                        elements.push(
+                                            <Line key={`lip-${keyName}-${i}`} points={pts} fill={shadowColor} closed={true} listening={false} />
+                                        );
+                                    };
+
                                     // Top polygon
                                     if (showTop) {
-                                        elements.push(
-                                            <Line key={`lip-top-${i}`} points={[tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y]} fill={topColor} closed={true} listening={false} />
-                                        );
+                                        drawLip('top', [tlOuter.x, tlOuter.y, trOuter.x, trOuter.y, trInner.x, trInner.y, tlInner.x, tlInner.y], topColor);
                                     }
                                     // Right polygon
                                     if (showRight) {
-                                        elements.push(
-                                            <Line key={`lip-right-${i}`} points={[trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y]} fill={rightColor} closed={true} listening={false} />
-                                        );
+                                        drawLip('right', [trOuter.x, trOuter.y, brOuter.x, brOuter.y, brInner.x, brInner.y, trInner.x, trInner.y], rightColor);
                                     }
                                     // Bottom polygon
                                     if (showBottom) {
-                                        elements.push(
-                                            <Line key={`lip-bottom-${i}`} points={[brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y]} fill={bottomColor} closed={true} listening={false} />
-                                        );
+                                        drawLip('bottom', [brOuter.x, brOuter.y, blOuter.x, blOuter.y, blInner.x, blInner.y, brInner.x, brInner.y], bottomColor);
                                     }
                                     // Left polygon
                                     if (showLeft) {
-                                        elements.push(
-                                            <Line key={`lip-left-${i}`} points={[blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y]} fill={leftColor} closed={true} listening={false} />
-                                        );
+                                        drawLip('left', [blOuter.x, blOuter.y, tlOuter.x, tlOuter.y, tlInner.x, tlInner.y, blInner.x, blInner.y], leftColor);
                                     }
                                     
                                     // Draw lines connecting corners for sharper 3D look
