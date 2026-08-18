@@ -1055,18 +1055,6 @@ function MockupPageContent() {
                                         <button
                                             onClick={() => {
                                                 const newTraps = [...ceilingTraps];
-                                                newTraps[idx] = { ...newTraps[idx], isUpCeiling: false };
-                                                setCeilingTraps(ceilingWall!.id, newTraps);
-                                            }}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                                                !trap.isUpCeiling ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                                            }`}
-                                        >
-                                            Drop
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                const newTraps = [...ceilingTraps];
                                                 newTraps[idx] = { ...newTraps[idx], isUpCeiling: true };
                                                 setCeilingTraps(ceilingWall!.id, newTraps);
                                             }}
@@ -1075,6 +1063,18 @@ function MockupPageContent() {
                                             }`}
                                         >
                                             Up
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const newTraps = [...ceilingTraps];
+                                                newTraps[idx] = { ...newTraps[idx], isUpCeiling: false };
+                                                setCeilingTraps(ceilingWall!.id, newTraps);
+                                            }}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                                !trap.isUpCeiling ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            Drop
                                         </button>
                                     </div>
                                 </div>
