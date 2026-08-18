@@ -2302,6 +2302,9 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
 
                                     // Helper to draw the base color/texture + shadow for a lip
                                     const drawLip = (keyName: string, pts: number[], shadowColor: string) => {
+                                        // Make the texture "go down" the drop face (perpendicular to the edge)
+                                        const lipDirection = (keyName === 'left' || keyName === 'right') ? 'horizontal' : 'vertical';
+                                        
                                         if (lipIsTexture) {
                                             elements.push(
                                                 <CeilingTextureRect
@@ -2318,7 +2321,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                                     textureUrl={lipColor}
                                                     panelWidth={productPanelWidth}
                                                     panelHeight={productPanelWidth} // Use panelWidth for panelHeight since it's an alias in CeilingTextureRect
-                                                    direction={direction}
+                                                    direction={lipDirection}
                                                 />
                                             );
                                         } else {
