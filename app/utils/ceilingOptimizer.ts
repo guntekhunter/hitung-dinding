@@ -9,6 +9,7 @@ export interface TrapConfig {
   gap: number;     // cm
   panelLength?: number; // cm
   hollowGap?: number; // cm - spacing for hollow frame (default 60)
+  isUpCeiling?: boolean; // true = up ceiling (recessed), false = drop ceiling (hanging)
 }
 
 export interface CeilingInput {
