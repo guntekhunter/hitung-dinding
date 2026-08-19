@@ -78,7 +78,8 @@ export default function TextureSelector({
     }, [walls, products]);
 
     // Detect if any wall is a ceiling type
-    const hasCeilingWalls = useMemo(() => walls.some((w: any) => w.type === 'ceiling'), [walls]);
+    const ceilingWall = useMemo(() => walls.find((w: any) => w.type === 'ceiling'), [walls]);
+    const hasCeilingWalls = !!ceilingWall;
 
     // Plafon products — only shown when there are ceiling walls
     const plafonProducts = useMemo(() => {
@@ -291,12 +292,12 @@ export default function TextureSelector({
                         <div className="flex flex-col gap-4">
                             {plafonProducts.map((product: any) => {
                                 const defaultColor = products.find((p: any) => p.id === product.id)?.color || '#ffffff';
-                                const numZones = (activeWall?.type === 'ceiling' && activeWall.ceilingTraps) ? activeWall.ceilingTraps.length + 1 : 1;
+                                const numZones = ceilingWall?.ceilingTraps ? ceilingWall.ceilingTraps.length + 1 : 1;
 
                                 return (
                                     <div key={product.id} className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
                                         {Array.from({ length: numZones }).map((_, idx) => {
-                                            const currentColor = (activeWall?.type === 'ceiling' && activeWall.ceilingColors && activeWall.ceilingColors[idx]) ? activeWall.ceilingColors[idx] : defaultColor;
+                                            const currentColor = (ceilingWall?.ceilingColors && ceilingWall.ceilingColors[idx]) ? ceilingWall.ceilingColors[idx] : defaultColor;
 
                                             let zoneName = 'Luar / Base';
                                             if (idx > 0 && idx < numZones - 1) zoneName = `Trap ${idx}`;
@@ -304,7 +305,7 @@ export default function TextureSelector({
                                             if (numZones === 1) zoneName = 'Plafon Utama';
 
                                             const handleSetColor = (c: string) => {
-                                                if (activeWall?.type === 'ceiling') setCeilingColor(activeWall.id, idx, c);
+                                                if (ceilingWall) setCeilingColor(ceilingWall.id, idx, c);
                                                 if (idx === 0) setProductColor(product.id, c);
                                             };
 
@@ -344,7 +345,7 @@ export default function TextureSelector({
                                     </div>
                                 );
                             })}
-                            {activeWall?.type === 'ceiling' && activeWall.ceilingTraps && activeWall.ceilingTraps.length > 0 && (
+                            {ceilingWall?.ceilingTraps && ceilingWall.ceilingTraps.length > 0 && (
                                 <div className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium text-gray-700 mr-2">
@@ -352,8 +353,8 @@ export default function TextureSelector({
                                         </span>
                                         <input
                                             type="color"
-                                            value={activeWall.trapLineColor || "#3b82f6"}
-                                            onChange={e => setTrapLineColor(activeWall.id, e.target.value)}
+                                            value={ceilingWall.trapLineColor || "#3b82f6"}
+                                            onChange={e => setTrapLineColor(ceilingWall.id, e.target.value)}
                                             className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
                                         />
                                     </div>
