@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { sendMetaCAPIEvent } from "@/lib/meta-capi";
 
 export async function POST(req: NextRequest) {
   try {
@@ -169,6 +170,21 @@ export async function POST(req: NextRequest) {
 
       console.log(
         `[callback] ✅ Account + subscription created for ${pending.email}, order ${merchantOrderId}`,
+      );
+
+      // ── 3h. Send Meta CAPI Purchase Event ─────────────────────────────────
+      await sendMetaCAPIEvent(
+        "Purchase",
+        {
+          email: pending.email,
+          phone: pending.wa_number,
+          firstName: pending.admin_name,
+        },
+        {
+          currency: "IDR",
+          value: parseInt(amount, 10),
+        },
+        merchantOrderId
       );
 
     } else {

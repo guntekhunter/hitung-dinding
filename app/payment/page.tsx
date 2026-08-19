@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 
 type Step = "form" | "processing";
 
@@ -48,6 +49,13 @@ export default function PaymentPage() {
 
     setStep("processing");
 
+    // Track initial checkout (AddPaymentInfo)
+    trackMetaEvent("AddPaymentInfo", {
+      currency: "IDR",
+      value: 89999,
+      content_name: "Pricing Subscription",
+    });
+
     try {
       const res = await fetch("/api/payment/create", {
         method: "POST",
@@ -81,6 +89,14 @@ export default function PaymentPage() {
       setStep("form");
     }
   }
+
+  useEffect(() => {
+    trackMetaEvent("InitiateCheckout", {
+      content_name: "Subscription Payment Page",
+      currency: "IDR",
+      value: 89999,
+    });
+  }, []);
 
   const inputClass =
     "w-full px-4 py-3 bg-[#F8F7FF] border border-[#E8E3FF] text-gray-800 text-sm rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B6DED]/30 focus:border-[#7B6DED] transition-all";
@@ -273,6 +289,20 @@ export default function PaymentPage() {
                         Rp 89.999
                       </p>
                     </div>
+                  </div>
+
+                  {/* Consent Checkbox */}
+                  <div className="flex items-start gap-3 mt-4">
+                    <input
+                      required
+                      type="checkbox"
+                      id="consent"
+                      name="consent"
+                      className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
+                    />
+                    <label htmlFor="consent" className="text-[11px] text-gray-500 leading-relaxed">
+                      Saya setuju bahwa data saya akan dikumpulkan dan digunakan untuk keperluan pemasaran, personalisasi iklan, dan peningkatan layanan sesuai dengan <Link href="/privacy-policy" className="text-[#7B6DED] hover:underline" target="_blank">Kebijakan Privasi</Link>.
+                    </label>
                   </div>
 
                   {/* Submit */}

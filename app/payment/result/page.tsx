@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { signInUser, getCurrentUser, getUserCompany } from "../../utils/auth";
 import { useAuthStore } from "../../store/useAuthStore";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 
 type OrderStatus = "PENDING" | "PAID" | "FAILED" | "EXPIRED" | null;
 
@@ -50,25 +51,34 @@ export default function PaymentResultPage() {
   useEffect(() => {
     if (orderData.status === "PAID" && !didRedirect.current) {
       didRedirect.current = true;
-      
+
+      // Track purchase
+      trackMetaEvent("Purchase", {
+        currency: "IDR",
+        value: orderData.amount || 89999,
+        transaction_id: orderId,
+      });
+
       const autoLogin = async () => {
         try {
           const email = sessionStorage.getItem("pendingPaymentEmail");
           const password = sessionStorage.getItem("pendingPaymentPassword");
-          
+
           if (email && password) {
             // Auto login user
             const authResponse = await signInUser(email, password);
             const userId = authResponse.user?.id;
-            
+
             if (userId) {
               const userProfile = await getCurrentUser(userId);
               if (userProfile.company_id) {
-                const companyInfo = await getUserCompany(userProfile.company_id);
+                const companyInfo = await getUserCompany(
+                  userProfile.company_id,
+                );
                 setSession(userProfile, companyInfo);
               }
             }
-            
+
             // Clear credentials
             sessionStorage.removeItem("pendingPaymentEmail");
             sessionStorage.removeItem("pendingPaymentPassword");
@@ -82,7 +92,7 @@ export default function PaymentResultPage() {
           }, 2000);
         }
       };
-      
+
       autoLogin();
     }
   }, [orderData.status, router, setSession]);
@@ -130,8 +140,12 @@ export default function PaymentResultPage() {
       <div className="min-h-screen bg-[#F7F6FF] flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl p-10 shadow-sm max-w-md w-full text-center border border-[#E8E3FF]">
           <div className="text-5xl mb-4">⚠️</div>
-          <h1 className="text-xl font-bold text-gray-800">Order tidak ditemukan</h1>
-          <p className="text-sm text-gray-500 mt-2">ID order tidak tersedia di URL.</p>
+          <h1 className="text-xl font-bold text-gray-800">
+            Order tidak ditemukan
+          </h1>
+          <p className="text-sm text-gray-500 mt-2">
+            ID order tidak tersedia di URL.
+          </p>
           <Link
             href="/home"
             className="mt-6 inline-block bg-[#7B6DED] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-[#6B5CE7] transition-colors"

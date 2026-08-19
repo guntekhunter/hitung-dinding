@@ -1,6 +1,6 @@
 import Image from "next/image";
 import PaymentCard from "./reusable/PaymentCard";
-
+import MetaPixelTracker from "./reusable/MetaPixelTracker";
 
 // Lightweight icon component — avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
@@ -21,6 +21,7 @@ export default function Home() {
   ];
   return (
     <div className="text-[#303030] font-mona-sans tracking-tight bg-white">
+      <MetaPixelTracker eventName="ViewContent" params={{ content_name: "Landing Page" }} />
 
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5] md:px-8">

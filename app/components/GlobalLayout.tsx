@@ -3,20 +3,34 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 
-export default function GlobalLayout({ children }: { children: React.ReactNode }) {
-    const pathname = usePathname();
-    const isExcluded = ["/", "/register", "/login", "/coloring", "/home", "/payment", "/mockup", "/wall-editor"].includes(pathname);
+export default function GlobalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const isExcluded = [
+    "/",
+    "/register",
+    "/login",
+    "/coloring",
+    "/home",
+    "/payment",
+    "/mockup",
+    "/wall-editor",
+    "/privacy-policy",
+  ].includes(pathname);
 
-    if (isExcluded) {
-        return <>{children}</>;
-    }
+  if (isExcluded) {
+    return <>{children}</>;
+  }
 
-    return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row font-mona-sans">
-            <Sidebar />
-            <div className="flex-1 bg-white h-screen overflow-y-auto pt-[60px] md:pt-0">
-                {children}
-            </div>
-        </div>
-    );
+  return (
+    <div className="min-h-screen bg-white flex flex-col md:flex-row font-mona-sans">
+      <Sidebar />
+      <div className="flex-1 bg-white h-screen overflow-y-auto pt-[60px] md:pt-0">
+        {children}
+      </div>
+    </div>
+  );
 }
