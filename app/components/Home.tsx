@@ -4,10 +4,24 @@ import MetaPixelTracker from "./reusable/MetaPixelTracker";
 
 // Lightweight icon component — avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
-  <img src="/check.svg" alt="" width={20} height={20} className="w-5 h-5 shrink-0" loading="lazy" />
+  <img
+    src="/check.svg"
+    alt=""
+    width={20}
+    height={20}
+    className="w-5 h-5 shrink-0"
+    loading="lazy"
+  />
 );
 const CrossIcon = () => (
-  <img src="/cross.svg" alt="" width={20} height={20} className="w-5 h-5 shrink-0" loading="lazy" />
+  <img
+    src="/cross.svg"
+    alt=""
+    width={20}
+    height={20}
+    className="w-5 h-5 shrink-0"
+    loading="lazy"
+  />
 );
 
 export default function Home() {
@@ -21,7 +35,10 @@ export default function Home() {
   ];
   return (
     <div className="text-[#303030] font-mona-sans tracking-tight bg-white">
-      <MetaPixelTracker eventName="ViewContent" params={{ content_name: "Landing Page" }} />
+      <MetaPixelTracker
+        eventName="ViewContent"
+        params={{ content_name: "Landing Page" }}
+      />
 
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5] md:px-8">
@@ -42,7 +59,6 @@ export default function Home() {
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="px-4 flex justify-center items-center py-16 md:px-8 md:py-24">
         <div className="w-full max-w-6xl md:flex md:items-center md:gap-12">
-
           {/* Left: copy */}
           <div className="space-y-7 md:flex-1">
             <div className="w-full flex justify-center md:justify-start">
@@ -66,7 +82,8 @@ export default function Home() {
               <div className="flex justify-center md:justify-start w-full">
                 <div className="w-[70%] md:w-full">
                   <p className="text-[.8rem] md:text-[1rem] text-center md:text-left text-[#7F7F7F] tracking-tight">
-                    Buat Desain, Hitung Material, dan Cetak RAB PVC dalam Hitungan Menit.
+                    Buat Desain, Hitung Material, dan Cetak RAB PVC dalam
+                    Hitungan Menit.
                   </p>
                 </div>
               </div>
@@ -104,7 +121,6 @@ export default function Home() {
               className="rounded-md absolute top-[50%] w-[25%] h-auto"
             />
           </div>
-
         </div>
       </section>
 
@@ -114,7 +130,8 @@ export default function Home() {
           <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
             <div className="space-y-5">
               <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
-                Sering Mengalami Hal Ini?
+                Masih Ngabisin Waktu Gambar & hitung material untuk Setiap
+                Pelanggan?
               </h2>
               <Image
                 src="/landing-page/wrong.webp"
@@ -126,13 +143,32 @@ export default function Home() {
                 className="rounded-md w-full h-auto"
               />
               <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
-                <div className="flex space-x-5"><CheckIcon /><p>Menggambar di buku.</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Salah hitung material.</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Pelanggan minta revisi, harus hitung ulang.</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Harus bayar desain interior &amp; drafter</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Membuat RAB menggunakan Excel</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Desain AI sulit diedit untuk dinding lebih dari 1.</p></div>
-                <div className="flex space-x-5 md:col-span-2"><CheckIcon /><p>Revisi desain lama.</p></div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Menggambar desain setiap proyek di kertas</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Hitung manual material yang lama</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>
+                    Bayar jasa drafter atau desain interior jutaan perproyek
+                  </p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Buat RAB manual di word atau excel</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Desain pakai AI tapi tidak sesuai keinginan costumer</p>
+                </div>
+                <div className="flex space-x-5 md:col-span-2">
+                  <CheckIcon />
+                  <p>Revisi desain lama & rumit.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -155,12 +191,30 @@ export default function Home() {
                 className="rounded-md w-full h-auto"
               />
               <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
-                <div className="flex space-x-5"><CheckIcon /><p>Membuat drafting dinding</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Menghitung luas area secara otomatis</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Menghitung kebutuhan material</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Membuat estimasi biaya &amp; RAB</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Membuat mockup langsung pada foto ruangan pelanggan</p></div>
-                <div className="flex space-x-5"><CheckIcon /><p>Export hasil untuk presentasi</p></div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Membuat drafting dinding</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Menghitung luas area secara otomatis</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Menghitung kebutuhan material</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Membuat estimasi biaya &amp; RAB</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Membuat mockup langsung pada foto ruangan pelanggan</p>
+                </div>
+                <div className="flex space-x-5">
+                  <CheckIcon />
+                  <p>Export hasil untuk presentasi</p>
+                </div>
               </div>
             </div>
           </div>
@@ -174,12 +228,38 @@ export default function Home() {
             Tanpa Rapi Studio
           </h2>
           <div className="space-y-6 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-6 md:space-y-0">
-            <div className="flex space-x-5"><CrossIcon /><p>Pelanggan menunggu terlalu lama (komplain lalu gagal closing)</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Sales sulit memberikan penawaran saat itu juga.</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Estimasi biaya sering berubah dan lama karena salah hitung.</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Kontraktor menghabiskan waktu untuk pekerjaan administratif daripada mengerjakan proyek.</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Bayar ratusan ribu hingga jutaan untuk drafter dan desain iterior</p></div>
-            <div className="flex space-x-5"><CrossIcon /><p>Closing menjadi lebih lambat.</p></div>
+            <div className="flex space-x-5">
+              <CrossIcon />
+              <p>
+                Pelanggan menunggu terlalu lama (komplain lalu gagal closing)
+              </p>
+            </div>
+            <div className="flex space-x-5">
+              <CrossIcon />
+              <p>Sales sulit memberikan penawaran saat itu juga.</p>
+            </div>
+            <div className="flex space-x-5">
+              <CrossIcon />
+              <p>Estimasi biaya sering berubah dan lama karena salah hitung.</p>
+            </div>
+            <div className="flex space-x-5">
+              <CrossIcon />
+              <p>
+                Kontraktor menghabiskan waktu untuk pekerjaan administratif
+                daripada mengerjakan proyek.
+              </p>
+            </div>
+            <div className="flex space-x-5">
+              <CrossIcon />
+              <p>
+                Bayar ratusan ribu hingga jutaan untuk drafter dan desain
+                iterior
+              </p>
+            </div>
+            <div className="flex space-x-5">
+              <CrossIcon />
+              <p>Closing menjadi lebih lambat.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -205,11 +285,17 @@ export default function Home() {
             </div>
             <div className="flex space-x-5">
               <p className="bg-[#D9D9D9] px-4 font-medium shrink-0">4</p>
-              <p>buat RAB otomatis berisi kebutuhan material, harga dan desain dinding</p>
+              <p>
+                buat RAB otomatis berisi kebutuhan material, harga dan desain
+                dinding
+              </p>
             </div>
             <div className="flex space-x-5">
               <p className="bg-[#D9D9D9] px-4 font-medium shrink-0">5</p>
-              <p>Buat mockup langsung pada foto ruangan pelanggan dan kirim sebagai penawaran</p>
+              <p>
+                Buat mockup langsung pada foto ruangan pelanggan dan kirim
+                sebagai penawaran
+              </p>
             </div>
             <div className="flex space-x-5">
               <p className="bg-[#D9D9D9] px-4 font-medium shrink-0">6</p>
@@ -231,7 +317,9 @@ export default function Home() {
                 key={item}
                 className="border border-[#D9D9D9] rounded-full px-8 py-2"
               >
-                <p className="text-sm tracking-tight whitespace-nowrap">{item}</p>
+                <p className="text-sm tracking-tight whitespace-nowrap">
+                  {item}
+                </p>
               </div>
             ))}
           </div>
@@ -245,7 +333,8 @@ export default function Home() {
             Potong Biaya, waktu Desain &amp; Tingkatkan Omzet.
           </h2>
           <p className="text-white/80 md:text-lg">
-            Semakin cepat proposal selesai, semakin banyak proyek yang bisa Anda dapatkan.
+            Semakin cepat proposal selesai, semakin banyak proyek yang bisa Anda
+            dapatkan.
           </p>
         </div>
       </section>
@@ -269,16 +358,15 @@ export default function Home() {
               },
               {
                 title: "Cetak proposal profesional siap kirim",
-                description:
-                  "",
+                description: "",
               },
               {
                 title: "Tidak perlu lagi menghitung panel satu per satu",
-                description:
-                  "",
+                description: "",
               },
               {
-                title: "Respon customer lebih cepat dan tingkatkan peluang closing",
+                title:
+                  "Respon customer lebih cepat dan tingkatkan peluang closing",
                 description: "",
               },
               {
@@ -317,8 +405,19 @@ export default function Home() {
               href="mailto:guntek2000@gmail.com"
               className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 text-[#7B6DED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4 shrink-0 text-[#7B6DED]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
               guntek2000@gmail.com
             </a>
@@ -326,15 +425,41 @@ export default function Home() {
               href="tel:085656646637"
               className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 text-[#7B6DED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4 shrink-0 text-[#7B6DED]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                />
               </svg>
               0856-5664-6637
             </a>
             <div className="flex items-start gap-2 text-sm text-gray-300">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 mt-0.5 text-[#7B6DED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4 shrink-0 mt-0.5 text-[#7B6DED]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
               <span>Jl. Restika Indah, Kec. Pallangga, Kab. Gowa</span>
             </div>
@@ -347,7 +472,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div >
+    </div>
   );
 }
-
