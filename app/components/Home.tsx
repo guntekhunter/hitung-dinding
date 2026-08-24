@@ -1,6 +1,8 @@
 import Image from "next/image";
 import PaymentCard from "./reusable/PaymentCard";
 import MetaPixelTracker from "./reusable/MetaPixelTracker";
+import Link from "next/link";
+import LoginButton from "./reusable/LoginButton";
 
 // Lightweight icon component — avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
@@ -13,6 +15,7 @@ const CheckIcon = () => (
     loading="lazy"
   />
 );
+
 const CrossIcon = () => (
   <img
     src="/cross.svg"
@@ -42,7 +45,7 @@ export default function Home() {
 
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5] md:px-8">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto flex justify-between">
           {/* Plain img for SVG logo — avoids Next/Image JS overhead */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -53,6 +56,7 @@ export default function Home() {
             className="w-[40%] md:w-[160px] h-auto"
             fetchPriority="high"
           />
+          <LoginButton />
         </div>
       </div>
 
