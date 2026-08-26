@@ -104,9 +104,17 @@ export default function LoginPage() {
 
                         {/* Password */}
                         <div>
-                            <label htmlFor="password" className={labelClass}>
-                                Password
-                            </label>
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label htmlFor="password" className="block text-sm text-gray-700">
+                                    Password
+                                </label>
+                                <Link
+                                    href="/forgot-password"
+                                    className="text-xs text-[#826DF8] hover:text-[#725cf6] font-medium"
+                                >
+                                    Lupa password?
+                                </Link>
+                            </div>
                             <input
                                 id="password"
                                 name="password"

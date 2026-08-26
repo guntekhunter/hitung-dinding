@@ -115,3 +115,24 @@ export const registerCompanyAndAdminUser = async (
 
     return { company: newCompany, userProfile: newUserProfile, authUser: authData.user };
 };
+
+export const resetPassword = async (email: string, redirectTo: string) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+    });
+    if (error) {
+        throw new Error(error.message);
+    }
+    return data;
+};
+
+export const updatePassword = async (password: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+        password,
+    });
+    if (error) {
+        throw new Error(error.message);
+    }
+    return data;
+};
+
