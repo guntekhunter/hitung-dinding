@@ -64,7 +64,10 @@ export default function PrivacyPolicyPage() {
               <li>Alamat Email</li>
               <li>Nomor Telepon / WhatsApp</li>
               <li>
-                Alamat IP dan data browser saat menggunakan situs web kami
+                Alamat IP, jenis browser, data perangkat, dan data interaksi saat menggunakan situs web kami
+              </li>
+              <li>
+                Data yang dikumpulkan melalui Cookies, Web Beacons, Meta Pixel, dan teknologi pelacakan serupa
               </li>
             </ul>
           </section>
@@ -93,11 +96,10 @@ export default function PrivacyPolicyPage() {
                 menggunakan data Anda (seperti email dan nomor telepon) untuk
                 membantu kami menampilkan iklan yang lebih relevan bagi Anda di
                 platform pihak ketiga, termasuk Meta (Facebook & Instagram).
-                Untuk keperluan pencocokan audiens pada layanan tertentu,
-                informasi kontak seperti alamat email atau nomor telepon dapat
+                Untuk keperluan pencocokan audiens melalui layanan Meta Conversions API (CAPI),
+                informasi kontak seperti alamat email atau nomor telepon 
                 diubah menggunakan fungsi hash satu arah (SHA-256) sebelum
-                dikirimkan kepada penyedia layanan periklanan, sesuai dengan
-                konfigurasi dan ketentuan layanan tersebut.
+                dikirimkan kepada penyedia layanan periklanan.
               </li>
               <li>
                 <strong>Peningkatan Kualitas:</strong> Menganalisis bagaimana
@@ -109,11 +111,10 @@ export default function PrivacyPolicyPage() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold text-gray-900">
-              4. Pembagian Data dengan Pihak Ketiga
+              4. Penggunaan Cookies & Teknologi Pelacakan Pihak Ketiga
             </h2>
             <p>
-              Kami tidak akan menjual informasi pribadi Anda. Namun, kami dapat
-              membagikan data Anda dengan:
+              Kami tidak akan menjual informasi pribadi Anda. Namun, kami membagikan data Anda dengan mitra terpercaya dan pihak ketiga yang membantu operasional kami:
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li>
@@ -121,16 +122,22 @@ export default function PrivacyPolicyPage() {
                 untuk memproses transaksi secara aman.
               </li>
               <li>
-                <strong>Mitra Periklanan & Analitik:</strong> Kami menggunakan
-                layanan pihak ketiga seperti Meta (Facebook dan Instagram) dan
-                Google Analytics untuk mengukur efektivitas pemasaran, memahami
-                penggunaan layanan, dan, apabila Anda memberikan persetujuan
-                yang sesuai, membantu menampilkan iklan yang lebih relevan.
-                Informasi yang dapat diproses dapat mencakup informasi kontak
-                yang telah diproses menggunakan metode hashing, informasi
-                transaksi, informasi perangkat, dan informasi aktivitas di situs
-                web, sesuai dengan layanan yang digunakan.
+                <strong>Mitra Periklanan & Analitik (Meta & Google):</strong> Pihak ketiga, termasuk Meta (Facebook) dan Google, dapat menggunakan <em>cookies</em>, <em>web beacons</em>, Meta Pixel, dan teknologi serupa lainnya untuk mengumpulkan atau menerima informasi dari situs web kami dan tempat lain di internet. Informasi ini digunakan untuk menyediakan layanan pengukuran dan menargetkan iklan kepada Anda.
               </li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold text-gray-900">
+              5. Cara Menolak (Opt-Out) dari Pelacakan Iklan
+            </h2>
+            <p>
+              Anda memiliki hak untuk mengontrol privasi dan menolak (opt-out) dari pengumpulan serta penggunaan informasi Anda untuk penargetan iklan. Anda dapat melakukannya melalui:
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Mengatur preferensi iklan langsung di akun Facebook Anda melalui pengaturan <strong>Ad Preferences</strong>.</li>
+              <li>Menggunakan alat <em>opt-out</em> industri seperti <a href="http://www.aboutads.info/choices" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">http://www.aboutads.info/choices</a> atau <a href="http://www.youronlinechoices.eu/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">http://www.youronlinechoices.eu/</a>.</li>
+              <li>Mengubah pengaturan <em>cookies</em> pada browser perangkat Anda.</li>
             </ul>
           </section>
 
