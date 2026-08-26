@@ -19,6 +19,8 @@ export default function GlobalLayout({
     "/mockup",
     "/wall-editor",
     "/privacy-policy",
+    "/forgot-password",
+    "/update-password",
   ].includes(pathname);
 
   if (isExcluded) {
