@@ -291,17 +291,31 @@ export default function PaymentPage() {
                     </div>
                   </div>
 
-                  {/* Consent Checkbox */}
+                  {/* Consent Checkbox 1: Privacy Policy */}
                   <div className="flex items-start gap-3 mt-4">
                     <input
                       required
                       type="checkbox"
-                      id="consent"
-                      name="consent"
+                      id="consent-privacy"
+                      name="consentPrivacy"
                       className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
                     />
-                    <label htmlFor="consent" className="text-[11px] text-gray-500 leading-relaxed">
+                    <label htmlFor="consent-privacy" className="text-[11px] text-gray-500 leading-relaxed">
                       Saya setuju bahwa data saya akan dikumpulkan dan digunakan untuk keperluan pemasaran, personalisasi iklan, dan peningkatan layanan sesuai dengan <Link href="/privacy-policy" className="text-[#7B6DED] hover:underline" target="_blank">Kebijakan Privasi</Link>.
+                    </label>
+                  </div>
+
+                  {/* Consent Checkbox 2: WhatsApp & Email Comm */}
+                  <div className="flex items-start gap-3 mt-3">
+                    <input
+                      required
+                      type="checkbox"
+                      id="consent-comm"
+                      name="consentComm"
+                      className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
+                    />
+                    <label htmlFor="consent-comm" className="text-[11px] text-gray-500 leading-relaxed">
+                      Dengan mendaftar, Anda setuju untuk menerima informasi layanan dan dukungan dari kami melalui WhatsApp & email.
                     </label>
                   </div>
 
