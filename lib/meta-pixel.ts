@@ -9,11 +9,17 @@ export function trackMetaEvent(
 
   if (!fbq) return;
 
+  const cleanUrl = window.location.origin + window.location.pathname;
+  const eventParams = {
+    event_source_url: cleanUrl,
+    ...(params || {})
+  };
+
   if (eventId) {
-    fbq("track", eventName, params || {}, {
+    fbq("track", eventName, eventParams, {
       eventID: eventId,
     });
   } else {
-    fbq("track", eventName, params || {});
+    fbq("track", eventName, eventParams);
   }
 }
