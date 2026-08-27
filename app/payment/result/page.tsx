@@ -53,11 +53,15 @@ export default function PaymentResultPage() {
       didRedirect.current = true;
 
       // Track purchase
-      trackMetaEvent("Purchase", {
-        currency: "IDR",
-        value: orderData.amount || 89999,
-        transaction_id: orderId,
-      });
+      trackMetaEvent(
+        "Purchase",
+        {
+          currency: "IDR",
+          value: orderData.amount || 89999,
+          transaction_id: orderId,
+        },
+        orderId || undefined
+      );
 
       const autoLogin = async () => {
         try {
