@@ -1150,18 +1150,17 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const moveOpening = useCanvasStore.getState().moveOpening;
         const _saveHistory = useCanvasStore.getState()._saveHistory;
 
-        const allElements = [
-            ...designAreas.map(area => ({ ...area, renderType: 'area' })),
-            ...openings.map(op => ({ ...op, renderType: 'opening' })),
-            ...lists.map(list => ({ ...list, renderType: 'list' }))
-        ];
-
-        allElements.sort((a, b) => ((a as any).createdAt || 0) - ((b as any).createdAt || 0));
+        const nonOpenings = [
+                ...designAreas.map(area => ({ ...area, renderType: 'area' })),
+                ...lists.map(list => ({ ...list, renderType: 'list' }))
+            ];
+            nonOpenings.sort((a, b) => ((a as any).createdAt || 0) - ((b as any).createdAt || 0));
 
         return (
             <Group>
                 <Group clipFunc={clipFunc}>
-                    {allElements.map(el => {
+                    {/* Design areas and mouldings sorted by creation time */}
+                    {nonOpenings.map(el => {
                         if (el.renderType === 'area') {
                             const area = el as any;
                             const product = products.find(p => p.id === area.productId);
@@ -1194,27 +1193,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                                     }}
                                 />
                             );
-                        } else if (el.renderType === 'opening') {
-                            const op = el as any;
-                            return (
-                                <MemoizedOpeningContent
-                                    key={op.id}
-                                    opening={op}
-                                    zoom={zoom}
-                                    textScale={textScale}
-                                    wallCenter={wallCenter}
-                                    interactionMode={interactionMode}
-                                    isExporting={shouldHideText}
-                                    selectedDesignAreaId={selectedDesignAreaId}
-                                    setSelectedDesignAreaId={setSelectedDesignAreaId}
-                                    readOnly={props.readOnly}
-                                    onClick={() => {
-                                        if (interactionMode === 'delete') {
-                                            useCanvasStore.getState().removeOpening(op.id);
-                                        }
-                                    }}
-                                />
-                            );
                         } else if (el.renderType === 'list') {
                             const list = el as any;
                             return (
@@ -1225,6 +1203,26 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         }
                         return null;
                     })}
+                    {/* Openings (window/TV/door) always rendered on top of design areas */}
+                    {openings.map(op => (
+                        <MemoizedOpeningContent
+                            key={op.id}
+                            opening={op}
+                            zoom={zoom}
+                            textScale={textScale}
+                            wallCenter={wallCenter}
+                            interactionMode={interactionMode}
+                            isExporting={shouldHideText}
+                            selectedDesignAreaId={selectedDesignAreaId}
+                            setSelectedDesignAreaId={setSelectedDesignAreaId}
+                            readOnly={props.readOnly}
+                            onClick={() => {
+                                if (interactionMode === 'delete') {
+                                    useCanvasStore.getState().removeOpening(op.id);
+                                }
+                            }}
+                        />
+                    ))}
                     {currentDrawingArea && (() => {
                         const normalized = {
                             ...currentDrawingArea,
@@ -1291,20 +1289,13 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     )}
                 </Group>
 
-                {/* Draw unclipped dimensions */}
-                {allElements.map(el => {
-                    if (el.renderType === 'area') {
-                        return null; // Dimensions now handled by renderedAreaDimensions
-                    } else if (el.renderType === 'opening') {
-                        return (
-                            <React.Fragment key={`dim-${el.id}`}>
-                                <MemoizedOpeningDimensions opening={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
-                                <MemoizedOpeningGapDimensions opening={el} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
-                            </React.Fragment>
-                        );
-                    }
-                    return null;
-                })}
+                {/* Draw unclipped dimensions for openings */}
+                {openings.map(op => (
+                    <React.Fragment key={`dim-${op.id}`}>
+                        <MemoizedOpeningDimensions opening={op} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                        <MemoizedOpeningGapDimensions opening={op} zoom={zoom} textScale={textScale} points={points} isExporting={shouldHideText} />
+                    </React.Fragment>
+                ))}
                 {currentDrawingArea && (() => {
                     const normalized = {
                         ...currentDrawingArea,
