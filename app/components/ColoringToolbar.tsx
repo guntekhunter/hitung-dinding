@@ -3,425 +3,536 @@
 import React, { useMemo } from "react";
 import { useCanvasStore } from "../store/useCanvasStore";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Save, Download, FolderOpen, PenLine, MonitorPlay } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Save,
+  Download,
+  FolderOpen,
+  PenLine,
+  MonitorPlay,
+} from "lucide-react";
 import { saveProjectToDatabase } from "../utils/saveProject";
 import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../../lib/supabase";
 
 export default function ColoringToolbar({ wallEditorRef }: any) {
-    const router = useRouter();
-    const {
-        walls, activeWallId, setActiveWall, products, setProductColor, customerInfo, materialPrices, projectId, setCeilingColor, setTrapLineColor,
-        setDesignAreaColor,
-        setWallProductColor,
-        setSelectedDesignAreaId,
-        setSelectedWallId
-    } = useCanvasStore();
+  const router = useRouter();
+  const {
+    walls,
+    activeWallId,
+    setActiveWall,
+    products,
+    setProductColor,
+    customerInfo,
+    materialPrices,
+    projectId,
+    setCeilingColor,
+    setTrapLineColor,
+    setDesignAreaColor,
+    setWallProductColor,
+    setSelectedDesignAreaId,
+    setSelectedWallId,
+  } = useCanvasStore();
 
-    const selectedWallId = useCanvasStore(state => state.selectedWallId);
-    const selectedDesignAreaId = useCanvasStore(state => state.selectedDesignAreaId);
-    const company = useAuthStore(state => state.company);
-    const [isSaving, setIsSaving] = React.useState(false);
-    const [materialColorsData, setMaterialColorsData] = React.useState<Record<string, any[]>>({});
-    const [isLoadingMaterials, setIsLoadingMaterials] = React.useState(false);
-    const fetchedProductIds = React.useRef<Set<string>>(new Set());
+  const selectedWallId = useCanvasStore((state) => state.selectedWallId);
+  const selectedDesignAreaId = useCanvasStore(
+    (state) => state.selectedDesignAreaId,
+  );
+  const company = useAuthStore((state) => state.company);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [materialColorsData, setMaterialColorsData] = React.useState<
+    Record<string, any[]>
+  >({});
+  const [isLoadingMaterials, setIsLoadingMaterials] = React.useState(false);
+  const fetchedProductIds = React.useRef<Set<string>>(new Set());
 
-    const activeWall = walls.find(w => w.id === activeWallId);
+  const activeWall = walls.find((w) => w.id === activeWallId);
 
-    const selectedWallName = useMemo(() => {
-        if (!selectedWallId) return null;
-        return walls.find(w => w.id === selectedWallId)?.name || "Selected Wall";
-    }, [selectedWallId, walls]);
+  const selectedWallName = useMemo(() => {
+    if (!selectedWallId) return null;
+    return walls.find((w) => w.id === selectedWallId)?.name || "Selected Wall";
+  }, [selectedWallId, walls]);
 
-    const applyColor = (productId: string, color: string) => {
-        if (selectedDesignAreaId) {
-            setDesignAreaColor(selectedDesignAreaId, color);
-        } else if (selectedWallId) {
-            setWallProductColor(selectedWallId, productId, color);
-        } else {
-            setProductColor(productId, color);
+  const applyColor = (productId: string, color: string) => {
+    if (selectedDesignAreaId) {
+      setDesignAreaColor(selectedDesignAreaId, color);
+    } else if (selectedWallId) {
+      setWallProductColor(selectedWallId, productId, color);
+    } else {
+      setProductColor(productId, color);
+    }
+  };
+
+  const clearWallSelection = () => {
+    setSelectedWallId(null);
+    setSelectedDesignAreaId(null);
+  };
+
+  const getDisplayColor = (productId: string) => {
+    if (selectedDesignAreaId) {
+      for (const wall of walls) {
+        const area = wall.designAreas.find(
+          (a) => a.id === selectedDesignAreaId,
+        );
+        if (area)
+          return (
+            (area as any).customColor ||
+            products.find((p) => p.id === productId)?.color ||
+            "#cccccc"
+          );
+      }
+    }
+    if (selectedWallId) {
+      const wall = walls.find((w) => w.id === selectedWallId);
+      const area = wall?.designAreas.find((a) => a.productId === productId);
+      if (area && (area as any).customColor) return (area as any).customColor;
+    }
+    return products.find((p) => p.id === productId)?.color || "#cccccc";
+  };
+
+  // Get all products used in the current design
+  const usedProducts = useMemo(() => {
+    const productIds = new Set<string>();
+    walls.forEach((wall) => {
+      wall.designAreas.forEach((area) => productIds.add(area.productId));
+      wall.lists.forEach((list) => productIds.add(list.productId));
+    });
+    return products.filter((p) => productIds.has(p.id));
+  }, [walls, products]);
+
+  // Detect if any wall is a ceiling type
+  const hasCeilingWalls = useMemo(
+    () => walls.some((w: any) => w.type === "ceiling"),
+    [walls],
+  );
+
+  // Plafon products — only shown when there are ceiling walls
+  const plafonProducts = useMemo(() => {
+    if (!hasCeilingWalls) return [];
+    return products.filter((p: any) => p.category?.toLowerCase() === "plafon");
+  }, [products, hasCeilingWalls]);
+
+  React.useEffect(() => {
+    const fetchMaterialColors = async () => {
+      const allProductsToFetch = [...usedProducts, ...plafonProducts];
+      if (allProductsToFetch.length === 0) return;
+
+      const newProducts = allProductsToFetch.filter(
+        (p) => !fetchedProductIds.current.has(p.id),
+      );
+      if (newProducts.length === 0) return;
+
+      setIsLoadingMaterials(true);
+
+      for (const product of newProducts) {
+        fetchedProductIds.current.add(product.id);
+
+        const { data, error } = await supabase
+          .from("material_colors")
+          .select("id, material_id, image")
+          .eq("material_id", product.id);
+
+        if (data && !error) {
+          setMaterialColorsData((prev) => ({
+            ...prev,
+            [product.id]: data,
+          }));
         }
-    };
+      }
 
-    const clearWallSelection = () => {
-        setSelectedWallId(null);
-        setSelectedDesignAreaId(null);
+      setIsLoadingMaterials(false);
     };
+    fetchMaterialColors();
+  }, [usedProducts, plafonProducts]);
 
-    const getDisplayColor = (productId: string) => {
-        if (selectedDesignAreaId) {
-            for (const wall of walls) {
-                const area = wall.designAreas.find(a => a.id === selectedDesignAreaId);
-                if (area) return (area as any).customColor || products.find(p => p.id === productId)?.color || '#cccccc';
+  const handleSave = async () => {
+    if (!company?.id || !projectId) return;
+    setIsSaving(true);
+
+    try {
+      const { data: existingProject, error } = await supabase
+        .from("projects")
+        .select("name, data")
+        .eq("id", projectId)
+        .single();
+
+      if (error || !existingProject) throw new Error("Project not found");
+
+      const customColors: Record<string, string> = {};
+      usedProducts.forEach((p) => {
+        customColors[p.id] = p.color;
+      });
+
+      const projectData = {
+        ...existingProject.data,
+        canvas: { walls },
+        materialColors: customColors,
+      };
+
+      await saveProjectToDatabase(
+        existingProject.name,
+        projectData,
+        company.id,
+        projectId,
+      );
+      alert("Project colors saved!");
+    } catch (error) {
+      console.error("Save failed:", error);
+      alert("Failed to save project.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    useCanvasStore.getState().setIsExporting(true);
+    setTimeout(() => {
+      const stage = wallEditorRef.current?.getStage();
+      if (stage) {
+        const dataURL = stage.toDataURL({ pixelRatio: 2 });
+        const link = document.createElement("a");
+        link.download = "wall-design.png";
+        link.href = dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      useCanvasStore.getState().setIsExporting(false);
+    }, 150);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white relative w-full md:w-full">
+      {/* Header nav */}
+      <div className="px-3 py-3 border-b border-gray-100 flex items-center justify-between gap-1">
+        <button
+          onClick={() => router.push("/projects")}
+          title="Back to Projects"
+          className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
+        >
+          <FolderOpen className="w-[.7rem]" />
+        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() =>
+              router.push(
+                projectId ? `/wall-editor?id=${projectId}` : "/wall-editor",
+              )
             }
-        }
-        if (selectedWallId) {
-            const wall = walls.find(w => w.id === selectedWallId);
-            const area = wall?.designAreas.find(a => a.productId === productId);
-            if (area && (area as any).customColor) return (area as any).customColor;
-        }
-        return products.find(p => p.id === productId)?.color || '#cccccc';
-    };
-
-    // Get all products used in the current design
-    const usedProducts = useMemo(() => {
-        const productIds = new Set<string>();
-        walls.forEach(wall => {
-            wall.designAreas.forEach(area => productIds.add(area.productId));
-            wall.lists.forEach(list => productIds.add(list.productId));
-        });
-        return products.filter(p => productIds.has(p.id));
-    }, [walls, products]);
-
-    // Detect if any wall is a ceiling type
-    const hasCeilingWalls = useMemo(() => walls.some((w: any) => w.type === 'ceiling'), [walls]);
-
-    // Plafon products — only shown when there are ceiling walls
-    const plafonProducts = useMemo(() => {
-        if (!hasCeilingWalls) return [];
-        return products.filter((p: any) => p.category?.toLowerCase() === 'plafon');
-    }, [products, hasCeilingWalls]);
-
-    React.useEffect(() => {
-        const fetchMaterialColors = async () => {
-            const allProductsToFetch = [...usedProducts, ...plafonProducts];
-            if (allProductsToFetch.length === 0) return;
-
-            const newProducts = allProductsToFetch.filter(p => !fetchedProductIds.current.has(p.id));
-            if (newProducts.length === 0) return;
-
-            setIsLoadingMaterials(true);
-
-            for (const product of newProducts) {
-                fetchedProductIds.current.add(product.id);
-
-                const { data, error } = await supabase
-                    .from("material_colors")
-                    .select("id, material_id, image")
-                    .eq("material_id", product.id);
-
-                if (data && !error) {
-                    setMaterialColorsData(prev => ({
-                        ...prev,
-                        [product.id]: data
-                    }));
-                }
+            title="Wall Editor"
+            className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
+          >
+            <PenLine className="w-[.7rem]" />
+          </button>
+          <button
+            onClick={() =>
+              router.push(projectId ? `/mockup?id=${projectId}` : "/mockup")
             }
+            title="Mockup"
+            className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
+          >
+            <MonitorPlay className="w-[.7rem]" />
+          </button>
+        </div>
+      </div>
 
-            setIsLoadingMaterials(false);
-        };
-        fetchMaterialColors();
-    }, [usedProducts, plafonProducts]);
+      {/* Wall selector */}
+      {walls.length > 1 && (
+        <div className="p-4 border-b border-gray-100 flex flex-col gap-2 bg-gray-50/50">
+          <label className="text-sm font-medium text-gray-700">
+            Select Wall
+          </label>
+          <select
+            value={activeWallId || ""}
+            onChange={(e) => setActiveWall(e.target.value)}
+            className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#7B6DED] bg-white text-gray-800"
+          >
+            {walls.map((wall) => (
+              <option key={wall.id} value={wall.id}>
+                {wall.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-    const handleSave = async () => {
-        if (!company?.id || !projectId) return;
-        setIsSaving(true);
+      {/* Action buttons */}
+      <div className="p-4 flex items-center justify-between border-b border-gray-100">
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownload}
+            className="flex bg-white border border-gray-200 text-gray-700 py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-gray-50 duration-300 text-sm font-medium"
+          >
+            <Download className="w-[1rem]" />
+            Download
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex bg-[#7B6DED] text-white py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-[#6859d9] duration-300 disabled:opacity-50 text-sm font-medium"
+          >
+            <Save className="w-[1rem]" />
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
 
-        try {
-            const { data: existingProject, error } = await supabase
-                .from("projects")
-                .select("name, data")
-                .eq("id", projectId)
-                .single();
+      {/* Scrollable content */}
+      <div className="p-4 flex-1 overflow-y-auto">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-gray-800">Material Colors</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            {selectedWallId
+              ? `Applying to "${selectedWallName}" only`
+              : "Click any rectangle to select its wall"}
+          </p>
+        </div>
 
-            if (error || !existingProject) throw new Error("Project not found");
-
-            const customColors: Record<string, string> = {};
-            usedProducts.forEach(p => {
-                customColors[p.id] = p.color;
-            });
-
-            const projectData = {
-                ...existingProject.data,
-                canvas: { walls },
-                materialColors: customColors
-            };
-
-            await saveProjectToDatabase(
-                existingProject.name,
-                projectData,
-                company.id,
-                projectId
-            );
-            alert("Project colors saved!");
-        } catch (error) {
-            console.error("Save failed:", error);
-            alert("Failed to save project.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleDownload = () => {
-        useCanvasStore.getState().setIsExporting(true);
-        setTimeout(() => {
-            const stage = wallEditorRef.current?.getStage();
-            if (stage) {
-                const dataURL = stage.toDataURL({ pixelRatio: 2 });
-                const link = document.createElement("a");
-                link.download = "wall-design.png";
-                link.href = dataURL;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-            useCanvasStore.getState().setIsExporting(false);
-        }, 150);
-    };
-
-    return (
-        <div className="flex flex-col h-full bg-white relative w-full md:w-[320px]">
-            {/* Header nav */}
-            <div className="px-3 py-3 border-b border-gray-100 flex items-center justify-between gap-1">
-                <button
-                    onClick={() => router.push('/projects')}
-                    title="Back to Projects"
-                    className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
+        {/* Selection banner */}
+        {(selectedDesignAreaId || selectedWallId) && (
+          <div
+            className={`mb-4 p-3 rounded-xl flex items-center justify-between gap-2 border ${
+              selectedDesignAreaId
+                ? "bg-[#7B6DED]/10 border-[#7B6DED]/30"
+                : "bg-green-50 border-green-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  selectedDesignAreaId ? "bg-[#7B6DED]" : "bg-green-500"
+                }`}
+              ></span>
+              <div className="min-w-0">
+                <p
+                  className={`text-xs font-semibold truncate ${
+                    selectedDesignAreaId ? "text-[#7B6DED]" : "text-green-700"
+                  }`}
                 >
-                    <FolderOpen className="w-[.7rem]" />
-                </button>
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={() => router.push(projectId ? `/wall-editor?id=${projectId}` : '/wall-editor')}
-                        title="Wall Editor"
-                        className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
-                    >
-                        <PenLine className="w-[.7rem]" />
-                    </button>
-                    <button
-                        onClick={() => router.push(projectId ? `/mockup?id=${projectId}` : '/mockup')}
-                        title="Mockup"
-                        className="flex py-[.3rem] px-[.65rem] rounded-[5px] items-center gap-2 duration-300 bg-[#F5F5F5] hover:bg-[#E2E2E2]"
-                    >
-                        <MonitorPlay className="w-[.7rem]" />
-                    </button>
-                </div>
+                  {selectedDesignAreaId
+                    ? "One rectangle selected"
+                    : `${selectedWallName} — active`}
+                </p>
+                <p
+                  className={`text-[10px] mt-0.5 ${
+                    selectedDesignAreaId
+                      ? "text-[#7B6DED]/70"
+                      : "text-green-600"
+                  }`}
+                >
+                  {selectedDesignAreaId
+                    ? "Texture applies to this rectangle only"
+                    : "Texture applies to this wall only"}
+                </p>
+              </div>
             </div>
+            <button
+              onClick={clearWallSelection}
+              className={`font-bold text-xs rounded-lg px-2 py-1 transition shrink-0 ${
+                selectedDesignAreaId
+                  ? "text-[#7B6DED] bg-[#7B6DED]/10 hover:bg-[#7B6DED]/20"
+                  : "text-green-700 bg-green-100 hover:bg-green-200"
+              }`}
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
+        {isLoadingMaterials ? (
+          <div className="flex flex-col gap-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md shadow-sm animate-pulse"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="w-8 h-8 rounded bg-gray-200"></div>
+                </div>
+                <div className="flex gap-2 mt-1">
+                  <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                  <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                  <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : usedProducts.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No materials used in this project yet.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {usedProducts.map((product) => {
+              const displayColor = getDisplayColor(product.id);
+              const isHex =
+                displayColor &&
+                !displayColor.startsWith("data:") &&
+                !displayColor.startsWith("http");
 
-            {/* Wall selector */}
-            {walls.length > 1 && (
-                <div className="p-4 border-b border-gray-100 flex flex-col gap-2 bg-gray-50/50">
-                    <label className="text-sm font-medium text-gray-700">Select Wall</label>
-                    <select
-                        value={activeWallId || ''}
-                        onChange={(e) => setActiveWall(e.target.value)}
-                        className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#7B6DED] bg-white text-gray-800"
+              return (
+                <div
+                  key={product.id}
+                  className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="text-sm font-medium text-gray-700 truncate mr-2"
+                      title={product.name}
                     >
-                        {walls.map(wall => (
-                            <option key={wall.id} value={wall.id}>
-                                {wall.name}
-                            </option>
+                      {product.name}
+                    </span>
+                    <input
+                      type="color"
+                      value={isHex ? displayColor : "#cccccc"}
+                      onChange={(e) => applyColor(product.id, e.target.value)}
+                      className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                    />
+                  </div>
+                  {materialColorsData[product.id] &&
+                    materialColorsData[product.id].length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                        {materialColorsData[product.id].map((mc) => (
+                          <button
+                            key={mc.id}
+                            onClick={() => applyColor(product.id, mc.image)}
+                            className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${displayColor === mc.image ? "border-[#7B6DED] scale-105" : "border-transparent hover:border-gray-300"}`}
+                            title="Apply Texture"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={mc.image}
+                              alt="Texture"
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
                         ))}
-                    </select>
+                      </div>
+                    )}
                 </div>
-            )}
+              );
+            })}
+          </div>
+        )}
 
-            {/* Action buttons */}
-            <div className="p-4 flex items-center justify-between border-b border-gray-100">
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleDownload}
-                        className="flex bg-white border border-gray-200 text-gray-700 py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-gray-50 duration-300 text-sm font-medium"
-                    >
-                        <Download className="w-[1rem]" />
-                        Download
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="flex bg-[#7B6DED] text-white py-1.5 px-3 rounded-[5px] items-center gap-2 hover:bg-[#6859d9] duration-300 disabled:opacity-50 text-sm font-medium"
-                    >
-                        <Save className="w-[1rem]" />
-                        {isSaving ? "Saving..." : "Save"}
-                    </button>
-                </div>
-            </div>
+        {/* Plafon / Ceiling texture section */}
+        {hasCeilingWalls && plafonProducts.length > 0 && (
+          <div className="mt-6 border-t border-gray-100 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">
+              Tekstur Plafon
+            </h3>
+            <div className="flex flex-col gap-4">
+              {plafonProducts.map((product: any) => {
+                const defaultColor =
+                  products.find((p: any) => p.id === product.id)?.color ||
+                  "#ffffff";
+                const numZones =
+                  activeWall?.type === "ceiling" && activeWall.ceilingTraps
+                    ? activeWall.ceilingTraps.length + 1
+                    : 1;
 
-            {/* Scrollable content */}
-            <div className="p-4 flex-1 overflow-y-auto">
-                <div className="mb-4">
-                    <h2 className="text-lg font-bold text-gray-800">Material Colors</h2>
-                    <p className="text-xs text-gray-500 mt-1">
-                        {selectedWallId
-                            ? `Applying to "${selectedWallName}" only`
-                            : "Click any rectangle to select its wall"}
-                    </p>
-                </div>
+                return (
+                  <div
+                    key={product.id}
+                    className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30"
+                  >
+                    {Array.from({ length: numZones }).map((_, idx) => {
+                      const currentColor =
+                        activeWall?.type === "ceiling" &&
+                        activeWall.ceilingColors &&
+                        activeWall.ceilingColors[idx]
+                          ? activeWall.ceilingColors[idx]
+                          : defaultColor;
 
-                {/* Selection banner */}
-                {(selectedDesignAreaId || selectedWallId) && (
-                    <div className={`mb-4 p-3 rounded-xl flex items-center justify-between gap-2 border ${selectedDesignAreaId
-                        ? 'bg-[#7B6DED]/10 border-[#7B6DED]/30'
-                        : 'bg-green-50 border-green-200'
-                        }`}>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedDesignAreaId ? 'bg-[#7B6DED]' : 'bg-green-500'
-                                }`}></span>
-                            <div className="min-w-0">
-                                <p className={`text-xs font-semibold truncate ${selectedDesignAreaId ? 'text-[#7B6DED]' : 'text-green-700'
-                                    }`}>
-                                    {selectedDesignAreaId
-                                        ? 'One rectangle selected'
-                                        : `${selectedWallName} — active`}
-                                </p>
-                                <p className={`text-[10px] mt-0.5 ${selectedDesignAreaId ? 'text-[#7B6DED]/70' : 'text-green-600'
-                                    }`}>
-                                    {selectedDesignAreaId
-                                        ? 'Texture applies to this rectangle only'
-                                        : 'Texture applies to this wall only'}
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={clearWallSelection}
-                            className={`font-bold text-xs rounded-lg px-2 py-1 transition shrink-0 ${selectedDesignAreaId
-                                ? 'text-[#7B6DED] bg-[#7B6DED]/10 hover:bg-[#7B6DED]/20'
-                                : 'text-green-700 bg-green-100 hover:bg-green-200'
-                                }`}
+                      let zoneName = "Luar / Base";
+                      if (idx > 0 && idx < numZones - 1)
+                        zoneName = `Trap ${idx}`;
+                      if (idx > 0 && idx === numZones - 1)
+                        zoneName = "Dalam / Plafon Utama";
+                      if (numZones === 1) zoneName = "Plafon Utama";
+
+                      const handleSetColor = (c: string) => {
+                        if (activeWall?.type === "ceiling")
+                          setCeilingColor(activeWall.id, idx, c);
+                        if (idx === 0) setProductColor(product.id, c);
+                      };
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex flex-col gap-2 ${idx > 0 ? "border-t border-indigo-100 pt-3" : ""}`}
                         >
-                            Clear
-                        </button>
-                    </div>
-                )}
-
-                {isLoadingMaterials ? (
-                    <div className="flex flex-col gap-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-md shadow-sm animate-pulse">
-                                <div className="flex items-center justify-between">
-                                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                                    <div className="w-8 h-8 rounded bg-gray-200"></div>
-                                </div>
-                                <div className="flex gap-2 mt-1">
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                    <div className="w-10 h-10 shrink-0 rounded bg-gray-200"></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : usedProducts.length === 0 ? (
-                    <p className="text-sm text-gray-500">No materials used in this project yet.</p>
-                ) : (
-                    <div className="flex flex-col gap-4">
-                        {usedProducts.map((product) => {
-                            const displayColor = getDisplayColor(product.id);
-                            const isHex = displayColor && !displayColor.startsWith("data:") && !displayColor.startsWith("http");
-
-                            return (
-                                <div key={product.id} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-lg shadow-sm">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700 truncate mr-2" title={product.name}>
-                                            {product.name}
-                                        </span>
-                                        <input
-                                            type="color"
-                                            value={isHex ? displayColor : "#cccccc"}
-                                            onChange={(e) => applyColor(product.id, e.target.value)}
-                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
-                                        />
-                                    </div>
-                                    {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
-                                        <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
-                                            {materialColorsData[product.id].map(mc => (
-                                                <button
-                                                    key={mc.id}
-                                                    onClick={() => applyColor(product.id, mc.image)}
-                                                    className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${displayColor === mc.image ? 'border-[#7B6DED] scale-105' : 'border-transparent hover:border-gray-300'}`}
-                                                    title="Apply Texture"
-                                                >
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {/* Plafon / Ceiling texture section */}
-                {hasCeilingWalls && plafonProducts.length > 0 && (
-                    <div className="mt-6 border-t border-gray-100 pt-4">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Tekstur Plafon</h3>
-                        <div className="flex flex-col gap-4">
-                            {plafonProducts.map((product: any) => {
-                                const defaultColor = products.find((p: any) => p.id === product.id)?.color || '#ffffff';
-                                const numZones = (activeWall?.type === 'ceiling' && activeWall.ceilingTraps) ? activeWall.ceilingTraps.length + 1 : 1;
-
-                                return (
-                                    <div key={product.id} className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
-                                        {Array.from({ length: numZones }).map((_, idx) => {
-                                            const currentColor = (activeWall?.type === 'ceiling' && activeWall.ceilingColors && activeWall.ceilingColors[idx]) ? activeWall.ceilingColors[idx] : defaultColor;
-
-                                            let zoneName = 'Luar / Base';
-                                            if (idx > 0 && idx < numZones - 1) zoneName = `Trap ${idx}`;
-                                            if (idx > 0 && idx === numZones - 1) zoneName = 'Dalam / Plafon Utama';
-                                            if (numZones === 1) zoneName = 'Plafon Utama';
-
-                                            const handleSetColor = (c: string) => {
-                                                if (activeWall?.type === 'ceiling') setCeilingColor(activeWall.id, idx, c);
-                                                if (idx === 0) setProductColor(product.id, c);
-                                            };
-
-                                            return (
-                                                <div key={idx} className={`flex flex-col gap-2 ${idx > 0 ? 'border-t border-indigo-100 pt-3' : ''}`}>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-medium text-gray-700 truncate mr-2">
-                                                            {product.name} ({zoneName})
-                                                        </span>
-                                                        <input
-                                                            type="color"
-                                                            value={(!currentColor.startsWith("data:") && !currentColor.startsWith("http")) ? currentColor : "#ffffff"}
-                                                            onChange={e => handleSetColor(e.target.value)}
-                                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
-                                                        />
-                                                    </div>
-                                                    {materialColorsData[product.id] && materialColorsData[product.id].length > 0 && (
-                                                        <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
-                                                            {materialColorsData[product.id].map((mc: any) => (
-                                                                <button
-                                                                    key={mc.id}
-                                                                    onClick={() => handleSetColor(mc.image)}
-                                                                    className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${currentColor === mc.image ? 'border-[#7B6DED] scale-105' : 'border-transparent hover:border-gray-300'}`}
-                                                                    title={`Apply Texture to ${zoneName}`}
-                                                                >
-                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                    <img src={mc.image} alt="Texture" className="w-full h-full object-cover" />
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })}
-
-                            {/* Trap line color */}
-                            {activeWall?.type === 'ceiling' && activeWall.ceilingTraps && activeWall.ceilingTraps.length > 0 && (
-                                <div className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700 mr-2">
-                                            Warna Garis Trap
-                                        </span>
-                                        <input
-                                            type="color"
-                                            value={activeWall.trapLineColor || "#3b82f6"}
-                                            onChange={e => setTrapLineColor(activeWall.id, e.target.value)}
-                                            className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
-                                        />
-                                    </div>
-                                </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700 truncate mr-2">
+                              {product.name} ({zoneName})
+                            </span>
+                            <input
+                              type="color"
+                              value={
+                                !currentColor.startsWith("data:") &&
+                                !currentColor.startsWith("http")
+                                  ? currentColor
+                                  : "#ffffff"
+                              }
+                              onChange={(e) => handleSetColor(e.target.value)}
+                              className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                            />
+                          </div>
+                          {materialColorsData[product.id] &&
+                            materialColorsData[product.id].length > 0 && (
+                              <div className="flex gap-2 overflow-x-auto pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200">
+                                {materialColorsData[product.id].map(
+                                  (mc: any) => (
+                                    <button
+                                      key={mc.id}
+                                      onClick={() => handleSetColor(mc.image)}
+                                      className={`w-10 h-10 shrink-0 rounded border-2 overflow-hidden transition-transform hover:scale-105 ${currentColor === mc.image ? "border-[#7B6DED] scale-105" : "border-transparent hover:border-gray-300"}`}
+                                      title={`Apply Texture to ${zoneName}`}
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={mc.image}
+                                        alt="Texture"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </button>
+                                  ),
+                                )}
+                              </div>
                             )}
                         </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              {/* Trap line color */}
+              {activeWall?.type === "ceiling" &&
+                activeWall.ceilingTraps &&
+                activeWall.ceilingTraps.length > 0 && (
+                  <div className="flex flex-col gap-4 p-3 border border-indigo-100 rounded-lg bg-indigo-50/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 mr-2">
+                        Warna Garis Trap
+                      </span>
+                      <input
+                        type="color"
+                        value={activeWall.trapLineColor || "#3b82f6"}
+                        onChange={(e) =>
+                          setTrapLineColor(activeWall.id, e.target.value)
+                        }
+                        className="w-10 h-10 cursor-pointer p-0 border-none bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full"
+                      />
                     </div>
+                  </div>
                 )}
             </div>
-        </div>
-    );
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

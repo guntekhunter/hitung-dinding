@@ -36,6 +36,7 @@ interface WallEditorProps {
     overrideOffset?: { x: number, y: number };
     readOnly?: boolean;
     mockupCorners?: {x: number, y: number}[];
+    forceColoringMode?: boolean;
 }
 
 /** Renders a tiled texture image as the ceiling wall background fill */
@@ -123,7 +124,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     const offset = props.overrideOffset !== undefined ? props.overrideOffset : storeOffset;
 
     const pathname = usePathname();
-    const isColoringMode = pathname === '/coloring' || isColoringPreview;
+    const isColoringMode = pathname === '/coloring' || isColoringPreview || props.forceColoringMode;
     const shouldHideText = isExporting || isColoringMode;
 
     const activeWall = walls.find(w => w.id === activeWallId) || walls[0];
