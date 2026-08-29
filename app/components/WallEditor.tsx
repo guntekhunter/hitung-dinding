@@ -813,7 +813,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         const isWallSelected = selectedWallId === wallId;
 
         const handleClick = () => {
-            if (readOnly && setSelectedDesignAreaId) {
+            if ((readOnly || isColoringMode) && setSelectedDesignAreaId) {
                 // Select this specific rectangle AND activate its wall
                 setSelectedDesignAreaId(isSelected ? null : area.id);
                 if (setSelectedWallId) {
@@ -829,8 +829,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 id={area.id}
                 x={area.x}
                 y={area.y}
-                draggable={!readOnly && interactionMode !== 'list'}
-                onDragMove={readOnly ? undefined : (e) => {
+                draggable={!readOnly && !isColoringMode && interactionMode !== 'list'}
+                onDragMove={(readOnly || isColoringMode) ? undefined : (e) => {
                     let newX = e.target.x();
                     let newY = e.target.y();
                     const areaCenterX = newX + area.width / 2;
@@ -841,7 +841,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     e.target.x(newX);
                     e.target.y(newY);
                 }}
-                onDragEnd={readOnly ? undefined : (e) => {
+                onDragEnd={(readOnly || isColoringMode) ? undefined : (e) => {
                     onSaveHistory();
                     onMove(area.id, e.target.x(), e.target.y());
                 }}
@@ -858,24 +858,24 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     fillPatternOffsetX={isPattern ? ((area.x - pOffsetX) % panelWidthPx) : 0}
                     fillPatternOffsetY={isPattern ? (panelHeightPx - ((pOffsetY - area.y) % panelHeightPx)) % panelHeightPx : 0}
                     stroke={
-                        (isSelected && interactionMode === 'resize')
+                        isSelected && (interactionMode === 'resize' || isColoringMode)
                             ? "#7B6DED"
-                            : isWallSelected && readOnly
+                            : isWallSelected && (readOnly || isColoringMode)
                                 ? "#22c55e"
                                 : (product.countType === 'length' || product.countType === 'meter')
                                     ? effectiveColor.replace('0.4', '1')
                                     : isColoringMode ? "transparent" : "#1e293b"
                     }
                     strokeWidth={
-                        (isSelected && interactionMode === 'resize')
+                        isSelected && (interactionMode === 'resize' || isColoringMode)
                             ? 4 / zoom
-                            : isWallSelected && readOnly
+                            : isWallSelected && (readOnly || isColoringMode)
                                 ? 2 / zoom
                                 : (product.countType === 'length' || product.countType === 'meter')
                                     ? 2 / zoom
                                     : isColoringMode ? 0 : 1 / zoom
                     }
-                    dash={isWallSelected && !isSelected && readOnly ? [6 / zoom, 3 / zoom] : undefined}
+                    dash={isWallSelected && !isSelected && (readOnly || isColoringMode) ? [6 / zoom, 3 / zoom] : undefined}
                     onClick={handleClick}
                     onTap={handleClick}
                     onMouseDown={(e) => {
@@ -883,21 +883,20 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
                             e.cancelBubble = true;
                             setSelectedDesignAreaId(area.id);
-                        } else {
-                            handleClick();
                         }
+                        // In coloring mode, selection is handled by onClick to avoid double-fire
+                        // (both onMouseDown and onClick would call handleClick causing immediate deselect)
                     }}
                     onTouchStart={(e) => {
                         if (interactionMode === 'resize' && !readOnly && setSelectedDesignAreaId) {
                             e.cancelBubble = true;
                             setSelectedDesignAreaId(area.id);
-                        } else {
-                            handleClick();
                         }
+                        // In coloring mode, handled by onTap to avoid double-fire
                     }}
                     onMouseEnter={(e: any) => {
                         const container = e.target.getStage()?.container();
-                        if (container) container.style.cursor = readOnly ? 'pointer' : 'move';
+                        if (container) container.style.cursor = (readOnly || isColoringMode) ? 'pointer' : 'move';
                     }}
                     onMouseLeave={(e: any) => {
                         const container = e.target.getStage()?.container();
@@ -1784,6 +1783,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         if (!isClosed) {
             if (isWallLocked) return; // Prevent adding points when locked
             addPoint(pos.x, pos.y);
+        } else if (isColoringMode && isStage) {
+            // In coloring mode clicking the blank wall background selects the whole wall
+            setSelectedDesignAreaId(null);
+            setSelectedWallId(activeWallId || null);
         } else if (interactionMode === 'resize') {
             if (isStage) {
                 setSelectedDesignAreaId(null);
