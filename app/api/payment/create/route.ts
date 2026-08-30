@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     // ── Pre-registration flow (from /payment page) ───────────────────────────
     const { companyName, adminName, email, waNumber, password } = body;
 
-    if (!companyName || !adminName || !email || !waNumber || !password) {
+    if (!adminName || !email || !waNumber || !password) {
       return NextResponse.json(
         { error: "Semua field wajib diisi." },
         { status: 400 },
@@ -57,11 +57,11 @@ export async function POST(req: Request) {
     );
 
     // ── 3. Simpan pending registration (data akun sementara) ─────────────────
-    const { error: pendingError } = await supabaseAdmin
+      const { error: pendingError } = await supabaseAdmin
       .from("pending_registrations")
       .insert({
         merchant_order_id: merchantOrderId,
-        company_name: companyName,
+        company_name: companyName || "Perusahaan Saya",
         admin_name: adminName,
         email: email.toLowerCase(),
         wa_number: waNumber,

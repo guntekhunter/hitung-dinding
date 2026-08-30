@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
                     <div className="mb-8">
                         <label className="block text-sm font-bold text-slate-700 uppercase tracking-widest mb-2">
-                            Company Name
+                            Nama Perusahaan / Toko
                         </label>
                         <input
                             type="text"

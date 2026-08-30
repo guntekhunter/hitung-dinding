@@ -183,14 +183,13 @@ export default function PaymentPage() {
                     </div>
                   )}
 
-                  {/* Company section */}
-                  <div>
+                  {/* Company section (Hidden) */}
+                  <div className="hidden">
                     <div>
                       <label className={labelClass}>
                         Nama Perusahaan / Toko
                       </label>
                       <input
-                        required
                         name="companyName"
                         className={inputClass}
                         placeholder="Contoh: Toko WPC Jaya"
