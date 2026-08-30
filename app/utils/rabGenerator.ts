@@ -272,7 +272,7 @@ export const generateRAB = async (
     const sigY = summaryY + 70;
     doc.setFont("helvetica", "normal");
     const dateStr = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
-    doc.text(`Makassar, ${dateStr}`, pageWidth - 14, sigY - 10, { align: "right" });
+    doc.text(dateStr, pageWidth - 14, sigY - 10, { align: "right" });
 
     doc.text("Penerima Kerja", 40, sigY, { align: "center" });
     doc.text("Pemberi Kerja", pageWidth - 40, sigY, { align: "center" });
