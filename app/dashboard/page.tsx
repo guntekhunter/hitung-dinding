@@ -60,7 +60,10 @@ export default function DashboardPage() {
 
     const totalCustomers = customers.length;
     const PLAN_PRICE = 89999;
-    const totalRevenue = totalCustomers * PLAN_PRICE;
+    const GATEWAY_FEE_RATE = 0.0181; // 1.81% payment gateway admin fee
+    const grossRevenue = totalCustomers * PLAN_PRICE;
+    const gatewayFee = grossRevenue * GATEWAY_FEE_RATE;
+    const totalRevenue = grossRevenue - gatewayFee;
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -90,12 +93,12 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4">
+                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
                                 <DollarSign className="w-6 h-6" />
                             </div>
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Total Revenue (Monthly)</p>
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-500">Net Revenue (Monthly)</p>
                                 <p className="text-2xl font-bold text-slate-900">
                                     {new Intl.NumberFormat("id-ID", {
                                         style: "currency",
@@ -103,6 +106,22 @@ export default function DashboardPage() {
                                         minimumFractionDigits: 0
                                     }).format(totalRevenue)}
                                 </p>
+                                <div className="mt-2 space-y-0.5 text-xs text-slate-400">
+                                    <p>
+                                        Gross: {new Intl.NumberFormat("id-ID", {
+                                            style: "currency",
+                                            currency: "IDR",
+                                            minimumFractionDigits: 0
+                                        }).format(grossRevenue)}
+                                    </p>
+                                    <p className="text-red-400">
+                                        − Payment gateway fee (1.81%): {new Intl.NumberFormat("id-ID", {
+                                            style: "currency",
+                                            currency: "IDR",
+                                            minimumFractionDigits: 0
+                                        }).format(gatewayFee)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         
