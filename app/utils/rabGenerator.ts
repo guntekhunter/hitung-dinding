@@ -190,6 +190,20 @@ export const generateRAB = async (
                         formatIDR(lisSikuSubtotal).replace("Rp ", "")
                     ]);
                 }
+
+                if (p.optimization?.hollowSticks > 0) {
+                    const hollowPrice = materialPrices[`hollow-${w.id}`] || 0;
+                    const hollowSubtotal = p.optimization.hollowSticks * hollowPrice;
+                    grandTotalCount += hollowSubtotal;
+                    materialRows.push([
+                        (materialRows.length + 1).toString(),
+                        `Hollow (4m) - ${w.name}`,
+                        p.optimization.hollowSticks.toString(),
+                        'Batang',
+                        formatIDR(hollowPrice).replace("Rp ", ""),
+                        formatIDR(hollowSubtotal).replace("Rp ", "")
+                    ]);
+                }
             }
         });
     }
