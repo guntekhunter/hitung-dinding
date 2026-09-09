@@ -539,7 +539,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         if (activeWall.points.length >= 3) {
             const first = activeWall.points[0];
             const dist = Math.hypot(first.x - x, first.y - y);
-            if (dist < 20) { // Snap to close
+            if (dist < (30 / get().zoom)) { // Snap to close
                 get()._saveHistory();
                 set({
                     walls: walls.map(w =>
