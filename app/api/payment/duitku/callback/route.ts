@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendMetaCAPIEvent } from "@/lib/meta-capi";
@@ -79,8 +79,6 @@ export async function POST(req: NextRequest) {
 
       if (authError || !authData.user) {
         console.error("[callback] createUser error:", authError);
-        // If email already exists (race condition), try to fetch existing user
-        // We still mark order paid
         await supabaseAdmin
           .from("orders")
           .update({ status: "PAID", reference: reference ?? null })
@@ -99,7 +97,6 @@ export async function POST(req: NextRequest) {
 
       if (companyError || !newCompany) {
         console.error("[callback] company insert error:", companyError);
-        // Rollback auth user
         await supabaseAdmin.auth.admin.deleteUser(newUserId);
         await supabaseAdmin
           .from("orders")
@@ -121,7 +118,6 @@ export async function POST(req: NextRequest) {
 
       if (profileError) {
         console.error("[callback] user profile insert error:", profileError);
-        // Rollback
         await supabaseAdmin.from("companies").delete().eq("id", newCompany.id);
         await supabaseAdmin.auth.admin.deleteUser(newUserId);
         await supabaseAdmin
@@ -141,9 +137,19 @@ export async function POST(req: NextRequest) {
         })
         .eq("merchant_order_id", merchantOrderId);
 
-      // ── 3f. Aktifkan Subscription (3 bulan) ───────────────────────────────
+      // ── 3f. Aktifkan Subscription (based on plan_months) ──────────────────
+      // Read plan_months saved during /api/payment/create — default to 3
+      const planMonths: number =
+        typeof pending.plan_months === "number" && pending.plan_months > 0
+          ? pending.plan_months
+          : 3;
+
       const expiredAt = new Date();
-      expiredAt.setMonth(expiredAt.getMonth() + 3);
+      expiredAt.setMonth(expiredAt.getMonth() + planMonths);
+
+      console.log(
+        `[callback] plan_months=${planMonths}, expired_at=${expiredAt.toISOString()}`,
+      );
 
       const { error: subError } = await supabaseAdmin
         .from("subscriptions")
@@ -169,7 +175,7 @@ export async function POST(req: NextRequest) {
         .eq("merchant_order_id", merchantOrderId);
 
       console.log(
-        `[callback] ✅ Account + subscription created for ${pending.email}, order ${merchantOrderId}`,
+        `[callback] ✅ Account + subscription (${planMonths}mo) created for ${pending.email}, order ${merchantOrderId}`,
       );
 
       // ── 3h. Send Meta CAPI Purchase Event ─────────────────────────────────

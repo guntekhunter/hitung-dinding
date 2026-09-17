@@ -1,19 +1,24 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createSignature } from "@/lib/duitku";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const DUITKU_BASE_URL =
   process.env.DUITKU_BASE_URL ??
   "https://passport.duitku.com/webapi/api/merchant";
-const PLAN_PRICE = 150000; // Rp 89.999
 const PAYMENT_METHOD = "SQ"; // Nusapay QRIS
+
+// Valid plans
+const VALID_PLANS: Record<number, { price: number; label: string }> = {
+  1: { price: 89999,  label: "1 Bulan" },
+  3: { price: 150000, label: "3 Bulan" },
+};
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
     // ── Pre-registration flow (from /payment page) ───────────────────────────
-    const { companyName, adminName, email, waNumber, password } = body;
+    const { companyName, adminName, email, waNumber, password, planMonths } = body;
 
     if (!adminName || !email || !waNumber || !password) {
       return NextResponse.json(
@@ -21,6 +26,10 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    // Resolve plan — default to 3-month if not provided or invalid
+    const months: number = VALID_PLANS[planMonths] ? Number(planMonths) : 3;
+    const plan = VALID_PLANS[months];
 
     // ── 1. Cek apakah email sudah terdaftar di Supabase Auth ─────────────────
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
@@ -52,7 +61,7 @@ export async function POST(req: Request) {
     const signature = createSignature(
       merchantCode,
       merchantOrderId,
-      PLAN_PRICE,
+      plan.price,
       apiKey,
     );
 
@@ -66,6 +75,7 @@ export async function POST(req: Request) {
         email: email.toLowerCase(),
         wa_number: waNumber,
         password_plain: password, // akan dihapus setelah akun dibuat
+        plan_months: months,      // store plan duration
       });
 
     if (pendingError) {
@@ -83,7 +93,7 @@ export async function POST(req: Request) {
     const { error: insertError } = await supabaseAdmin.from("orders").insert({
       merchant_order_id: merchantOrderId,
       user_id: null, // akan diisi setelah akun dibuat di callback
-      amount: PLAN_PRICE,
+      amount: plan.price,
       status: "PENDING",
       payment_method: PAYMENT_METHOD,
     });
@@ -99,10 +109,10 @@ export async function POST(req: Request) {
     // ── 5. Request ke Duitku ─────────────────────────────────────────────────
     const duitkuPayload = {
       merchantCode,
-      paymentAmount: PLAN_PRICE,
+      paymentAmount: plan.price,
       paymentMethod: PAYMENT_METHOD, // SQ = Nusapay QRIS
       merchantOrderId,
-      productDetails: "Rapi Studio PRO — Akses 3 Bulan",
+      productDetails: `Rapi Studio PRO — Akses ${plan.label}`,
       customerVaName: adminName,
       email: email.toLowerCase(),
       phoneNumber: waNumber,
