@@ -1,10 +1,10 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import PaymentCard from "./reusable/PaymentCard";
 import MetaPixelTracker from "./reusable/MetaPixelTracker";
 import Link from "next/link";
 import LoginButton from "./reusable/LoginButton";
 
-// Lightweight icon component — avoids Next/Image overhead for tiny SVGs
+// Lightweight icon component â€” avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
   <img
     src="/check.svg"
@@ -43,10 +43,10 @@ export default function Home() {
         params={{ content_name: "Landing Page" }}
       />
 
-      {/* ── Navbar ─────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="w-full py-3 px-3 border-b border-b-[#E5E5E5] md:px-8">
         <div className="max-w-6xl mx-auto flex justify-between">
-          {/* Plain img for SVG logo — avoids Next/Image JS overhead */}
+          {/* Plain img for SVG logo â€” avoids Next/Image JS overhead */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.svg"
@@ -60,7 +60,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 flex justify-center items-center py-16 md:px-8 md:py-24">
         <div className="w-full max-w-6xl md:flex md:items-center md:gap-12">
           {/* Left: copy */}
@@ -102,7 +102,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: image — on mobile stays below the copy */}
+          {/* Right: image â€” on mobile stays below the copy */}
           <div className="relative mt-8 md:mt-0 md:flex-1">
             <div className="pl-4 md:pl-0">
               <Image
@@ -129,7 +129,7 @@ export default function Home() {
       </section>
 
       <section className="pt-12">
-        {/* ── Sering Mengalami ───────────────────────────────────────────────── */}
+        {/* â”€â”€ Sering Mengalami â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="px-4">
           <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
             <div className="space-y-5">
@@ -178,7 +178,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Dengan satu aplikasi ───────────────────────────────────────────── */}
+        {/* â”€â”€ Dengan satu aplikasi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
           <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
             <div className="space-y-5">
@@ -225,7 +225,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Akibatnya ──────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Akibatnya â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
         <div className="max-w-5xl mx-auto space-y-10">
           <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
@@ -268,7 +268,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Cara Kerja ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Cara Kerja â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
         <div className="max-w-5xl mx-auto space-y-10">
           <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
@@ -309,7 +309,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Cocok Digunakan Oleh ───────────────────────────────────────────── */}
+      {/* â”€â”€ Cocok Digunakan Oleh â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
         <div className="max-w-5xl mx-auto space-y-10">
           <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
@@ -330,7 +330,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CTA Banner ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ CTA Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 justify-center items-center py-16 space-y-3 bg-[#7B6DED] text-white md:px-8 md:py-24">
         <div className="max-w-3xl mx-auto text-center space-y-4">
           <h2 className="font-bold text-[2rem] md:text-[2.8rem] md:leading-tight">
@@ -343,50 +343,85 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Pricing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 py-12 space-y-4 md:px-8 md:py-20">
         <div className="max-w-2xl mx-auto space-y-4">
-          <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
-            Aktivasi akun + onboarding + akses trial 30 hari.
-          </h2>
-          <PaymentCard
-            oldPrice="Rp 299.000"
-            price="150.000"
-            totalValue="Rp 699.500"
-            todayPrice="Rp 150.000"
-            discountText="HEMAT Rp149.000 (50,17%)"
-            countdown="10:30:20"
-            features={[
-              {
-                title: "Selesaikan desain customer dalam 5 menit",
-              },
-              {
-                title: "Cetak proposal profesional siap kirim",
-                description: "",
-              },
-              {
-                title: "Tidak perlu lagi menghitung panel satu per satu",
-                description: "",
-              },
-              {
-                title:
-                  "Respon customer lebih cepat dan tingkatkan peluang closing",
-                description: "",
-              },
-              {
-                title: "Onboarding 1-on-1",
-                description: "",
-              },
-              {
-                title: "Akses penuh selama 3 bulan",
-                description: "",
-              },
-            ]}
-          />
+          <div className="flex space-x-10">
+            <PaymentCard
+              oldPrice="Rp 299.000"
+              plan="1month"
+              price="89.999"
+              totalValue="Rp 699.500"
+              todayPrice="Rp 89.999"
+              discountText="HEMAT Rp209,001 (29,8786%)"
+              countdown="10:30:20"
+              features={[
+                {
+                  title: "Selesaikan desain customer dalam 5 menit",
+                },
+                {
+                  title: "Cetak proposal profesional siap kirim",
+                  description: "",
+                },
+                {
+                  title: "Tidak perlu lagi menghitung panel satu per satu",
+                  description: "",
+                },
+                {
+                  title:
+                    "Respon customer lebih cepat dan tingkatkan peluang closing",
+                  description: "",
+                },
+                {
+                  title: "Onboarding 1-on-1",
+                  description: "",
+                },
+                {
+                  title: "Akses penuh selama 1 bulan",
+                  description: "",
+                },
+              ]}
+            />
+            <PaymentCard
+              oldPrice="Rp 897.000"
+              plan="3month"
+              price="150.000"
+              totalValue="Rp 699.500"
+              todayPrice="Rp 150.000"
+              discountText="HEMAT Rp747.000 (83,28%%)"
+              countdown="10:30:20"
+              features={[
+                {
+                  title: "Selesaikan desain customer dalam 5 menit",
+                },
+                {
+                  title: "Cetak proposal profesional siap kirim",
+                  description: "",
+                },
+                {
+                  title: "Tidak perlu lagi menghitung panel satu per satu",
+                  description: "",
+                },
+                {
+                  title:
+                    "Respon customer lebih cepat dan tingkatkan peluang closing",
+                  description: "",
+                },
+                {
+                  title: "Onboarding 1-on-1",
+                  description: "",
+                },
+                {
+                  title: "Akses penuh selama 3 bulan",
+                  description: "",
+                },
+              ]}
+            />
+          </div>
         </div>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <footer className="bg-[#1a1a2e] text-white px-6 py-10 md:px-8">
         <div className="max-w-6xl mx-auto md:flex md:justify-between md:items-start md:gap-12">
           <div className="mb-6 md:mb-0">
@@ -471,7 +506,7 @@ export default function Home() {
 
           <div className="border-t border-white/10 pt-6 mt-6 md:border-t-0 md:pt-0 md:mt-0 md:self-end">
             <p className="text-xs text-gray-500 text-center md:text-right">
-              © 2026 Rapi Studio. All rights reserved.
+              Â© 2026 Rapi Studio. All rights reserved.
             </p>
           </div>
         </div>
@@ -479,3 +514,4 @@ export default function Home() {
     </div>
   );
 }
+

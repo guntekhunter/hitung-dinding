@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { BadgeCheck, Check, ShieldCheck } from "lucide-react";
 import PaymentButton from "./PaymentButton";
@@ -13,6 +13,7 @@ interface PaymentCardProps {
   countdown: string;
   features: Feature[];
   buttonText?: string;
+  plan?: string;
 }
 
 interface Feature {
@@ -29,7 +30,10 @@ export default function PaymentCard({
   countdown,
   features,
   buttonText = "Dapatkan Akses Sekarang",
+  plan,
 }: PaymentCardProps) {
+  const paymentHref = plan ? `/payment?plan=${plan}` : "/payment";
+
   return (
     <div className="bg-white rounded-md p-8 max-w-md w-full border-[#D9D9D9] border-[1.2px] font-mona-sans tracking-tight">
       {/* Old Price */}
@@ -66,12 +70,6 @@ export default function PaymentCard({
 
       {/* Value */}
       <div className="mt-10 text-center space-y-5">
-        {/* <div>
-          <p className="text-sm text-gray-500">Total Value</p>
-          <p className="text-xl font-bold">{totalValue}</p>
-        </div> */}
-
-
         <div>
           <p className="text-sm text-gray-500">Hari Ini</p>
           <p className="text-2xl font-bold">{todayPrice}</p>
@@ -87,7 +85,7 @@ export default function PaymentCard({
 
       {/* CTA */}
       <div className="mt-8">
-        <PaymentButton>
+        <PaymentButton href={paymentHref}>
           {buttonText}
         </PaymentButton>
       </div>
