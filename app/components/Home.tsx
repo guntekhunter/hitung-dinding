@@ -346,7 +346,7 @@ export default function Home() {
       {/* â”€â”€ Pricing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="px-4 py-12 space-y-4 md:px-8 md:py-20">
         <div className="max-w-2xl mx-auto space-y-4">
-          <div className="flex space-x-10">
+          <div className="md:flex md:space-x-10 space-y-10">
             <PaymentCard
               oldPrice="Rp 299.000"
               plan="1month"
@@ -514,4 +514,3 @@ export default function Home() {
     </div>
   );
 }
-
