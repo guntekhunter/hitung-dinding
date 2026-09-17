@@ -57,10 +57,10 @@ export default function PaymentResultPage() {
         "Purchase",
         {
           currency: "IDR",
-          value: orderData.amount || 89999,
+          value: orderData.amount || 150000,
           transaction_id: orderId,
         },
-        orderId || undefined
+        orderId || undefined,
       );
 
       const autoLogin = async () => {

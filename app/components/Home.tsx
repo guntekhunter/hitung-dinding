@@ -351,10 +351,10 @@ export default function Home() {
           </h2>
           <PaymentCard
             oldPrice="Rp 299.000"
-            price="89.999"
+            price="150.000"
             totalValue="Rp 699.500"
-            todayPrice="Rp 89.999"
-            discountText="HEMAT Rp209.001 (76,59%)"
+            todayPrice="Rp 150.000"
+            discountText="HEMAT Rp149.000 (50,17%)"
             countdown="10:30:20"
             features={[
               {
@@ -378,7 +378,7 @@ export default function Home() {
                 description: "",
               },
               {
-                title: "Akses penuh selama 30 hari",
+                title: "Akses penuh selama 3 bulan",
                 description: "",
               },
             ]}

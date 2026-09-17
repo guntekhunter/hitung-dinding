@@ -52,7 +52,7 @@ export default function PaymentPage() {
     // Track initial checkout (AddPaymentInfo)
     trackMetaEvent("AddPaymentInfo", {
       currency: "IDR",
-      value: 89999,
+      value: 150000,
       content_name: "Pricing Subscription",
     });
 
@@ -94,7 +94,7 @@ export default function PaymentPage() {
     trackMetaEvent("InitiateCheckout", {
       content_name: "Subscription Payment Page",
       currency: "IDR",
-      value: 89999,
+      value: 150000,
     });
   }, []);
 
@@ -154,7 +154,7 @@ export default function PaymentPage() {
             <div className="bg-[#7B6DED] px-8 py-6 text-white">
               <h1 className="text-2xl font-bold">Buat Akun & Bayar</h1>
               <p className="text-sm opacity-80 mt-1">
-                Isi data di bawah, lalu selesaikan pembayaran Rp 89.999 anda.
+                Isi data di bawah, lalu selesaikan pembayaran Rp 150.000 anda.
               </p>
             </div>
 
@@ -285,7 +285,7 @@ export default function PaymentPage() {
                     <div>
                       <p className="text-xs text-gray-500">Total Pembayaran</p>
                       <p className="text-xl font-bold text-gray-800">
-                        Rp 89.999
+                        Rp 150.000
                       </p>
                     </div>
                   </div>
@@ -299,8 +299,21 @@ export default function PaymentPage() {
                       name="consentPrivacy"
                       className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
                     />
-                    <label htmlFor="consent-privacy" className="text-[11px] text-gray-500 leading-relaxed">
-                      Saya setuju bahwa data saya akan dikumpulkan dan digunakan untuk keperluan pemasaran, personalisasi iklan, dan peningkatan layanan sesuai dengan <Link href="/privacy-policy" className="text-[#7B6DED] hover:underline" target="_blank">Kebijakan Privasi</Link>.
+                    <label
+                      htmlFor="consent-privacy"
+                      className="text-[11px] text-gray-500 leading-relaxed"
+                    >
+                      Saya setuju bahwa data saya akan dikumpulkan dan digunakan
+                      untuk keperluan pemasaran, personalisasi iklan, dan
+                      peningkatan layanan sesuai dengan{" "}
+                      <Link
+                        href="/privacy-policy"
+                        className="text-[#7B6DED] hover:underline"
+                        target="_blank"
+                      >
+                        Kebijakan Privasi
+                      </Link>
+                      .
                     </label>
                   </div>
 
@@ -313,8 +326,12 @@ export default function PaymentPage() {
                       name="consentComm"
                       className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
                     />
-                    <label htmlFor="consent-comm" className="text-[11px] text-gray-500 leading-relaxed">
-                      Dengan mendaftar, Anda setuju untuk menerima informasi layanan dan dukungan dari kami melalui WhatsApp & email.
+                    <label
+                      htmlFor="consent-comm"
+                      className="text-[11px] text-gray-500 leading-relaxed"
+                    >
+                      Dengan mendaftar, Anda setuju untuk menerima informasi
+                      layanan dan dukungan dari kami melalui WhatsApp & email.
                     </label>
                   </div>
 

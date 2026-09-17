@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
         })
         .eq("merchant_order_id", merchantOrderId);
 
-      // ── 3f. Aktifkan Subscription (1 tahun) ───────────────────────────────
+      // ── 3f. Aktifkan Subscription (3 bulan) ───────────────────────────────
       const expiredAt = new Date();
-      expiredAt.setFullYear(expiredAt.getFullYear() + 1);
+      expiredAt.setMonth(expiredAt.getMonth() + 3);
 
       const { error: subError } = await supabaseAdmin
         .from("subscriptions")

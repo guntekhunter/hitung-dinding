@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 const DUITKU_BASE_URL =
   process.env.DUITKU_BASE_URL ??
   "https://passport.duitku.com/webapi/api/merchant";
-const PLAN_PRICE = 89999; // Rp 89.999
+const PLAN_PRICE = 150000; // Rp 89.999
 const PAYMENT_METHOD = "SQ"; // Nusapay QRIS
 
 export async function POST(req: Request) {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     );
 
     // ── 3. Simpan pending registration (data akun sementara) ─────────────────
-      const { error: pendingError } = await supabaseAdmin
+    const { error: pendingError } = await supabaseAdmin
       .from("pending_registrations")
       .insert({
         merchant_order_id: merchantOrderId,
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       paymentAmount: PLAN_PRICE,
       paymentMethod: PAYMENT_METHOD, // SQ = Nusapay QRIS
       merchantOrderId,
-      productDetails: "Rapi Studio PRO — Akses 1 Bulan",
+      productDetails: "Rapi Studio PRO — Akses 3 Bulan",
       customerVaName: adminName,
       email: email.toLowerCase(),
       phoneNumber: waNumber,
