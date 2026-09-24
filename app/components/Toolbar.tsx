@@ -1799,45 +1799,106 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                           )}
 
                           {/* Hollow */}
-                          {hollowCount > 0 && (
-                            <>
-                              <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
-                                <span>Hollow 4m ({w.name})</span>
-                                <span className="font-bold">
-                                  {hollowCount} Batang
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
-                                <span className="text-[.8rem] text-[#303030]">
-                                  Harga Produk
-                                </span>
-                                <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
-                                  <span>Rp</span>
-                                  <input
-                                    type="number"
-                                    value={hollowPrice === 0 ? "" : hollowPrice}
-                                    onChange={(e) =>
-                                      setMaterialPrice(
-                                        hollowId,
-                                        Number(e.target.value),
-                                      )
-                                    }
-                                    className="w-24 bg-transparent outline-none font-medium p-0"
-                                    placeholder="0"
-                                  />
+                          {hollowCount > 0 && (() => {
+                            const bd = p.optimization?.hollowBreakdown;
+                            return (
+                              <>
+                                <div className="flex items-center gap-4 text-[.8rem] text-[#303030] mt-1">
+                                  <span>Hollow 4m ({w.name})</span>
+                                  <span className="font-bold">
+                                    {hollowCount} Batang
+                                  </span>
                                 </div>
-                              </div>
-                              <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
-                                <span>Subtotal</span>
-                                <span className="font-bold">
-                                  Rp{" "}
-                                  {(hollowCount * hollowPrice).toLocaleString(
-                                    "id-ID",
-                                  )}
-                                </span>
-                              </div>
-                            </>
-                          )}
+                                {bd && (
+                                  <div className="bg-[#F8F8F8] border border-[#E5E5E5] rounded-[5px] p-2 text-[.75rem] text-[#505050] space-y-1">
+                                    {/* Main ceiling */}
+                                    <div className="font-semibold text-[#303030] text-[.72rem] uppercase tracking-wide mb-0.5">Plafon Utama</div>
+                                    <div className="flex justify-between">
+                                      <span>Perimeter</span>
+                                      <span className="font-medium">{bd.perimeterM.toFixed(2)} m</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Cross (→)</span>
+                                      <span className="font-medium">{bd.crossWidthM.toFixed(2)} m</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Cross (↑)</span>
+                                      <span className="font-medium">{bd.crossLengthM.toFixed(2)} m</span>
+                                    </div>
+                                    <div className="flex justify-between text-[#303030] font-medium">
+                                      <span>Subtotal utama</span>
+                                      <span>{bd.mainCeilingM.toFixed(2)} m</span>
+                                    </div>
+                                    {/* Hangers */}
+                                    <div className="flex justify-between text-[#888] border-t border-[#E5E5E5] pt-1 mt-0.5">
+                                      <span>Gantungan ({bd.hangerCount} titik × {bd.hangerLengthCm}cm)</span>
+                                      <span>{bd.hangerM.toFixed(2)} m</span>
+                                    </div>
+                                    {/* Per-drop */}
+                                    {(bd.drops as Array<{ label: string; frameWidthCm: number; frameLengthCm: number; horizontalM: number; verticalM: number; dropHangerM: number; totalM: number }>).map((d, i) => (
+                                      <div key={i} className="border-t border-[#E5E5E5] pt-1 mt-0.5 space-y-0.5">
+                                        <div className="font-semibold text-[#303030] text-[.72rem] uppercase tracking-wide">{d.label} ({d.frameWidthCm.toFixed(0)} × {d.frameLengthCm.toFixed(0)} cm)</div>
+                                        <div className="flex justify-between">
+                                          <span>Frame atas+bawah</span>
+                                          <span className="font-medium">{d.horizontalM.toFixed(2)} m</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Fascia/vertikal</span>
+                                          <span className="font-medium">{d.verticalM.toFixed(2)} m</span>
+                                        </div>
+                                        <div className="flex justify-between text-[#888]">
+                                          <span>Gantungan drop</span>
+                                          <span>{d.dropHangerM.toFixed(2)} m</span>
+                                        </div>
+                                        <div className="flex justify-between text-[#303030] font-medium">
+                                          <span>Subtotal {d.label}</span>
+                                          <span>{d.totalM.toFixed(2)} m</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {/* Grand total */}
+                                    <div className="flex justify-between border-t border-[#E5E5E5] pt-1 mt-0.5 font-bold text-[#303030]">
+                                      <span>Total hollow</span>
+                                      <span>{bd.totalHollowM.toFixed(2)} m</span>
+                                    </div>
+                                    <div className="flex justify-between text-[#888]">
+                                      <span>Gap / Spacing</span>
+                                      <span>{bd.gapCm} cm → {bd.spacingWidthCm.toFixed(1)} × {bd.spacingLengthCm.toFixed(1)} cm</span>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between border border-[#E5E5E5] rounded-[5px] p-2 bg-white">
+                                  <span className="text-[.8rem] text-[#303030]">
+                                    Harga Produk
+                                  </span>
+                                  <div className="flex items-center gap-1 text-[.8rem] text-[#303030]">
+                                    <span>Rp</span>
+                                    <input
+                                      type="number"
+                                      value={hollowPrice === 0 ? "" : hollowPrice}
+                                      onChange={(e) =>
+                                        setMaterialPrice(
+                                          hollowId,
+                                          Number(e.target.value),
+                                        )
+                                      }
+                                      className="w-24 bg-transparent outline-none font-medium p-0"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end items-center gap-2 text-[.8rem] text-[#303030]">
+                                  <span>Subtotal</span>
+                                  <span className="font-bold">
+                                    Rp{" "}
+                                    {(hollowCount * hollowPrice).toLocaleString(
+                                      "id-ID",
+                                    )}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       );
                     }
@@ -2104,19 +2165,61 @@ export default function Toolbar({ wallEditorRef }: { wallEditorRef: any }) {
                                     </div>
                                   )}
                                   {ceilingData.optimization.hollowSticks >
-                                    0 && (
-                                    <div className="flex justify-between items-center py-3 border-t border-[#E5E5E5]">
-                                      <div className="flex flex-col gap-0.5">
-                                        <span className="text-[#A3A3A3] text-[.8rem]">
-                                          Hollow (4m)
-                                        </span>
+                                    0 && (() => {
+                                    const bd = ceilingData.optimization.hollowBreakdown;
+                                    return (
+                                      <div className="py-3 border-t border-[#E5E5E5]">
+                                        <div className="flex justify-between items-center mb-1">
+                                          <span className="text-[#A3A3A3] text-[.8rem]">Hollow (4m)</span>
+                                          <div className="text-[#303030] text-[.8rem] font-bold">
+                                            {ceilingData.optimization.hollowSticks} btg
+                                          </div>
+                                        </div>
+                                        {bd && (
+                                          <div className="text-[.72rem] text-[#888] space-y-0.5 mt-1">
+                                            <div className="text-[#505050] font-semibold uppercase tracking-wide text-[.68rem]">Plafon Utama</div>
+                                            <div className="flex justify-between">
+                                              <span>Perimeter</span>
+                                              <span>{bd.perimeterM.toFixed(2)} m</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span>Cross (→)</span>
+                                              <span>{bd.crossWidthM.toFixed(2)} m</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span>Cross (↑)</span>
+                                              <span>{bd.crossLengthM.toFixed(2)} m</span>
+                                            </div>
+                                            <div className="flex justify-between font-medium text-[#505050]">
+                                              <span>Subtotal utama</span>
+                                              <span>{bd.mainCeilingM.toFixed(2)} m</span>
+                                            </div>
+                                            <div className="flex justify-between border-t border-[#EBEBEB] pt-0.5 mt-0.5">
+                                              <span>Gantungan ({bd.hangerCount} × {bd.hangerLengthCm}cm)</span>
+                                              <span>{bd.hangerM.toFixed(2)} m</span>
+                                            </div>
+                                            {(bd.drops as Array<{ label: string; frameWidthCm: number; frameLengthCm: number; horizontalM: number; verticalM: number; dropHangerM: number; totalM: number }>).map((d, i) => (
+                                              <div key={i} className="border-t border-[#EBEBEB] pt-0.5 mt-0.5 space-y-0.5">
+                                                <div className="text-[#505050] font-semibold uppercase tracking-wide text-[.68rem]">{d.label} ({d.frameWidthCm.toFixed(0)}×{d.frameLengthCm.toFixed(0)} cm)</div>
+                                                <div className="flex justify-between"><span>Frame atas+bawah</span><span>{d.horizontalM.toFixed(2)} m</span></div>
+                                                <div className="flex justify-between"><span>Fascia</span><span>{d.verticalM.toFixed(2)} m</span></div>
+                                                <div className="flex justify-between"><span>Gantungan drop</span><span>{d.dropHangerM.toFixed(2)} m</span></div>
+                                                <div className="flex justify-between font-medium text-[#505050]"><span>Subtotal</span><span>{d.totalM.toFixed(2)} m</span></div>
+                                              </div>
+                                            ))}
+                                            <div className="flex justify-between border-t border-[#EBEBEB] pt-0.5 mt-0.5 font-bold text-[#303030]">
+                                              <span>Total</span>
+                                              <span>{bd.totalHollowM.toFixed(2)} m</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span>Spacing</span>
+                                              <span>{bd.spacingWidthCm.toFixed(1)} × {bd.spacingLengthCm.toFixed(1)} cm</span>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
-                                      <div className="text-[#303030] text-[.8rem] font-bold">
-                                        {ceilingData.optimization.hollowSticks}{" "}
-                                        btg
-                                      </div>
-                                    </div>
-                                  )}
+                                    );
+                                  })()}
 
                                   {!wall.ceilingTraps ||
                                   wall.ceilingTraps.length === 0 ? (

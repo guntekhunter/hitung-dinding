@@ -39,6 +39,34 @@ export interface OptimizationResult {
   wasteOuter: number;
   wasteInner: number;
   hollowSticks: number;
+  hollowBreakdown: {
+    // Main ceiling grid
+    perimeterM: number;
+    crossWidthM: number;
+    crossLengthM: number;
+    mainCeilingM: number;
+    // Hangers (gantungan) for main ceiling
+    hangerCount: number;
+    hangerLengthCm: number;
+    hangerM: number;
+    // Per-drop framing
+    drops: Array<{
+      label: string;
+      frameWidthCm: number;
+      frameLengthCm: number;
+      perimeterM: number;
+      horizontalM: number;  // top + bottom frame
+      verticalM: number;    // fascia/drop sides
+      dropHangerM: number;  // vertical hangers for this drop
+      totalM: number;
+    }>;
+    // Grand total
+    totalHollowM: number;
+    // UI helpers
+    gapCm: number;
+    spacingWidthCm: number;
+    spacingLengthCm: number;
+  };
 }
 
 interface Rect { x: number; y: number; w: number; h: number; }
@@ -261,39 +289,98 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
   const lisSikuSticks = ffdBinPack(lisSikuCutsM, 4);
 
   // ========== HOLLOW FRAME CALCULATION ==========
-  // Formula: Hollow bidang (flat strips) + Horizontal (perimeter) + Vertikal (drop sides)
-  const defaultHollowGap = 60; // cm default spacing
-  const hollowS_cm = traps[0]?.hollowGap || defaultHollowGap; // use first trap's gap for bidang/horizontal
-  const S = hollowS_cm / 100; // convert to meters
-  const L_m = roomLength / 100;
-  const W_m = roomWidth / 100;
-  const kelilingOuter_m = 2 * (L_m + W_m);
+  // Supports FLAT / DROP1 / DROP2 via traps[].
+  // All dimensions in cm; convert to meters at the end.
+  //
+  // For each drop zone, the frame W/L is derived from the room dimensions
+  // minus the accumulated inset (trap.width on each side).
+  // trap.gap is always 0 in the current UI (no gap between frame edge and drop).
 
-  // Hollow bidang: strips run along L, spaced S apart across W (+1 for edge strip)
-  const bidangStrips = Math.ceil(W_m / S) + 1;
-  const hollowBidangBatang = Math.ceil((bidangStrips * L_m) / 4);
+  const defaultHollowGap = 60; // cm
+  const G  = traps[0]?.hollowGap || defaultHollowGap; // user gap in cm
+  const W  = roomWidth;    // cm
+  const L  = roomLength;   // cm
 
-  // Hollow horizontal: perimeter of the outer ceiling
-  const hollowHorizontalBatang = Math.ceil(kelilingOuter_m / 4);
+  // ── 1. MAIN CEILING GRID ──────────────────────────────────────────────────
+  const rowsW = Math.ceil(W / G);  // strips running along L
+  const rowsL = Math.ceil(L / G);  // strips running along W
 
-  // Hollow vertikal: for each drop (trap), uses that trap's hollowGap
-  let hollowVertikalBatang = 0;
-  let insetForHollow = 0;
-  traps.forEach((trap) => {
-    insetForHollow += trap.width / 100;
-    const innerL_m = L_m - 2 * insetForHollow;
-    const innerW_m = W_m - 2 * insetForHollow;
-    if (innerL_m > 0 && innerW_m > 0 && trap.dropHeight > 0) {
-      const S_trap = (trap.hollowGap || defaultHollowGap) / 100;
-      const innerKeliling_m = 2 * (innerL_m + innerW_m);
-      const titik = Math.ceil(innerKeliling_m / S_trap);
-      const totalDropM = titik * (trap.dropHeight / 100);
-      hollowVertikalBatang += Math.ceil(totalDropM / 4);
-    }
-    insetForHollow += trap.gap / 100;
+  const mainPerimeterCm  = 2 * (W + L);
+  const mainCrossWidthCm = rowsW * L;   // rows spanning L direction
+  const mainCrossLenCm   = rowsL * W;   // rows spanning W direction
+  const mainCeilingCm    = mainPerimeterCm + mainCrossWidthCm + mainCrossLenCm;
+
+  const spacingWidthCm  = W / rowsW;
+  const spacingLengthCm = L / rowsL;
+
+  // ── 2. HANGERS / GANTUNGAN for main ceiling ───────────────────────────────
+  // One hanger per intersection point of the grid.
+  // Default hanger length = 30 cm (or dropHeight of first trap if available).
+  const HANGER_LENGTH_CM = 30;
+  const hangerCount  = rowsW * rowsL;
+  const hangerCm     = hangerCount * HANGER_LENGTH_CM;
+
+  // ── 3. PER-DROP FRAMING ───────────────────────────────────────────────────
+  // For each trap, calculate:
+  //   a) The drop frame rectangle (inset from room by accumulated trap widths)
+  //   b) Horizontal hollow: top frame + bottom frame = perimeter × 2
+  //   c) Vertical hollow:   fascia strips at every G cm along the perimeter
+  //   d) Drop hangers:      one per fascia strip point × dropHeight
+  //
+  // NOTE: trap.gap is always 0 in this app, so accumulated gap is skipped.
+
+  let insetCm = 0;
+  const dropBreakdowns: OptimizationResult['hollowBreakdown']['drops'] = [];
+
+  traps.forEach((trap, idx) => {
+    insetCm += trap.width; // border frame width on each side
+    const dW = W - 2 * insetCm;  // inner width of this drop zone
+    const dL = L - 2 * insetCm;  // inner length of this drop zone
+
+    if (dW <= 0 || dL <= 0) return; // degenerate — skip
+
+    const dropPerimCm       = 2 * (dW + dL);
+    const horizontalCm      = dropPerimCm * 2;            // top + bottom frame
+    const verticalPoints    = Math.ceil(dropPerimCm / G); // fascia strips
+    const verticalCm        = verticalPoints * trap.dropHeight;
+    const dropHangerCm      = verticalPoints * trap.dropHeight; // same points, same height
+    const dropTotalCm       = horizontalCm + verticalCm + dropHangerCm;
+
+    dropBreakdowns.push({
+      label:        `Drop ${idx + 1}`,
+      frameWidthCm: dW,
+      frameLengthCm: dL,
+      perimeterM:   dropPerimCm / 100,
+      horizontalM:  horizontalCm / 100,
+      verticalM:    verticalCm / 100,
+      dropHangerM:  dropHangerCm / 100,
+      totalM:       dropTotalCm / 100,
+    });
+
+    insetCm += trap.gap; // always 0 in current UI
   });
 
-  const hollowSticks = hollowBidangBatang + hollowHorizontalBatang + hollowVertikalBatang;
+  // ── 4. GRAND TOTAL ────────────────────────────────────────────────────────
+  const dropsTotalCm = dropBreakdowns.reduce((sum, d) => sum + d.totalM * 100, 0);
+  const totalHollowCm = mainCeilingCm + hangerCm + dropsTotalCm;
+  const totalHollowM  = totalHollowCm / 100;
+
+  const hollowSticks = Math.ceil(totalHollowM / 4); // 4 m per batang
+
+  const hollowBreakdown: OptimizationResult['hollowBreakdown'] = {
+    perimeterM:     mainPerimeterCm / 100,
+    crossWidthM:    mainCrossWidthCm / 100,
+    crossLengthM:   mainCrossLenCm / 100,
+    mainCeilingM:   mainCeilingCm / 100,
+    hangerCount,
+    hangerLengthCm: HANGER_LENGTH_CM,
+    hangerM:        hangerCm / 100,
+    drops:          dropBreakdowns,
+    totalHollowM,
+    gapCm:          G,
+    spacingWidthCm,
+    spacingLengthCm,
+  };
 
   // ========== AREA CALCULATION ==========
   let luasFlatSqM = (roomWidth * roomLength) / 10000;
@@ -431,5 +518,6 @@ export function optimizeCeiling(input: CeilingInput): OptimizationResult {
     wasteOuter,
     wasteInner,
     hollowSticks,
+    hollowBreakdown,
   };
 }
