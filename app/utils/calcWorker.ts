@@ -51,6 +51,8 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
     };
 
     const uniqueAreaProductIds = Array.from(new Set(wall.designAreas.map(da => da.productId)));
+    const sortedDesignAreas = [...wall.designAreas].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    const openingsRects = wall.openings.filter(op => op.type !== 'tv').map(op => normalizeRect(op));
 
     uniqueAreaProductIds.forEach(pid => {
         const product = products.find(p => p.id === pid);
@@ -59,30 +61,38 @@ const calculateWallMetrics = (wall: WorkerWall, products: WorkerProduct[]) => {
         if (product.countType === 'area') {
             const boardW = product.width || 0.15;
 
-            let materialRects = wall.designAreas
-                .filter((da: any) => da.productId === pid)
-                .map((da: any) => normalizeRect(da));
+            let finalRectsForProduct: Rect[] = [];
 
-            let nonOverlappingMaterialRects: Rect[] = [];
-            materialRects.forEach(rect => {
-                let pieces = [rect];
-                nonOverlappingMaterialRects.forEach(other => {
+            sortedDesignAreas.forEach((da, index) => {
+                if (da.productId !== pid) return;
+
+                let pieces = [normalizeRect(da)];
+
+                // Subtract all design areas that are IN FRONT of this one (higher index)
+                for (let i = index + 1; i < sortedDesignAreas.length; i++) {
+                    const frontDa = sortedDesignAreas[i];
+                    const frontRect = normalizeRect(frontDa);
                     let nextPieces: Rect[] = [];
-                    pieces.forEach(p => { nextPieces.push(...subtractRect(p, other)); });
+                    pieces.forEach(p => {
+                        nextPieces.push(...subtractRect(p, frontRect));
+                    });
+                    pieces = nextPieces;
+                }
+
+                // Also subtract all openings
+                openingsRects.forEach(opening => {
+                    let nextPieces: Rect[] = [];
+                    pieces.forEach(p => {
+                        nextPieces.push(...subtractRect(p, opening));
+                    });
                     pieces = nextPieces;
                 });
-                nonOverlappingMaterialRects.push(...pieces);
-            });
 
-            let finalRects = nonOverlappingMaterialRects;
-            wall.openings.filter(op => op.type !== 'tv').map(op => normalizeRect(op)).forEach(opening => {
-                let nextFinal: Rect[] = [];
-                finalRects.forEach(r => { nextFinal.push(...subtractRect(r, opening)); });
-                finalRects = nextFinal;
+                finalRectsForProduct.push(...pieces);
             });
 
             let totalAreaM2 = 0;
-            finalRects.forEach(r => {
+            finalRectsForProduct.forEach(r => {
                 totalAreaM2 += getPolygonRectIntersectionArea(wall.points, r);
                 // Track fractional strip count (aggregated globally for cross-area reuse)
                 const rWM = r.width / SCALE;
@@ -124,6 +134,17 @@ self.onmessage = (e: MessageEvent) => {
         return;
     }
 
+    if (type === 'CALCULATE_AREA_INTERSECTION') {
+        const { polygon, rect } = data;
+        let area = getPolygonRectIntersectionArea(polygon, rect);
+        self.postMessage({
+            type: 'AREA_INTERSECTION_RESULT',
+            area,
+            requestId
+        });
+        return;
+    }
+
     if (type === 'CALCULATE_PROJECT_METRICS') {
         const { walls, products, wastePercentage } = data;
 
@@ -156,59 +177,15 @@ self.onmessage = (e: MessageEvent) => {
 
         products.forEach((product: WorkerProduct) => {
             if (product.countType === 'area') {
-                const heightMap = allFractionalStrips[product.id] || {};
-                const panelHeight = product.height || 2.9;
-
-                // Build the discrete list of strip heights needed
-                // Each height bucket: ceil(fractional total) = integer strips needed
-                const strips: number[] = [];
-                Object.entries(heightMap).forEach(([hKey, frac]) => {
-                    const h = parseFloat(hKey);
-                    const count = Math.ceil(frac as number);
-                    for (let i = 0; i < count; i++) strips.push(h);
+                const productAreaM2 = (product.width || 1) * (product.height || 1);
+                let totalArea = 0;
+                wallMetricsResults.forEach(m => {
+                    totalArea += (m.productAreas[product.id] || 0);
                 });
-
-                if (strips.length === 0) return;
-
-                // Per height bucket, calculate panels needed correctly for both cases:
-                // Case A — wall height <= panel height: one panel covers multiple strip heights
-                //   stripsPerPanel = floor(panelH / stripH), panels = ceil(totalStrips / stripsPerPanel)
-                //
-                // Case B — wall height > panel height: each strip column needs multiple panels
-                //   fullRows       = floor(stripH / panelH)  → panels consumed in full rows
-                //   gapH           = stripH - fullRows * panelH
-                //   If gapH > 0:   one panel can provide floor(panelH / gapH) gap pieces
-                //                  gapPanels = ceil(totalStrips / gapPiecesPerPanel)
-                //   total = totalStrips * fullRows + gapPanels
-                const panelsByBucket: number[] = [];
-                Object.entries(heightMap).forEach(([hKey, frac]) => {
-                    const stripH = parseFloat(hKey);
-                    const totalStrips = Math.ceil(frac as number);
-
-                    if (stripH <= panelHeight) {
-                        // Case A: panel taller than (or equal to) wall
-                        const stripsPerPanel = Math.max(1, Math.floor(panelHeight / stripH));
-                        panelsByBucket.push(Math.ceil(totalStrips / stripsPerPanel));
-                    } else {
-                        // Case B: wall taller than panel
-                        const fullRows = Math.floor(stripH / panelHeight);
-                        const gapH = stripH - fullRows * panelHeight;
-                        const panelsForFullRows = totalStrips * fullRows;
-
-                        if (gapH > 0.001) {
-                            // Gap pieces are small — many fit from one panel, so share across strips
-                            const gapPiecesPerPanel = Math.max(1, Math.floor(panelHeight / gapH));
-                            const gapPanels = Math.ceil(totalStrips / gapPiecesPerPanel);
-                            panelsByBucket.push(panelsForFullRows + gapPanels);
-                        } else {
-                            panelsByBucket.push(panelsForFullRows);
-                        }
-                    }
-                });
-
-                const totalPanels = panelsByBucket.reduce((a, b) => a + b, 0);
-                productTotalCounts[product.id] = Math.ceil(totalPanels * wasteMult);
-
+                
+                if (totalArea > 0) {
+                    productTotalCounts[product.id] = Math.ceil((totalArea / productAreaM2) * wasteMult);
+                }
             } else if (product.countType === 'length') {
                 // Cut-simulation for length products with leftover reuse
                 const cuts = allLengthCuts[product.id] || [];
