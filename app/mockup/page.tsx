@@ -1136,8 +1136,12 @@ function MockupPageContent() {
     setCornersFuture([]);
   };
 
-  const handleRemoveMockup = (idToRemove: string) => {
+  const handleRemoveMockup = async (idToRemove: string) => {
     if (mockupsList.length <= 1) return;
+    
+    // Find the mockup to remove
+    const mockupToRemove = mockupsList.find(m => m.id === idToRemove);
+    
     const newList = mockupsList.filter((m) => m.id !== idToRemove);
     setMockupsList(newList);
     if (activeMockupId === idToRemove) {
@@ -1148,6 +1152,19 @@ function MockupPageContent() {
       setWallCorners(next.wallCorners);
       setCornersPast([]);
       setCornersFuture([]);
+    }
+
+    // Attempt to delete image from Cloudinary if it exists and is a Cloudinary URL
+    if (mockupToRemove?.bgImage && mockupToRemove.bgImage.includes("cloudinary.com")) {
+      try {
+        await fetch("/api/delete-cloudinary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: mockupToRemove.bgImage }),
+        });
+      } catch (err) {
+        console.error("Failed to delete mockup from Cloudinary", err);
+      }
     }
   };
 
