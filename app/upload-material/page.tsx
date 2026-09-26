@@ -54,11 +54,37 @@ export default function UploadMaterialPage() {
         }
 
         validFiles.forEach(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImages(prev => [...prev, { file, preview: reader.result as string }]);
-            };
-            reader.readAsDataURL(file);
+            if (file.type === 'image/jpeg' || file.type === 'image/png') {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const img = document.createElement('img');
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            const webpDataUrl = canvas.toDataURL('image/webp', 0.8);
+                            
+                            fetch(webpDataUrl)
+                                .then(res => res.blob())
+                                .then(blob => {
+                                    const newFile = new File([blob], file.name.replace(/\.(png|jpe?g)$/i, '.webp'), { type: 'image/webp' });
+                                    setImages(prev => [...prev, { file: newFile, preview: webpDataUrl }]);
+                                });
+                        }
+                    };
+                    img.src = reader.result as string;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setImages(prev => [...prev, { file, preview: reader.result as string }]);
+                };
+                reader.readAsDataURL(file);
+            }
         });
         
         // Reset file input so same files can be selected again if needed
