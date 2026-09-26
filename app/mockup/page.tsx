@@ -534,31 +534,10 @@ function MockupPageContent() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsUploading(true);
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         const base64 = reader.result as string;
-
-        try {
-          const res = await fetch("/api/upload-cloudinary", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ file: base64 }),
-          });
-
-          const data = await res.json();
-          if (data.url) {
-            setBgImage(data.url);
-          } else {
-            console.error("Cloudinary upload failed:", data.error);
-            alert("Upload failed: " + data.error);
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Upload failed due to network error.");
-        } finally {
-          setIsUploading(false);
-        }
+        setBgImage(base64);
       };
       reader.readAsDataURL(file);
     }
@@ -1016,6 +995,7 @@ function MockupPageContent() {
   const handleSaveMockup = async () => {
     if (!id) return;
 
+    setIsUploading(true);
     try {
       const { data, error } = await supabase
         .from("projects")
@@ -1041,11 +1021,38 @@ function MockupPageContent() {
       });
 
       // Save active mockup state into the list before saving
-      const finalMockups = mockupsList.map((m) =>
+      let finalMockups = mockupsList.map((m) =>
         m.id === activeMockupId
           ? { ...m, bgImage, includedWalls, wallCorners }
           : m,
       );
+
+      // Upload any local base64 images to Cloudinary before saving
+      finalMockups = await Promise.all(
+        finalMockups.map(async (m) => {
+          if (m.bgImage && m.bgImage.startsWith("data:image")) {
+            const res = await fetch("/api/upload-cloudinary", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ file: m.bgImage }),
+            });
+            const data = await res.json();
+            if (data.url) {
+              return { ...m, bgImage: data.url };
+            } else {
+              throw new Error(data.error || "Failed to upload image to Cloudinary");
+            }
+          }
+          return m;
+        })
+      );
+
+      // Update state if the active mockup's bgImage was updated
+      const activeMockupNow = finalMockups.find(m => m.id === activeMockupId);
+      if (activeMockupNow && activeMockupNow.bgImage !== bgImage) {
+        setBgImage(activeMockupNow.bgImage);
+      }
+      setMockupsList(finalMockups);
 
       currentData.mockupScenes = finalMockups;
       currentData.materialColors = customColors;
@@ -1060,6 +1067,8 @@ function MockupPageContent() {
     } catch (err) {
       console.error(err);
       alert("Failed to save mockup.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
