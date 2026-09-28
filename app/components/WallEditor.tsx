@@ -1385,6 +1385,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
       setSelectedDesignAreaId,
       readOnly,
       wallCenter,
+      isMockupMode,
     }: any) => {
       const isClosed = useCanvasStore(
         (state) =>
@@ -1399,6 +1400,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
       const label = isWindow ? "Window" : isTv ? "TV" : "Door";
       const textColor = isTv ? "#ffffff" : "#1e293b";
       const isSelected = selectedDesignAreaId === opening.id;
+
+      // In mockup mode, doors and windows become transparent holes —
+      // "destination-out" erases canvas pixels (wall bg + wallboard tiles)
+      // in the opening area, revealing the background photo underneath.
+      const isTransparentOpening = isMockupMode && !isTv;
 
       const handleClick = () => {
         if (
@@ -1418,6 +1424,9 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
           x={opening.x}
           y={opening.y}
           draggable={interactionMode !== "list" && !readOnly}
+          globalCompositeOperation={
+            isTransparentOpening ? "destination-out" : undefined
+          }
           onDragMove={(e) => {
             let newX = e.target.x();
             let newY = e.target.y();
@@ -1446,7 +1455,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
           <Rect
             width={opening.width}
             height={opening.height}
-            fill={color}
+            fill={isTransparentOpening ? "black" : color}
             stroke={
               isSelected && interactionMode === "resize" ? "#7B6DED" : undefined
             }
@@ -1489,7 +1498,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 container.style.cursor = isClosed ? "default" : "crosshair";
             }}
           />
-          {!isExporting && (
+          {!isExporting && !isTransparentOpening && (
             <Text
               text={label}
               fontSize={12}
@@ -1608,6 +1617,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
         setSelectedDesignAreaId={setSelectedDesignAreaId}
         readOnly={props.readOnly}
         wallCenter={wallCenter}
+        isMockupMode={!!(props.readOnly && props.mockupCorners)}
         onClick={() =>
           interactionMode === "delete" && removeOpening(opening.id)
         }
@@ -1712,6 +1722,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
               selectedDesignAreaId={selectedDesignAreaId}
               setSelectedDesignAreaId={setSelectedDesignAreaId}
               readOnly={props.readOnly}
+              isMockupMode={!!(props.readOnly && props.mockupCorners)}
               onClick={() => {
                 if (interactionMode === "delete") {
                   useCanvasStore.getState().removeOpening(op.id);
@@ -1910,6 +1921,7 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
     shouldHideText,
     isColoringMode,
     props.readOnly,
+    props.mockupCorners,
     activeWallId,
     selectedDesignAreaId,
     selectedWallId,
