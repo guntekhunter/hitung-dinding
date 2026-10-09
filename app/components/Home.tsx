@@ -94,7 +94,7 @@ export default function Home() {
             </div>
             <div className="flex justify-center md:justify-start">
               <a
-                href="/payment"
+                href="/wall-editor"
                 className="inline-block bg-[#7B6DED] text-white text-[.8rem] md:text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#6a5cd4] transition-colors"
               >
                 Coba Sekarang
