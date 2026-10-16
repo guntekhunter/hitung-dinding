@@ -273,46 +273,74 @@ const WallManager = memo(
         </div>
       </div>
       <div className="space-y-2">
-        {walls.map((wall: any) => (
-          <div
-            key={wall.id}
-            onClick={() => setActiveWall(wall.id)}
-            className={`flex items-center gap-2 p-2 text-[.5rem] text-[#303030] font-light rounded-[5px] cursor-pointer transition-all border ${
-              activeWallId === wall.id
-                ? "bg-white border-[#E5E5E5]"
-                : "bg-transparent border-[#E5E5E5] hover:bg-slate-50"
-            }`}
-          >
-            <input
-              value={wall.name}
-              onChange={(e) => updateWallName(wall.id, e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 bg-transparent border-none text-[.8rem] focus:outline-none"
-            />
-            {/* Ceiling settings moved to CeilingSettingsManager */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                duplicateWall(wall.id);
-              }}
-              className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
-              title="Duplicate wall"
+        {walls.map((wall: any) => {
+          const isActive = activeWallId === wall.id;
+          const isCeiling = wall.type === "ceiling";
+          return (
+            <div
+              key={wall.id}
+              onClick={() => setActiveWall(wall.id)}
+              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${
+                isActive
+                  ? "bg-indigo-50/80 border-indigo-500 shadow-xs ring-1 ring-indigo-400/30 text-indigo-950"
+                  : "bg-white border-[#E5E5E5] hover:bg-slate-50 text-slate-700"
+              }`}
             >
-              <Copy className="w-[1rem]" />
-            </button>
-            {walls.length > 1 && (
+              <div className="flex items-center shrink-0">
+                {isActive ? (
+                  <span className="w-2 h-2 rounded-full bg-indigo-600 ring-2 ring-indigo-300 animate-pulse" />
+                ) : (
+                  <span className="w-2 h-2 rounded-full bg-slate-300" />
+                )}
+              </div>
+              <input
+                value={wall.name}
+                onChange={(e) => updateWallName(wall.id, e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className={`flex-1 bg-transparent border-none text-[.8rem] focus:outline-none ${
+                  isActive ? "font-bold text-indigo-950" : "font-normal text-slate-700"
+                }`}
+              />
+              <span
+                className={`text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
+                  isActive
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {isCeiling ? "Plafon" : "Dinding"}
+              </span>
+              {isActive && (
+                <span className="px-1.5 py-0.5 text-[9px] font-bold bg-indigo-600 text-white rounded shrink-0">
+                  Aktif
+                </span>
+              )}
+              {/* Ceiling settings moved to CeilingSettingsManager */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeWall(wall.id);
+                  duplicateWall(wall.id);
                 }}
-                className="p-1 text-slate-300 hover:text-rose-500 transition-colors"
+                className="p-1 text-slate-400 hover:text-indigo-500 transition-colors"
+                title="Duplicate wall"
               >
-                <Minus className="w-[1rem]" />
+                <Copy className="w-[1rem]" />
               </button>
-            )}
-          </div>
-        ))}
+              {walls.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeWall(wall.id);
+                  }}
+                  className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                  title="Hapus wall"
+                >
+                  <Minus className="w-[1rem]" />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   ),

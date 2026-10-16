@@ -238,24 +238,39 @@ export default function ColoringToolbar({ wallEditorRef }: any) {
       </div>
 
       {/* Wall selector */}
-      {walls.length > 1 && (
-        <div className="p-4 border-b border-gray-100 flex flex-col gap-2 bg-gray-50/50">
-          <label className="text-sm font-medium text-gray-700">
-            Select Wall
+      <div className="p-4 border-b border-gray-100 flex flex-col gap-2 bg-gray-50/50">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+            Dinding Aktif
           </label>
+          {activeWall && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
+              {activeWall.type === "ceiling" ? "Plafon" : "Dinding"}
+            </span>
+          )}
+        </div>
+        {walls.length > 1 ? (
           <select
-            value={activeWallId || ""}
+            value={activeWallId || (walls[0] ? walls[0].id : "")}
             onChange={(e) => setActiveWall(e.target.value)}
-            className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#7B6DED] bg-white text-gray-800"
+            className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#7B6DED] bg-white text-gray-800 font-medium"
           >
             {walls.map((wall) => (
               <option key={wall.id} value={wall.id}>
-                {wall.name}
+                {wall.name} {wall.id === (activeWallId || walls[0]?.id) ? "(Aktif)" : ""}
               </option>
             ))}
           </select>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-md text-sm font-medium text-gray-800">
+            <span>{activeWall?.name || "Dinding 1"}</span>
+            <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Aktif
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Action buttons */}
       <div className="p-4 flex items-center justify-between border-b border-gray-100">
