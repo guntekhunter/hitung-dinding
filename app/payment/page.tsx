@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { trackMetaEvent } from "@/lib/meta-pixel";
+import CountdownTimer from "../components/reusable/CountdownTimer";
 
 type Step = "form" | "processing";
 
@@ -18,9 +19,30 @@ interface FormData {
 }
 
 // Plan config
-const PLANS: Record<string, { label: string; price: number; displayPrice: string; months: number }> = {
-  "1month": { label: "1 Bulan", price: 89999, displayPrice: "Rp 89.999", months: 1 },
-  "3month": { label: "3 Bulan", price: 150000, displayPrice: "Rp 150.000", months: 3 },
+const PLANS: Record<
+  string,
+  {
+    label: string;
+    price: number;
+    displayPrice: string;
+    months: number;
+    discount: string;
+  }
+> = {
+  "1month": {
+    label: "1 Bulan",
+    price: 89999,
+    displayPrice: "Rp 89.999",
+    discount: "Rp 299.000",
+    months: 1,
+  },
+  "3month": {
+    label: "3 Bulan",
+    price: 150000,
+    displayPrice: "Rp 150.000",
+    discount: "Rp 697.500",
+    months: 3,
+  },
 };
 
 const DEFAULT_PLAN = "3month";
@@ -118,7 +140,7 @@ function PaymentForm() {
     <div className="flex-1 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
         {/* Progress indicator */}
-        <div className="flex items-center gap-3 mb-8">
+        {/* <div className="flex items-center gap-3 mb-8">
           <div
             className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${step === "form" ? "bg-[#7B6DED] text-white" : "bg-[#22C55E] text-white"}`}
           >
@@ -143,7 +165,7 @@ function PaymentForm() {
           <span>Data Akun</span>
           <span>Pembayaran</span>
           <span>Selesai</span>
-        </div>
+        </div> */}
 
         {/* Card */}
         <div className="bg-white rounded-2xl  border border-[#E8E3FF] overflow-hidden">
@@ -178,13 +200,10 @@ function PaymentForm() {
                     </p>
                   </div>
                 )}
-
                 {/* Company section (Hidden) */}
                 <div className="hidden">
                   <div>
-                    <label className={labelClass}>
-                      Nama Perusahaan / Toko
-                    </label>
+                    <label className={labelClass}>Nama Perusahaan / Toko</label>
                     <input
                       name="companyName"
                       className={inputClass}
@@ -194,7 +213,6 @@ function PaymentForm() {
                     />
                   </div>
                 </div>
-
                 <div className="border-t border-[#F0EEFF] pt-5">
                   <div className="space-y-4">
                     {/* Admin name */}
@@ -279,7 +297,9 @@ function PaymentForm() {
                 {/* Price summary */}
                 <div className="bg-[#F7F6FF] rounded-xl p-4 flex items-center justify-between mt-2">
                   <div>
-                    <p className="text-xs text-gray-500">Paket {plan.label}</p>
+                    <p className="text-5 font-bold line-through decoration-red-500 decoration-[1px] text-gray-500">
+                      {plan.discount}
+                    </p>
                     <p className="text-xl font-bold text-gray-800">
                       {plan.displayPrice}
                     </p>
@@ -288,7 +308,19 @@ function PaymentForm() {
                     {plan.months === 1 ? "1 Bulan" : `${plan.months} Bulan`}
                   </span>
                 </div>
-
+                <div className="text-[#6B5CE7]">
+                  <div className="rounded-xl bg-[#F7F6FF] py-5 px-5">
+                    <p className="text-center">
+                      <strong className="text-center w-full">Harga naik</strong>{" "}
+                      dalam:{" "}
+                    </p>
+                    <p className="text-center text-[2rem] text-red-500">
+                      <strong>
+                        <CountdownTimer initialTime="10:30:20" />
+                      </strong>
+                    </p>
+                  </div>
+                </div>
                 {/* Consent Checkbox 1: Privacy Policy */}
                 <div className="flex items-start gap-3 mt-4">
                   <input
@@ -315,7 +347,6 @@ function PaymentForm() {
                     .
                   </label>
                 </div>
-
                 {/* Consent Checkbox 2: WhatsApp & Email Comm */}
                 <div className="flex items-start gap-3 mt-3">
                   <input
@@ -333,7 +364,6 @@ function PaymentForm() {
                     layanan dan dukungan dari kami melalui WhatsApp & email.
                   </label>
                 </div>
-
                 {/* Submit */}
                 <button
                   type="submit"
@@ -341,11 +371,9 @@ function PaymentForm() {
                 >
                   Lanjut ke Pembayaran →
                 </button>
-
                 <p className="text-[11px] text-center text-gray-400 leading-relaxed">
                   Dengan melanjutkan, kamu menyetujui syarat & ketentuan Rapi
-                  Studio. Akun akan dibuat otomatis setelah pembayaran
-                  berhasil.
+                  Studio. Akun akan dibuat otomatis setelah pembayaran berhasil.
                 </p>
               </form>
             )}
@@ -396,7 +424,13 @@ export default function PaymentPage() {
         </Link>
       </header>
 
-      <Suspense fallback={<div className="flex-1 flex items-center justify-center py-24 text-sm text-gray-400">Memuat…</div>}>
+      <Suspense
+        fallback={
+          <div className="flex-1 flex items-center justify-center py-24 text-sm text-gray-400">
+            Memuat…
+          </div>
+        }
+      >
         <PaymentForm />
       </Suspense>
     </div>
