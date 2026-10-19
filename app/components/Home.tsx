@@ -53,7 +53,7 @@ export default function Home() {
             alt="Rapi Studio"
             width={200}
             height={60}
-            className="w-[40%] md:w-[160px] h-auto"
+            className="w-[40%] md:w-40 h-auto"
             fetchPriority="high"
           />
           <LoginButton />
@@ -131,7 +131,7 @@ export default function Home() {
       <section className="pt-12">
         {/* â”€â”€ Sering Mengalami â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="px-4">
-          <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
+          <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border border-[#D9D9D9]">
             <div className="space-y-5">
               <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
                 Masih Ngabisin Waktu Gambar & hitung material untuk Setiap
@@ -180,7 +180,7 @@ export default function Home() {
 
         {/* â”€â”€ Dengan satu aplikasi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="px-4 justify-center items-center py-16 space-y-10 md:px-8">
-          <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border-[1px] border-[#D9D9D9]">
+          <div className="max-w-5xl mx-auto space-y-10 px-5 py-6 rounded-[10px] border border-[#D9D9D9]">
             <div className="space-y-5">
               <h2 className="font-bold w-full text-center text-[1.2rem] md:text-[1.6rem]">
                 Dengan Rapi Studio Kamu bisa

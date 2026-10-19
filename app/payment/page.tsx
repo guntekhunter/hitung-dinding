@@ -297,7 +297,7 @@ function PaymentForm() {
                 {/* Price summary */}
                 <div className="bg-[#F7F6FF] rounded-xl p-4 flex items-center justify-between mt-2">
                   <div>
-                    <p className="text-5 font-bold line-through decoration-red-500 decoration-[1px] text-gray-500">
+                    <p className="text-5 font-bold line-through decoration-red-500 decoration-1 text-gray-500">
                       {plan.discount}
                     </p>
                     <p className="text-xl font-bold text-gray-800">
