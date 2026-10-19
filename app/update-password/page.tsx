@@ -26,6 +26,11 @@ export default function UpdatePasswordPage() {
         e.preventDefault();
         setError(null);
 
+        if (password.length < 6) {
+            setError("Password minimal 6 karakter.");
+            return;
+        }
+
         if (password !== confirmPassword) {
             setError("Password tidak cocok.");
             return;
@@ -34,8 +39,19 @@ export default function UpdatePasswordPage() {
         setIsLoading(true);
         try {
             await updatePassword(password);
-            alert("Password berhasil diperbarui. Silakan login dengan password baru Anda.");
-            router.push(`/login`);
+
+            // Clear must_change_password flag if user is logged in
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) {
+                await fetch("/api/auth/clear-password-flag", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: session.user.id }),
+                });
+            }
+
+            alert("Password baru berhasil disimpan! Anda akan diarahkan ke aplikasi.");
+            router.push(`/wall-editor`);
         } catch (err: any) {
             setError(err.message || "Terjadi kesalahan saat memperbarui password.");
         } finally {

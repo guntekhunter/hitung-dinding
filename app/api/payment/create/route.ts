@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createSignature } from "@/lib/duitku";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -9,7 +9,7 @@ const PAYMENT_METHOD = "SQ"; // Nusapay QRIS
 
 // Valid plans
 const VALID_PLANS: Record<number, { price: number; label: string }> = {
-  1: { price: 89999,  label: "1 Bulan" },
+  1: { price: 89999, label: "1 Bulan" },
   3: { price: 150000, label: "3 Bulan" },
 };
 
@@ -18,9 +18,9 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     // ── Pre-registration flow (from /payment page) ───────────────────────────
-    const { companyName, adminName, email, waNumber, password, planMonths } = body;
+    const { companyName, adminName, email, waNumber, planMonths } = body;
 
-    if (!adminName || !email || !waNumber || !password) {
+    if (!adminName || !email || !waNumber) {
       return NextResponse.json(
         { error: "Semua field wajib diisi." },
         { status: 400 },
@@ -74,8 +74,8 @@ export async function POST(req: Request) {
         admin_name: adminName,
         email: email.toLowerCase(),
         wa_number: waNumber,
-        password_plain: password, // akan dihapus setelah akun dibuat
-        plan_months: months,      // store plan duration
+        password_plain: "", // temporary password generated upon successful payment
+        plan_months: months, // store plan duration
       });
 
     if (pendingError) {

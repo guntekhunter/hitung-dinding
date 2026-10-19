@@ -5,6 +5,7 @@ export type User = {
     company_id: string;
     name: string;
     role: string;
+    must_change_password?: boolean;
 };
 
 export type Company = {

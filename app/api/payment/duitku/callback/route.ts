@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendMetaCAPIEvent } from "@/lib/meta-capi";
@@ -69,12 +69,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ statusCode: "00", statusMessage: "SUCCESS" });
       }
 
-      // ── 3b. Buat Supabase Auth user ────────────────────────────────────────
+      // ── 3b. Generate Temporary Password ──────────────────────────────────
+      const temporaryPassword =
+        "Rapi@" + crypto.randomBytes(4).toString("hex") + Math.floor(10 + Math.random() * 90);
+
+      // ── 3c. Buat Supabase Auth user & Kirim Akses Email via Supabase ────────
+      // Use admin.createUser with temporary password and email_confirm: true
       const { data: authData, error: authError } =
         await supabaseAdmin.auth.admin.createUser({
           email: pending.email,
-          password: pending.password_plain,
+          password: temporaryPassword,
           email_confirm: true, // bypass email confirmation
+          user_metadata: {
+            name: pending.admin_name,
+            must_change_password: true,
+            temporary_password: temporaryPassword,
+          },
         });
 
       if (authError || !authData.user) {
@@ -88,7 +98,25 @@ export async function POST(req: NextRequest) {
 
       const newUserId = authData.user.id;
 
-      // ── 3c. Buat Company ───────────────────────────────────────────────────
+      // ── 3d. Kirim Email Akses & Password via Supabase Auth ─────────────────
+      // Menggunakan Supabase resetPasswordForEmail / generateLink agar Supabase mengirim email notifikasi password ke user
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://count-wall.vercel.app";
+      try {
+        const { error: resetEmailError } =
+          await supabaseAdmin.auth.resetPasswordForEmail(pending.email, {
+            redirectTo: `${appUrl}/update-password`,
+          });
+
+        if (resetEmailError) {
+          console.warn("[callback] resetPasswordForEmail warning:", resetEmailError);
+        } else {
+          console.log(`[callback] Supabase password email dispatched to ${pending.email}`);
+        }
+      } catch (emailErr) {
+        console.warn("[callback] email notification error:", emailErr);
+      }
+
+      // ── 3e. Buat Company ───────────────────────────────────────────────────
       const { data: newCompany, error: companyError } = await supabaseAdmin
         .from("companies")
         .insert([{ name: pending.company_name }])
@@ -105,7 +133,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ statusCode: "00", statusMessage: "SUCCESS" });
       }
 
-      // ── 3d. Buat User Profile ──────────────────────────────────────────────
+      // ── 3f. Buat User Profile dengan must_change_password = true ───────────
       const { error: profileError } = await supabaseAdmin.from("users").insert([
         {
           id: newUserId,
@@ -113,6 +141,7 @@ export async function POST(req: NextRequest) {
           name: pending.admin_name,
           role: "admin",
           wa_number: pending.wa_number,
+          must_change_password: true,
         },
       ]);
 

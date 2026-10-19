@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
@@ -15,7 +15,6 @@ interface FormData {
   adminName: string;
   email: string;
   waNumber: string;
-  password: string;
 }
 
 // Plan config
@@ -54,14 +53,12 @@ function PaymentForm() {
 
   const [step, setStep] = useState<Step>("form");
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     companyName: "",
     adminName: "",
     email: "",
     waNumber: "",
-    password: "",
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -74,10 +71,6 @@ function PaymentForm() {
 
     if (!/^08|^\+62/.test(form.waNumber)) {
       setError("Nomor WhatsApp harus diawali 08 atau +62");
-      return;
-    }
-    if (form.password.length < 6) {
-      setError("Password minimal 6 karakter");
       return;
     }
 
@@ -98,7 +91,6 @@ function PaymentForm() {
           adminName: form.adminName,
           email: form.email,
           waNumber: form.waNumber,
-          password: form.password,
           paymentMethod: "SQ",
           planMonths: plan.months,
           planPrice: plan.price,
@@ -114,7 +106,6 @@ function PaymentForm() {
       }
 
       sessionStorage.setItem("pendingPaymentEmail", form.email);
-      sessionStorage.setItem("pendingPaymentPassword", form.password);
 
       window.location.href = data.paymentUrl;
     } catch {
@@ -217,7 +208,7 @@ function PaymentForm() {
                   <div className="space-y-4">
                     {/* Admin name */}
                     <div>
-                      <label className={labelClass}>Nama Lengkap</label>
+                      <label className={labelClass}>Nama</label>
                       <input
                         required
                         name="adminName"
@@ -267,30 +258,12 @@ function PaymentForm() {
                       </p>
                     </div>
 
-                    {/* Password */}
-                    <div>
-                      <label className={labelClass}>Password</label>
-                      <div className="relative">
-                        <input
-                          required
-                          type={showPassword ? "text" : "password"}
-                          name="password"
-                          minLength={6}
-                          autoComplete="new-password"
-                          className={inputClass + " pr-12"}
-                          placeholder="Min. 6 karakter"
-                          value={form.password}
-                          onChange={handleChange}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((p) => !p)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs px-1"
-                        >
-                          {showPassword ? "Sembunyikan" : "Lihat"}
-                        </button>
-                      </div>
-                    </div>
+                    {/* <div className="bg-[#F0EEFF] border border-[#DDD6FE] rounded-xl p-3.5 flex items-start gap-2.5">
+                      <span className="text-[#7B6DED] text-base leading-none mt-0.5">🔑</span>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        Password sementara akan digenerate otomatis dan dikirimkan ke email Anda setelah pembayaran berhasil.
+                      </p>
+                    </div> */}
                   </div>
                 </div>
 

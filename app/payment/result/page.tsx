@@ -47,7 +47,7 @@ export default function PaymentResultPage() {
     return () => clearInterval(d);
   }, []);
 
-  // Redirect to wall-editor once payment is confirmed PAID
+  // When payment is confirmed PAID
   useEffect(() => {
     if (orderData.status === "PAID" && !didRedirect.current) {
       didRedirect.current = true;
@@ -63,43 +63,11 @@ export default function PaymentResultPage() {
         orderId || undefined,
       );
 
-      const autoLogin = async () => {
-        try {
-          const email = sessionStorage.getItem("pendingPaymentEmail");
-          const password = sessionStorage.getItem("pendingPaymentPassword");
-
-          if (email && password) {
-            // Auto login user
-            const authResponse = await signInUser(email, password);
-            const userId = authResponse.user?.id;
-
-            if (userId) {
-              const userProfile = await getCurrentUser(userId);
-              if (userProfile.company_id) {
-                const companyInfo = await getUserCompany(
-                  userProfile.company_id,
-                );
-                setSession(userProfile, companyInfo);
-              }
-            }
-
-            // Clear credentials
-            sessionStorage.removeItem("pendingPaymentEmail");
-            sessionStorage.removeItem("pendingPaymentPassword");
-          }
-        } catch (err) {
-          console.error("Auto login failed:", err);
-        } finally {
-          // Small delay so user sees the success flash before redirect
-          setTimeout(() => {
-            router.push("/wall-editor");
-          }, 2000);
-        }
-      };
-
-      autoLogin();
+      // Clear any pending email in session
+      sessionStorage.removeItem("pendingPaymentEmail");
+      sessionStorage.removeItem("pendingPaymentPassword");
     }
-  }, [orderData.status, router, setSession]);
+  }, [orderData.status, orderData.amount, orderId]);
 
   useEffect(() => {
     if (!orderId) return;
@@ -188,9 +156,16 @@ export default function PaymentResultPage() {
           <h1 className="text-2xl font-bold text-gray-800">
             ✅ Pembayaran Berhasil!
           </h1>
-          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            Menyiapkan akun dan mengalihkan ke halaman wall editor…
+          <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+            Akun Anda telah dibuat. Link akses dan instruksi password sementara telah dikirimkan ke email Anda oleh Supabase.
           </p>
+
+          <div className="mt-4 bg-[#F0EEFF] border border-[#DDD6FE] rounded-xl p-3.5 text-left text-xs text-gray-700 leading-relaxed">
+            <span className="font-semibold block mb-1 text-[#7B6DED]">Langkah Selanjutnya:</span>
+            1. Periksa kotak masuk (atau folder spam) email Anda.<br />
+            2. Gunakan link atau password sementara untuk masuk.<br />
+            3. Anda akan diminta membuat password baru setelah login.
+          </div>
 
           <div className="mt-6 bg-[#F7F6FF] rounded-xl p-4 text-left space-y-2">
             <p className="text-xs text-gray-500">
@@ -212,10 +187,10 @@ export default function PaymentResultPage() {
           </div>
 
           <Link
-            href="/wall-editor"
+            href="/login"
             className="mt-8 inline-block bg-[#7B6DED] text-white px-8 py-3 rounded-full text-sm font-semibold hover:bg-[#6B5CE7] transition-colors shadow-md shadow-[#7B6DED]/30"
           >
-            Buka Wall Editor →
+            Menuju Halaman Login →
           </Link>
         </div>
       </div>

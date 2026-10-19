@@ -12,6 +12,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     useEffect(() => {
         if (!user || !company) {
             router.push("/login");
+        } else if (user.must_change_password) {
+            router.push("/update-password");
         } else {
             setIsChecking(false);
         }
