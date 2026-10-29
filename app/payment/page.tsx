@@ -295,18 +295,13 @@ function PaymentForm() {
                   </div>
                 </div>
                 <div>
-                  <div className="bg-[#F7F6FF] py-5 px-5">
-                    <p className="text-center text-[1rem] pb-1">
+                  <div className="bg-[#F7F6FF] py-5 px-5 text-gray-500">
+                    <p className="text-center text-[1rem] pb-1 text-[#6B5CE7] font-medium">
                       Bonus Gratis Hari ini
                     </p>
-                    <p className="text-[11px]">
-                      Dapatkan e-book "Desain Interior Tanpa Aplikasi 3D" gratis
+                    <p className="text-[11px] pb-2">
+                      Dapatkan e-book "Desain Interior Tanpa Aplikasi 3D" GRATIS
                       saat berlangganan Rapi Studio hari ini.
-                    </p>
-                    <p className="text-[11px] py-2">
-                      Pelajari cara buat desain nterior yang menarik, dan sesuai
-                      keinginan kastemer tanpa aplikasi 3D (bukan desain full AI
-                      yang nggak bisa direvisi)
                     </p>
                     <Image
                       src="/landing-page/e-book.webp"
@@ -363,16 +358,23 @@ function PaymentForm() {
                   </label>
                 </div>
                 {/* Submit */}
-                <button
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-[#7B6DED] hover:bg-[#6B5CE7] text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-200 text-sm"
-                >
-                  Lanjut ke Pembayaran →
-                </button>
-                <p className="text-[11px] text-center text-gray-400 leading-relaxed">
-                  Dengan melanjutkan, kamu menyetujui syarat & ketentuan Rapi
-                  Studio. Akun akan dibuat otomatis setelah pembayaran berhasil.
-                </p>
+                <div className="bg-[#F7F6FF] py-5 px-5 text-gray-500">
+                  <div className="text-center pb-2">
+                    <p>Total Pembayaran</p>
+                    <p className="text-[#6B5CE7] text-[1.5rem] font-semibold">
+                      {plan.displayPrice}
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center gap-2 bg-[#7B6DED] hover:bg-[#6B5CE7] text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-200 text-sm"
+                  >
+                    Lanjut ke Pembayaran →
+                  </button>
+                  <p className="text-[11px] text-center text-gray-400 leading-relaxed">
+                    Akun akan dibuat otomatis setelah pembayaran berhasil.
+                  </p>
+                </div>
               </form>
             )}
           </div>
@@ -384,7 +386,6 @@ function PaymentForm() {
             <div className="w-10 h-10 rounded-full bg-[#ECE9FF] flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-[#7B6DED]" />
             </div>
-
             <div>
               <p className="text-sm font-medium">Garansi</p>
               <p className="text-xs text-gray-500">Uang Kembali</p>
