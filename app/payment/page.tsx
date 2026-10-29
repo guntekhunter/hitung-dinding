@@ -294,6 +294,22 @@ function PaymentForm() {
                     </p>
                   </div>
                 </div>
+                <div>
+                  <div>
+                    <p className="text-center">
+                      + E-Book Gratis (Langganan Hari ini)
+                    </p>
+                    <Image
+                      src="/landing-page/e-book.webp"
+                      alt="Tampilan aplikasi"
+                      width={600}
+                      height={450}
+                      priority
+                      sizes="(max-width: 768px) 90vw, 50vw"
+                      className="rounded-md w-full h-auto"
+                    />{" "}
+                  </div>
+                </div>
                 {/* Consent Checkbox 1: Privacy Policy */}
                 <div className="flex items-start gap-3 mt-4">
                   <input
