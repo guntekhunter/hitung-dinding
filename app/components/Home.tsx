@@ -372,10 +372,7 @@ export default function Home() {
                     "Respon customer lebih cepat dan tingkatkan peluang closing",
                   description: "",
                 },
-                {
-                  title: "Onboarding 1-on-1",
-                  description: "",
-                },
+
                 {
                   title: "Akses penuh selama 1 bulan",
                   description: "",
@@ -405,10 +402,6 @@ export default function Home() {
                 {
                   title:
                     "Respon customer lebih cepat dan tingkatkan peluang closing",
-                  description: "",
-                },
-                {
-                  title: "Onboarding 1-on-1",
                   description: "",
                 },
                 {

@@ -76,18 +76,18 @@ export default function PaymentCard({
         </div>
         {/* Countdown */}
         <div className="mt-5 rounded-xl bg-[#E8E3FF] py-4">
-          <p className="text-center text-xs text-[#6B5CE7]">
-            <strong>Harga naik</strong> dalam{" "}
-            <strong><CountdownTimer initialTime={countdown} /></strong>
+          <p className="text-center text-[1rem] text-[#6B5CE7]">
+            {/* <strong>Harga naik</strong> dalam{" "} */}
+            <strong>
+              <CountdownTimer initialTime={countdown} />
+            </strong>
           </p>
         </div>
       </div>
 
       {/* CTA */}
       <div className="mt-8">
-        <PaymentButton href={paymentHref}>
-          {buttonText}
-        </PaymentButton>
+        <PaymentButton href={paymentHref}>{buttonText}</PaymentButton>
       </div>
 
       <p className="text-xs text-center text-gray-500 mt-3">

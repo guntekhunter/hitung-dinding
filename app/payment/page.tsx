@@ -283,10 +283,10 @@ function PaymentForm() {
                 </div>
                 <div className="text-[#6B5CE7]">
                   <div className="rounded-xl bg-[#F7F6FF] py-5 px-5">
-                    <p className="text-center">
+                    {/* <p className="text-center">
                       <strong className="text-center w-full">Harga naik</strong>{" "}
                       dalam:{" "}
-                    </p>
+                    </p> */}
                     <p className="text-center text-[2rem] text-red-500">
                       <strong>
                         <CountdownTimer initialTime="10:30:20" />
@@ -295,9 +295,18 @@ function PaymentForm() {
                   </div>
                 </div>
                 <div>
-                  <div>
-                    <p className="text-center">
-                      + E-Book Gratis (Langganan Hari ini)
+                  <div className="bg-[#F7F6FF] py-5 px-5">
+                    <p className="text-center text-[1rem] pb-1">
+                      Bonus Gratis Hari ini
+                    </p>
+                    <p className="text-[11px]">
+                      Dapatkan e-book "Desain Interior Tanpa Aplikasi 3D" gratis
+                      saat berlangganan Rapi Studio hari ini.
+                    </p>
+                    <p className="text-[11px] py-2">
+                      Pelajari cara buat desain nterior yang menarik, dan sesuai
+                      keinginan kastemer tanpa aplikasi 3D (bukan desain full AI
+                      yang nggak bisa direvisi)
                     </p>
                     <Image
                       src="/landing-page/e-book.webp"
@@ -311,21 +320,20 @@ function PaymentForm() {
                   </div>
                 </div>
                 {/* Consent Checkbox 1: Privacy Policy */}
+
                 <div className="flex items-start gap-3 mt-4">
                   <input
                     required
                     type="checkbox"
                     id="consent-privacy"
                     name="consentPrivacy"
-                    className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
+                    className="mt-1 h-4 w-4 shrink-0 flex-none accent-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
                   />
                   <label
                     htmlFor="consent-privacy"
                     className="text-[11px] text-gray-500 leading-relaxed"
                   >
-                    Saya setuju bahwa data saya akan dikumpulkan dan digunakan
-                    untuk keperluan pemasaran, personalisasi iklan, dan
-                    peningkatan layanan sesuai dengan{" "}
+                    Saya telah membaca dan menyetujui{" "}
                     <Link
                       href="/privacy-policy"
                       className="text-[#7B6DED] hover:underline"
@@ -336,6 +344,7 @@ function PaymentForm() {
                     .
                   </label>
                 </div>
+
                 {/* Consent Checkbox 2: WhatsApp & Email Comm */}
                 <div className="flex items-start gap-3 mt-3">
                   <input
@@ -343,7 +352,7 @@ function PaymentForm() {
                     type="checkbox"
                     id="consent-comm"
                     name="consentComm"
-                    className="mt-1 w-4 h-4 text-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
+                    className="mt-1 h-4 w-4 shrink-0 flex-none accent-[#7B6DED] border-gray-300 rounded focus:ring-[#7B6DED]"
                   />
                   <label
                     htmlFor="consent-comm"
