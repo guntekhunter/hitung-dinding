@@ -3,6 +3,7 @@ import PaymentCard from "./reusable/PaymentCard";
 import MetaPixelTracker from "./reusable/MetaPixelTracker";
 import Link from "next/link";
 import LoginButton from "./reusable/LoginButton";
+import VideoDemo from "./reusable/VideoDemo";
 
 // Lightweight icon component â€” avoids Next/Image overhead for tiny SVGs
 const CheckIcon = () => (
@@ -125,6 +126,21 @@ export default function Home() {
               className="rounded-md absolute top-[50%] w-[25%] h-auto"
             />
           </div>
+        </div>
+      </section>
+
+      {/* ── Demo Video ── */}
+      <section id="demo" className="px-4 py-12 md:py-16 bg-[#FAFAFA] border-y border-[#E5E5E5]">
+        <div className="max-w-4xl mx-auto space-y-6 text-center">
+          <div className="space-y-2">
+            <h2 className="text-2xl md:text-3xl font-bold text-[#303030]">
+              Demo
+            </h2>
+            <p className="text-sm md:text-base text-[#7F7F7F] max-w-xl mx-auto">
+              Lihat bagaimana Rapi Studio mempermudah proses drafting, desain, dan hitung RAB PVC dalam hitungan menit.
+            </p>
+          </div>
+          <VideoDemo videoId="Z7c64HG_XbI" title="Demo Video Rapi Studio" />
         </div>
       </section>
 
