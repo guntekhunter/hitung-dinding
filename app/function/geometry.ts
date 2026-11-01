@@ -103,6 +103,78 @@ export function isRectInPolygon(rect: Rect, polygon: Point[]): boolean {
     return corners.every(corner => isPointInPolygon(corner, polygon));
 }
 
+/**
+ * Insets (or offsets inward) a 2D closed polygon by a given distance.
+ * Works for any polygon shape (convex, concave / L-shape / T-shape, etc.).
+ * Returns the offset polygon vertices, or an empty array if the offset collapses.
+ */
+export function insetPolygon(points: Point[], distance: number): Point[] {
+    const n = points.length;
+    if (n < 3 || distance <= 0) return points;
+
+    let area = 0;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += points[i].x * points[j].y - points[j].x * points[i].y;
+    }
+    if (Math.abs(area) < 1e-4) return [];
+
+    const isClockwise = area > 0;
+    const lines: Array<{ p1: Point; dx: number; dy: number }> = [];
+
+    for (let i = 0; i < n; i++) {
+        const p1 = points[i];
+        const p2 = points[(i + 1) % n];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy);
+        if (len < 1e-6) continue;
+
+        const nx = isClockwise ? -dy / len : dy / len;
+        const ny = isClockwise ? dx / len : -dx / len;
+
+        lines.push({
+            p1: { x: p1.x + nx * distance, y: p1.y + ny * distance },
+            dx,
+            dy
+        });
+    }
+
+    if (lines.length < 3) return [];
+
+    const result: Point[] = [];
+    const numLines = lines.length;
+    for (let i = 0; i < numLines; i++) {
+        const prev = lines[(i - 1 + numLines) % numLines];
+        const curr = lines[i];
+
+        const det = prev.dx * curr.dy - prev.dy * curr.dx;
+        if (Math.abs(det) < 1e-6) {
+            result.push(curr.p1);
+        } else {
+            const dpx = curr.p1.x - prev.p1.x;
+            const dpy = curr.p1.y - prev.p1.y;
+            const t = (dpx * curr.dy - dpy * curr.dx) / det;
+            result.push({
+                x: prev.p1.x + t * prev.dx,
+                y: prev.p1.y + t * prev.dy
+            });
+        }
+    }
+
+    let newArea = 0;
+    for (let i = 0; i < result.length; i++) {
+        const j = (i + 1) % result.length;
+        newArea += result[i].x * result[j].y - result[j].x * result[i].y;
+    }
+
+    if (Math.sign(newArea) !== Math.sign(area) || Math.abs(newArea) < 1) {
+        return [];
+    }
+
+    return result;
+}
+
 export function getPolygonRectIntersectionArea(polygon: Point[], rect: Rect): number {
     if (polygon.length < 3) return 0;
 

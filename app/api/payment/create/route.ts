@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 const DUITKU_BASE_URL =
   process.env.DUITKU_BASE_URL ??
   "https://passport.duitku.com/webapi/api/merchant";
+// const PAYMENT_METHOD = "VA"; // Nusapay QRIS
 const PAYMENT_METHOD = "SQ"; // Nusapay QRIS
 
 // Valid plans

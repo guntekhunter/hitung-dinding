@@ -91,6 +91,7 @@ function PaymentForm() {
           adminName: form.adminName,
           email: form.email,
           waNumber: form.waNumber,
+          // paymentMethod: "VA",
           paymentMethod: "SQ",
           planMonths: plan.months,
           planPrice: plan.price,

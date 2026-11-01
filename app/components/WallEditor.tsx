@@ -29,6 +29,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import { callWorker, warmupWorker } from "../utils/workerManager";
+import { insetPolygon } from "../function/geometry";
 
 const useWorker = () => {
   const postMessage = useCallback((message: any) => {
@@ -2955,6 +2956,8 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
               let currentInset = 0;
               let lastBounds = bounds;
 
+              let currentPolygon = points;
+
               for (let i = 0; i < numZones; i++) {
                 const color =
                   activeWall.ceilingColors && activeWall.ceilingColors[i]
@@ -2965,8 +2968,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                   (color.startsWith("http") || color.startsWith("data:"));
 
                 let trapBounds;
+                let trapPolygon = points;
                 if (i === 0) {
                   trapBounds = bounds;
+                  trapPolygon = points;
                 } else {
                   const prevTrap = traps[i - 1];
                   currentInset +=
@@ -2978,11 +2983,14 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     width: bounds.width - 2 * currentInset,
                     height: bounds.height - 2 * currentInset,
                   };
+                  trapPolygon = insetPolygon(points, currentInset);
                 }
+
+                if (i > 0 && trapPolygon.length < 3) continue;
 
                 const validBounds =
                   trapBounds.width > 0 && trapBounds.height > 0;
-                if (!validBounds) continue;
+                if (!validBounds && trapPolygon.length < 3) continue;
 
                 if (i > 0 && props.readOnly) {
                   // Draw shading polygons to create a 3D lip effect inside the trap.
@@ -3007,8 +3015,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     const lenLeft = dist(c0, c3);
                     const lenRight = dist(c1, c2);
 
-                    // If right edge is longer than left edge in screen space, camera is closer to the right.
-                    // So left lip should be visible, right lip occluded. This means offsetX should be positive.
                     const ratioX = Math.max(
                       -1,
                       Math.min(
@@ -3017,8 +3023,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                       ),
                     );
 
-                    // If bottom edge is longer than top edge, camera is closer to the bottom.
-                    // So top lip should be visible, bottom lip occluded. This means offsetY should be positive.
                     const ratioY = Math.max(
                       -1,
                       Math.min(
@@ -3030,9 +3034,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     offsetX = lipSize * ratioX;
                     offsetY = lipSize * ratioY;
 
-                    // For Drop ceiling, the shadow should be on the walls closest to the camera (the near walls).
-                    // In standard perspective, the longer edges are closer. Our default offsets target the far walls.
-                    // We invert them here so the Drop shadow targets the near walls.
                     if (!currentTrapIsUp) {
                       offsetX = -offsetX;
                       offsetY = -offsetY;
@@ -3142,15 +3143,12 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     let leftColor = "rgba(0,0,0,0.05)";
 
                     if (currentTrapIsUp) {
-                      // For UP ceiling, the vertical walls are inside a hole, so they are all in shadow.
                       topColor = "rgba(0,0,0,0.3)";
                       rightColor = "rgba(0,0,0,0.4)";
                       bottomColor = "rgba(0,0,0,0.15)";
                       leftColor = "rgba(0,0,0,0.2)";
                     }
 
-                    // For a Drop ceiling (hanging box), the near walls are occluded by the front face.
-                    // We only draw the walls that represent the visible drop shadow.
                     const showTop = currentTrapIsUp || offsetY >= -0.1;
                     const showBottom = currentTrapIsUp || offsetY <= 0.1;
                     const showLeft = currentTrapIsUp || offsetX >= -0.1;
@@ -3167,13 +3165,11 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                       (lipColor.startsWith("http") ||
                         lipColor.startsWith("data:"));
 
-                    // Helper to draw the base color/texture + shadow for a lip
                     const drawLip = (
                       keyName: string,
                       pts: number[],
                       shadowColor: string,
                     ) => {
-                      // Make the texture "go down" the drop face (perpendicular to the edge)
                       const lipDirection =
                         keyName === "left" || keyName === "right"
                           ? "horizontal"
@@ -3191,10 +3187,10 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                               ctx.lineTo(pts[6], pts[7]);
                               ctx.closePath();
                             }}
-                            bounds={bounds} // Use the room bounds so the texture is seamless
+                            bounds={bounds}
                             textureUrl={lipColor}
                             panelWidth={productPanelWidth}
-                            panelHeight={productPanelWidth} // Use panelWidth for panelHeight since it's an alias in CeilingTextureRect
+                            panelHeight={productPanelWidth}
                             direction={lipDirection}
                           />,
                         );
@@ -3220,7 +3216,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                       );
                     };
 
-                    // Top polygon
                     if (showTop) {
                       drawLip(
                         "top",
@@ -3237,7 +3232,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         topColor,
                       );
                     }
-                    // Right polygon
                     if (showRight) {
                       drawLip(
                         "right",
@@ -3254,7 +3248,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         rightColor,
                       );
                     }
-                    // Bottom polygon
                     if (showBottom) {
                       drawLip(
                         "bottom",
@@ -3271,7 +3264,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         bottomColor,
                       );
                     }
-                    // Left polygon
                     if (showLeft) {
                       drawLip(
                         "left",
@@ -3289,7 +3281,6 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                       );
                     }
 
-                    // Draw lines connecting corners for sharper 3D look
                     if (showTop && showLeft)
                       elements.push(
                         <Line
@@ -3331,29 +3322,34 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                         />,
                       );
 
-                    // Update trapBounds so the inner texture is drawn inside/outside the lip
                     trapBounds = nextTrapBounds;
                   }
                 }
 
-                const clipF =
-                  i === 0
-                    ? clipFunc
-                    : (ctx: any) => {
-                        ctx.rect(
-                          trapBounds.minX,
-                          trapBounds.minY,
-                          trapBounds.width,
-                          trapBounds.height,
-                        );
-                      };
+                const clipF = (ctx: any) => {
+                  if (trapPolygon.length >= 3) {
+                    ctx.beginPath();
+                    ctx.moveTo(trapPolygon[0].x, trapPolygon[0].y);
+                    for (let pIdx = 1; pIdx < trapPolygon.length; pIdx++) {
+                      ctx.lineTo(trapPolygon[pIdx].x, trapPolygon[pIdx].y);
+                    }
+                    ctx.closePath();
+                  } else {
+                    ctx.rect(
+                      trapBounds.minX,
+                      trapBounds.minY,
+                      trapBounds.width,
+                      trapBounds.height,
+                    );
+                  }
+                };
 
                 if (isTexture) {
                   elements.push(
                     <CeilingTextureRect
                       key={`texture-${i}`}
                       clipFunc={clipF}
-                      bounds={trapBounds}
+                      bounds={bounds}
                       textureUrl={color}
                       panelWidth={productPanelWidth}
                       panelHeight={productPanelWidth}
@@ -3361,18 +3357,29 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                     />,
                   );
                 } else if (i > 0) {
-                  // Base (i=0) solid color is handled by the Line background above
-                  elements.push(
-                    <Rect
-                      key={`rect-${i}`}
-                      x={trapBounds.minX}
-                      y={trapBounds.minY}
-                      width={trapBounds.width}
-                      height={trapBounds.height}
-                      fill={color}
-                      listening={false}
-                    />,
-                  );
+                  if (trapPolygon.length >= 3) {
+                    elements.push(
+                      <Line
+                        key={`rect-${i}`}
+                        points={trapPolygon.flatMap((p: any) => [p.x, p.y])}
+                        fill={color}
+                        closed={true}
+                        listening={false}
+                      />,
+                    );
+                  } else {
+                    elements.push(
+                      <Rect
+                        key={`rect-${i}`}
+                        x={trapBounds.minX}
+                        y={trapBounds.minY}
+                        width={trapBounds.width}
+                        height={trapBounds.height}
+                        fill={color}
+                        listening={false}
+                      />,
+                    );
+                  }
                 }
 
                 lastBounds = trapBounds;
@@ -3442,19 +3449,16 @@ const WallEditor = forwardRef((props: WallEditorProps, ref) => {
                 let currentInset = 0;
                 traps.forEach((trap: any, i: number) => {
                   currentInset += (trap.width / 100) * SCALE;
-                  const tw = bounds.width - 2 * currentInset;
-                  const th = bounds.height - 2 * currentInset;
+                  const insetPts = insetPolygon(points, currentInset);
 
-                  if (tw > 0 && th > 0) {
+                  if (insetPts.length >= 3) {
                     elements.push(
-                      <Rect
+                      <Line
                         key={`trap-${i}-drop`}
-                        x={bounds.minX + currentInset}
-                        y={bounds.minY + currentInset}
-                        width={tw}
-                        height={th}
+                        points={insetPts.flatMap((p: any) => [p.x, p.y])}
                         stroke={activeWall.trapLineColor || "#3b82f6"}
                         strokeWidth={3 / zoom}
+                        closed={true}
                         listening={false}
                       />,
                     );

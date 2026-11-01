@@ -353,7 +353,7 @@ export default function Home() {
               price="89.999"
               totalValue="Rp 299.000"
               todayPrice="Rp 89.999"
-              discountText="HEMAT Rp209,001 (29,8786%)"
+              discountText="HEMAT Rp209,001 (69.9%)"
               countdown="10:30:20"
               features={[
                 {
@@ -377,6 +377,10 @@ export default function Home() {
                   title: "Akses penuh selama 1 bulan",
                   description: "",
                 },
+                {
+                  title: "GRATIS E-Book",
+                  description: "",
+                },
               ]}
             />
             <PaymentCard
@@ -385,7 +389,7 @@ export default function Home() {
               price="150.000"
               totalValue="Rp 697.500"
               todayPrice="Rp 150.000"
-              discountText="HEMAT Rp747.000 (83,28%%)"
+              discountText="HEMAT Rp747.000 (83,28%)"
               countdown="10:30:20"
               features={[
                 {
@@ -406,6 +410,10 @@ export default function Home() {
                 },
                 {
                   title: "Akses penuh selama 3 bulan",
+                  description: "",
+                },
+                {
+                  title: "GRATIS E-Book",
                   description: "",
                 },
               ]}
