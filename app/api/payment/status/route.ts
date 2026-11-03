@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import crypto from "crypto";
+import { processPaidOrder } from "@/lib/payment-service";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -45,46 +45,16 @@ export async function GET(req: NextRequest) {
   // ── 3. Duitku returnUrl already told us the result via resultCode param ─────
   //    resultCode=00 → PAID, resultCode=01 → FAILED, resultCode=02 → EXPIRED
   if (resultCode === "00") {
-    console.log("[status] resultCode=00 detected in URL, processing payment:", id);
+    console.log("[status] resultCode=00 detected in URL, processing payment directly:", id);
 
-    // Trigger the full callback logic internally (account creation etc.)
+    // Call shared service directly — eliminates internal HTTP fetch failures / network loops
     try {
-      const merchantCode = process.env.DUITKU_MERCHANT_CODE!;
-      const apiKey = process.env.DUITKU_API_KEY!;
-
-      // Build the same MD5 signature the callback verifies
-      const callbackSignature = crypto
-        .createHash("md5")
-        .update(merchantCode + id + String(order.amount) + apiKey)
-        .digest("hex");
-
-      const baseUrl =
-        process.env.NODE_ENV === "production"
-          ? process.env.NEXT_PUBLIC_APP_URL!
-          : "http://localhost:3000";
-
-      const callbackRes = await fetch(
-        `${baseUrl}/api/payment/duitku/callback`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            merchantCode,
-            merchantOrderId: id,
-            amount: String(order.amount),
-            signature: callbackSignature,
-            resultCode: "00",
-            reference,
-          }),
-        },
-      );
-
-      console.log("[status] internal callback response:", callbackRes.status);
+      await processPaidOrder(id, reference, order.amount);
     } catch (err) {
-      console.error("[status] internal callback failed:", err);
+      console.error("[status] direct processPaidOrder failed:", err);
     }
 
-    // Re-read after callback
+    // Re-read after processing
     const { data: updated } = await supabaseAdmin
       .from("orders")
       .select(
