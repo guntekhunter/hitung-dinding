@@ -137,6 +137,60 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    {/* Manual activation form */}
+                    <div className="p-4 border-b border-slate-200 bg-slate-50">
+                        <h3 className="text-lg font-medium text-slate-800 mb-2">Manual Activation</h3>
+                        <form
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget as HTMLFormElement;
+                                const merchant = (form.elements.namedItem('merchant') as HTMLInputElement).value.trim();
+                                const reference = (form.elements.namedItem('reference') as HTMLInputElement).value.trim();
+                                if (!merchant) {
+                                    alert('Merchant Order ID required');
+                                    return;
++                                }
++                                try {
++                                    const res = await fetch('/api/manual-activate', {
++                                        method: 'POST',
++                                        headers: { 'Content-Type': 'application/json' },
++                                        body: JSON.stringify({ merchantOrderId: merchant, reference: reference || undefined }),
++                                    });
++                                    const data = await res.json();
++                                    if (res.ok) {
++                                        alert('Activation successful: ' + data.message);
++                                        // Optionally refresh dashboard data
++                                        router.refresh();
++                                    } else {
++                                        alert('Activation failed: ' + (data.message || 'Unknown error'));
++                                    }
++                                } catch (err) {
++                                    console.error(err);
++                                    alert('Activation error');
++                                }
++                            }}
++                            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
++                        >
++                            <input
++                                type="text"
++                                name="merchant"
++                                placeholder="Merchant Order ID (e.g., ORD-XXXX)"
++                                className="border rounded px-3 py-2 focus:outline-none focus:ring"
++                            />
++                            <input
++                                type="text"
++                                name="reference"
++                                placeholder="PG Transaction ID (optional)"
++                                className="border rounded px-3 py-2 focus:outline-none focus:ring"
++                            />
++                            <button
++                                type="submit"
++                                className="col-span-2 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700"
++                            >
++                                Activate Account
++                            </button>
++                        </form>
++                    </div>
                         <div className="px-6 py-4 border-b border-slate-200">
                             <h2 className="text-lg font-semibold text-slate-800">Paying Customers List</h2>
                         </div>
