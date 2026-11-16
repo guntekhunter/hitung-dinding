@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../store/useAuthStore";
-import { getDashboardData } from "./actions";
-import { Users, DollarSign, Activity } from "lucide-react";
+import { getDashboardData, sendResetPasswordEmail } from "./actions";
+import { Users, DollarSign, Activity, KeyRound, Loader2, Check } from "lucide-react";
 
 
 type Customer = {
@@ -23,6 +23,47 @@ export default function DashboardPage() {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
+    const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+    const [statusFeedback, setStatusFeedback] = useState<{ [key: string]: { type: "success" | "error"; message: string } }>({});
+
+    const handleSendResetPassword = async (customer: Customer) => {
+        if (!user || !customer.email || customer.email === "-") {
+            alert("No valid email address found for this user.");
+            return;
+        }
+
+        const confirmSend = window.confirm(`Send password reset email to ${customer.email}?`);
+        if (!confirmSend) return;
+
+        setSendingEmailId(customer.user_id);
+        setStatusFeedback((prev) => ({ ...prev, [customer.user_id]: undefined as any }));
+
+        try {
+            const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+            await sendResetPasswordEmail(user.id, customer.email, origin);
+            setStatusFeedback((prev) => ({
+                ...prev,
+                [customer.user_id]: { type: "success", message: "Email sent!" },
+            }));
+            setTimeout(() => {
+                setStatusFeedback((prev) => {
+                    const updated = { ...prev };
+                    delete updated[customer.user_id];
+                    return updated;
+                });
+            }, 4000);
+        } catch (err: any) {
+            setStatusFeedback((prev) => ({
+                ...prev,
+                [customer.user_id]: {
+                    type: "error",
+                    message: err.message || "Failed to send reset email",
+                },
+            }));
+        } finally {
+            setSendingEmailId(null);
+        }
+    };
 
     useEffect(() => {
         if (!user) return; // Wait for auth hydration
@@ -202,26 +243,63 @@ export default function DashboardPage() {
                                         <th className="px-6 py-4 text-sm font-medium text-slate-500">WhatsApp</th>
                                         <th className="px-6 py-4 text-sm font-medium text-slate-500">Created At</th>
                                         <th className="px-6 py-4 text-sm font-medium text-slate-500">Expired At</th>
+                                        <th className="px-6 py-4 text-sm font-medium text-slate-500 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
                                     {customers.length > 0 ? (
-                                        customers.map((customer) => (
-                                            <tr key={customer.user_id} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-6 py-4 text-sm font-medium text-slate-900">{customer.name}</td>
-                                                <td className="px-6 py-4 text-sm text-slate-500">{customer.email}</td>
-                                                <td className="px-6 py-4 text-sm text-slate-500">{customer.wa_number}</td>
-                                                <td className="px-6 py-4 text-sm text-slate-500">
-                                                    {customer.created_at ? new Date(customer.created_at).toLocaleDateString("id-ID") : "-"}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-slate-500">
-                                                    {customer.expired_at ? new Date(customer.expired_at).toLocaleDateString("id-ID") : "-"}
-                                                </td>
-                                            </tr>
-                                        ))
+                                        customers.map((customer) => {
+                                            const isSending = sendingEmailId === customer.user_id;
+                                            const feedback = statusFeedback[customer.user_id];
+                                            const hasEmail = customer.email && customer.email !== "-";
+
+                                            return (
+                                                <tr key={customer.user_id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-6 py-4 text-sm font-medium text-slate-900">{customer.name}</td>
+                                                    <td className="px-6 py-4 text-sm text-slate-500">{customer.email}</td>
+                                                    <td className="px-6 py-4 text-sm text-slate-500">{customer.wa_number}</td>
+                                                    <td className="px-6 py-4 text-sm text-slate-500">
+                                                        {customer.created_at ? new Date(customer.created_at).toLocaleDateString("id-ID") : "-"}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-slate-500">
+                                                        {customer.expired_at ? new Date(customer.expired_at).toLocaleDateString("id-ID") : "-"}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {feedback && (
+                                                                <span
+                                                                    className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
+                                                                        feedback.type === "success"
+                                                                            ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                                                                            : "text-red-700 bg-red-50 border border-red-200"
+                                                                    }`}
+                                                                >
+                                                                    {feedback.type === "success" && <Check className="w-3 h-3" />}
+                                                                    {feedback.message}
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                disabled={isSending || !hasEmail}
+                                                                onClick={() => handleSendResetPassword(customer)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                                title={!hasEmail ? "No email available" : "Send reset password email"}
+                                                            >
+                                                                {isSending ? (
+                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                ) : (
+                                                                    <KeyRound className="w-3.5 h-3.5" />
+                                                                )}
+                                                                <span>{isSending ? "Sending..." : "Reset Password"}</span>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-8 text-center text-slate-500 text-sm">
+                                            <td colSpan={6} className="px-6 py-8 text-center text-slate-500 text-sm">
                                                 No paying customers found.
                                             </td>
                                         </tr>

@@ -64,3 +64,36 @@ export async function getDashboardData(userId: string) {
 
     return payingCustomers;
 }
+
+export async function sendResetPasswordEmail(adminUserId: string, targetEmail: string, origin?: string) {
+    if (!adminUserId) {
+        throw new Error("Unauthorized");
+    }
+
+    // 1. Verify caller is super admin
+    const { data: user, error: userError } = await supabaseAdmin
+        .from("users")
+        .select("role")
+        .eq("id", adminUserId)
+        .single();
+
+    if (userError || !user || user.role !== "super admin") {
+        throw new Error("Unauthorized: only super admin can perform this action");
+    }
+
+    if (!targetEmail || targetEmail === "-") {
+        throw new Error("Email address is invalid");
+    }
+
+    const redirectTo = `${origin || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/update-password`;
+
+    const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo,
+    });
+
+    if (resetError) {
+        throw new Error(resetError.message || "Failed to send reset password email");
+    }
+
+    return { success: true };
+}
