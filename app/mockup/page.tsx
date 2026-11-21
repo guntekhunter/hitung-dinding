@@ -514,6 +514,14 @@ function MockupPageContent() {
       }
     };
 
+    // Global listener to prevent native browser pinch/Ctrl+wheel zoom on the entire window (e.g. over toolbar)
+    // while keeping it passive: false so preventDefault works everywhere.
+    const preventWindowZoom = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -640,6 +648,7 @@ function MockupPageContent() {
       }
     };
 
+    window.addEventListener("wheel", preventWindowZoom, { passive: false });
     window.addEventListener("wheel", handleGlobalWheel, { passive: false });
     container.addEventListener("wheel", handleWheel, { passive: false });
     window.addEventListener("keydown", handleKeyDown, { passive: false });
@@ -651,6 +660,7 @@ function MockupPageContent() {
     container.addEventListener("touchmove", handleTouchMove, { passive: false });
 
     return () => {
+      window.removeEventListener("wheel", preventWindowZoom);
       window.removeEventListener("wheel", handleGlobalWheel);
       container.removeEventListener("wheel", handleWheel);
       window.removeEventListener("keydown", handleKeyDown);
