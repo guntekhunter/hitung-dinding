@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, Suspense, useState } from "react";
+import { useEffect, useRef, Suspense, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -173,6 +173,16 @@ function MockupPageContent() {
     index: number;
   } | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(panOffset);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { panRef.current = panOffset; }, [panOffset]);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const panStartOffsetRef = useRef({ x: 0, y: 0 });
+  const spaceDownRef = useRef(false);
+  const [topHandleKey, setTopHandleKey] = useState<string | null>(null);
   const [wallDropdownOpen, setWallDropdownOpen] = useState(false);
   const wallDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -334,57 +344,56 @@ function MockupPageContent() {
     return () => setIsColoringPreview(false);
   }, [id, loadProject, fetchProducts, setIsColoringPreview]);
 
-  // Handle Dragging
+  // Handle Dragging - uses refs so the effect doesn't re-register on every zoom/pan change
+  const draggingRef = useRef(draggingHandle);
+  useEffect(() => { draggingRef.current = draggingHandle; }, [draggingHandle]);
+
+  const handlePointerDown = useCallback((wallId: string, index: number, e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setCornersPast((prev) => [...prev, wallCorners]);
+    setCornersFuture([]);
+    setDraggingHandle({ wallId, index });
+    setTopHandleKey(`${wallId}-${index}`);
+  }, [wallCorners]);
+
   useEffect(() => {
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!draggingHandle || !containerRef.current) return;
-      if (e.cancelable && "touches" in e) {
-        e.preventDefault();
-      }
-      const inner = document.getElementById("mockup-canvas-inner");
-      if (!inner) return;
-      const rect = inner.getBoundingClientRect();
-      const clientX =
-        "touches" in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-      const clientY =
-        "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-
-      let x = (clientX - rect.left) / zoom;
-      let y = (clientY - rect.top) / zoom;
-
-      // Allow points to go outside the canvas dimensions for better perspective matching
-      // x = Math.max(0, Math.min(x, canvasDims.width));
-      // y = Math.max(0, Math.min(y, canvasDims.height));
-
+    const handlePointerMove = (e: PointerEvent) => {
+      const dh = draggingRef.current;
+      if (!dh) return;
+      e.preventDefault();
+      const s = zoomRef.current;
+      const p = panRef.current;
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      // Convert screen position to image coordinates
+      const x = (e.clientX - rect.left - p.x) / s;
+      const y = (e.clientY - rect.top - p.y) / s;
       setWallCorners((prev) => {
         const newCorners = { ...prev };
-        if (newCorners[draggingHandle.wallId]) {
-          const arr = [...newCorners[draggingHandle.wallId]];
-          arr[draggingHandle.index] = { x, y };
-          newCorners[draggingHandle.wallId] = arr;
+        if (newCorners[dh.wallId]) {
+          const arr = [...newCorners[dh.wallId]];
+          arr[dh.index] = { x, y };
+          newCorners[dh.wallId] = arr;
         }
         return newCorners;
       });
     };
 
-    const handleUp = () => {
+    const handlePointerUp = () => {
       setDraggingHandle(null);
     };
 
-    if (draggingHandle) {
-      window.addEventListener("mousemove", handleMove, { passive: false });
-      window.addEventListener("mouseup", handleUp);
-      window.addEventListener("touchmove", handleMove, { passive: false });
-      window.addEventListener("touchend", handleUp);
-    }
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-      window.removeEventListener("touchmove", handleMove);
-      window.removeEventListener("touchend", handleUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [draggingHandle, zoom, canvasDims]);
+  }, []);
 
   // Use a ref for wallCorners so undo/redo closures always have the latest value
   const wallCornersRef = useRef(wallCorners);
@@ -461,34 +470,103 @@ function MockupPageContent() {
     return () => window.removeEventListener("keydown", handleUndoRedo, true);
   }, []);
 
-  // Zoom Handling
+  // Zoom Handling - multiplicative, zoom toward cursor, unlimited
   useEffect(() => {
-    let initialDist = 0;
-    let initialZoom = 1;
+    let pinchInitialDist = 0;
+    let pinchInitialZoom = 1;
+    let pinchInitialMid = { x: 0, y: 0 };
+    let pinchInitialPan = { x: 0, y: 0 };
+
+    const clampZoom = (z: number) => Math.max(1e-6, Math.min(1e6, z));
+
+    const container = containerRef.current;
+    if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        setZoom((z) => {
-          const newZoom = e.deltaY < 0 ? z + 0.05 : z - 0.05;
-          return Math.max(0.05, Math.min(5, newZoom));
-        });
-      }
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+
+      // Multiplicative zoom
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      const oldZoom = zoomRef.current;
+      const newZoom = clampZoom(oldZoom * factor);
+
+      // Zoom toward cursor: adjust pan so point under cursor stays fixed
+      const newPanX = cursorX - (cursorX - panRef.current.x) * (newZoom / oldZoom);
+      const newPanY = cursorY - (cursorY - panRef.current.y) * (newZoom / oldZoom);
+
+      setZoom(newZoom);
+      setPanOffset({ x: newPanX, y: newPanY });
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === " " || e.code === "Space") {
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          spaceDownRef.current = true;
+        }
+      }
       if (
         e.ctrlKey &&
         (e.key === "=" || e.key === "-" || e.key === "+" || e.key === "_")
       ) {
         e.preventDefault();
-        setZoom((z) => {
-          const newZoom = e.key === "=" || e.key === "+" ? z + 0.1 : z - 0.1;
-          return Math.max(0.05, Math.min(5, newZoom));
-        });
+        const factor = e.key === "=" || e.key === "+" ? 1.15 : 1 / 1.15;
+        const oldZoom = zoomRef.current;
+        const newZoom = clampZoom(oldZoom * factor);
+        // Zoom toward center of container
+        const rect = container.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const newPanX = cx - (cx - panRef.current.x) * (newZoom / oldZoom);
+        const newPanY = cy - (cy - panRef.current.y) * (newZoom / oldZoom);
+        setZoom(newZoom);
+        setPanOffset({ x: newPanX, y: newPanY });
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === " " || e.code === "Space") {
+        spaceDownRef.current = false;
+      }
+    };
+
+    // Pan: drag on background, middle mouse, space+drag
+    const handlePointerDownPan = (e: PointerEvent) => {
+      // Middle mouse button or space+left click or left click on empty background
+      const isMiddle = e.button === 1;
+      const isSpaceDrag = e.button === 0 && spaceDownRef.current;
+      const isBackgroundDrag = e.button === 0 && !spaceDownRef.current && e.target === container;
+      if (isMiddle || isSpaceDrag || isBackgroundDrag) {
+        e.preventDefault();
+        isPanningRef.current = true;
+        panStartRef.current = { x: e.clientX, y: e.clientY };
+        panStartOffsetRef.current = { ...panRef.current };
+        container.setPointerCapture(e.pointerId);
+      }
+    };
+
+    const handlePointerMovePan = (e: PointerEvent) => {
+      if (!isPanningRef.current) return;
+      e.preventDefault();
+      const dx = e.clientX - panStartRef.current.x;
+      const dy = e.clientY - panStartRef.current.y;
+      setPanOffset({
+        x: panStartOffsetRef.current.x + dx,
+        y: panStartOffsetRef.current.y + dy,
+      });
+    };
+
+    const handlePointerUpPan = (e: PointerEvent) => {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        try { container.releasePointerCapture(e.pointerId); } catch {}
+      }
+    };
+
+    // Touch pinch zoom
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
         e.preventDefault();
@@ -496,11 +574,14 @@ function MockupPageContent() {
           e.touches[0].pageX - e.touches[1].pageX,
           e.touches[0].pageY - e.touches[1].pageY,
         );
-        initialDist = dist;
-        setZoom((z) => {
-          initialZoom = z;
-          return z;
-        });
+        pinchInitialDist = dist;
+        pinchInitialZoom = zoomRef.current;
+        const rect = container.getBoundingClientRect();
+        pinchInitialMid = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+        };
+        pinchInitialPan = { ...panRef.current };
       }
     };
 
@@ -511,23 +592,80 @@ function MockupPageContent() {
           e.touches[0].pageX - e.touches[1].pageX,
           e.touches[0].pageY - e.touches[1].pageY,
         );
-        const newZoom = initialZoom * (dist / initialDist);
-        setZoom(Math.max(0.05, Math.min(5, newZoom)));
+        const newZoom = clampZoom(pinchInitialZoom * (dist / pinchInitialDist));
+        // Zoom toward pinch midpoint
+        const newPanX = pinchInitialMid.x - (pinchInitialMid.x - pinchInitialPan.x) * (newZoom / pinchInitialZoom);
+        const newPanY = pinchInitialMid.y - (pinchInitialMid.y - pinchInitialPan.y) * (newZoom / pinchInitialZoom);
+        setZoom(newZoom);
+        setPanOffset({ x: newPanX, y: newPanY });
       }
     };
 
-    window.addEventListener("wheel", handleWheel, { passive: false });
+    container.addEventListener("wheel", handleWheel, { passive: false });
     window.addEventListener("keydown", handleKeyDown, { passive: false });
-    window.addEventListener("touchstart", handleTouchStart, { passive: false });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("keyup", handleKeyUp);
+    container.addEventListener("pointerdown", handlePointerDownPan);
+    container.addEventListener("pointermove", handlePointerMovePan);
+    container.addEventListener("pointerup", handlePointerUpPan);
+    container.addEventListener("touchstart", handleTouchStart, { passive: false });
+    container.addEventListener("touchmove", handleTouchMove, { passive: false });
 
     return () => {
-      window.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("wheel", handleWheel);
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("keyup", handleKeyUp);
+      container.removeEventListener("pointerdown", handlePointerDownPan);
+      container.removeEventListener("pointermove", handlePointerMovePan);
+      container.removeEventListener("pointerup", handlePointerUpPan);
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
     };
   }, []);
+
+  // Center image on load and on container resize
+  const centerImage = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const padding = 40;
+    const cw = container.clientWidth - padding * 2;
+    const ch = container.clientHeight - padding * 2;
+    if (cw <= 0 || ch <= 0) return;
+    const fitZoom = Math.min(cw / canvasDims.width, ch / canvasDims.height);
+    const s = Math.max(1e-6, fitZoom);
+    const panX = (container.clientWidth - canvasDims.width * s) / 2;
+    const panY = (container.clientHeight - canvasDims.height * s) / 2;
+    setZoom(s);
+    setPanOffset({ x: panX, y: panY });
+  }, [canvasDims]);
+
+  // Center on first load when canvasDims change (image loaded)
+  const hasInitialCentered = useRef(false);
+  useEffect(() => {
+    // Reset center flag when canvas dims change (new image loaded)
+    hasInitialCentered.current = false;
+  }, [canvasDims]);
+
+  useEffect(() => {
+    if (hasInitialCentered.current) return;
+    if (!containerRef.current) return;
+    // Wait a tick for layout to settle
+    const timer = setTimeout(() => {
+      centerImage();
+      hasInitialCentered.current = true;
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [canvasDims, centerImage]);
+
+  // ResizeObserver to recenter on container resize
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver(() => {
+      centerImage();
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [centerImage]);
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -1212,16 +1350,18 @@ function MockupPageContent() {
       <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
         <div
           ref={containerRef}
-          className="flex-1 min-h-0 min-w-0 relative overflow-auto bg-[#e5e5f7]"
+          className="flex-1 min-h-0 min-w-0 relative overflow-hidden bg-[#e5e5f7]"
+          style={{ touchAction: "none", cursor: spaceDownRef.current ? "grab" : "default" }}
         >
+          {/* Viewport transform wrapper - applies zoom and pan */}
           <div
-            className="flex items-center justify-center"
             style={{
-              width: canvasDims.width * zoom,
-              height: canvasDims.height * zoom,
-              position: "relative",
-              margin: "0 auto",
-              minHeight: "100%",
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+              transformOrigin: "0 0",
+              willChange: "transform",
+              position: "absolute",
+              top: 0,
+              left: 0,
             }}
           >
             <div
@@ -1230,10 +1370,7 @@ function MockupPageContent() {
               style={{
                 width: `${canvasDims.width}px`,
                 height: `${canvasDims.height}px`,
-                transform: `scale(${zoom})`,
-                transformOrigin: "center center",
                 transformStyle: "preserve-3d",
-                willChange: "transform",
               }}
             >
               {/* Background Image Layer - Separated to prevent mobile 3D transform clipping bugs */}
@@ -1288,31 +1425,6 @@ function MockupPageContent() {
                         />
                       </div>
                     </div>
-
-                    {/* Draggable Corner Handles */}
-                    {corners.map((corner, i) => (
-                      <div
-                        key={`${wallId}-corner-${i}`}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setCornersPast((prev) => [...prev, wallCorners]);
-                          setCornersFuture([]);
-                          setDraggingHandle({ wallId, index: i });
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          setCornersPast((prev) => [...prev, wallCorners]);
-                          setCornersFuture([]);
-                          setDraggingHandle({ wallId, index: i });
-                        }}
-                        className="absolute w-6 h-6 bg-white border-[3px] border-[#7B6DED] rounded-full shadow-md cursor-move -ml-3 -mt-3 hover:scale-110 active:scale-95 transition-transform touch-none"
-                        style={{
-                          left: corner.x,
-                          top: corner.y,
-                          zIndex: 50 + includedWalls.indexOf(wallId) * 10,
-                        }}
-                      />
-                    ))}
                   </div>
                 );
               })}
@@ -1328,6 +1440,90 @@ function MockupPageContent() {
               )}
             </div>
           </div>
+
+          {/* Corner Handles Overlay - rendered in screen space, not clipped by overflow hidden */}
+          <svg
+            className="absolute inset-0 pointer-events-none"
+            style={{ width: "100%", height: "100%", zIndex: 100, overflow: "visible" }}
+          >
+            {includedWalls.map((wallId) => {
+              const corners = wallCorners[wallId];
+              if (!corners || corners.length !== 4) return null;
+              // Convert image coords to screen coords
+              const screenCorners = corners.map((c) => ({
+                x: c.x * zoom + panOffset.x,
+                y: c.y * zoom + panOffset.y,
+              }));
+              return (
+                <g key={`outline-${wallId}`}>
+                  <polygon
+                    points={screenCorners.map((c) => `${c.x},${c.y}`).join(" ")}
+                    fill="none"
+                    stroke="#7B6DED"
+                    strokeWidth={1.5}
+                    vectorEffect="non-scaling-stroke"
+                    opacity={0.7}
+                  />
+                  {/* Lines between adjacent corners */}
+                  {screenCorners.map((c, i) => {
+                    const next = screenCorners[(i + 1) % 4];
+                    return (
+                      <line
+                        key={`line-${wallId}-${i}`}
+                        x1={c.x}
+                        y1={c.y}
+                        x2={next.x}
+                        y2={next.y}
+                        stroke="#7B6DED"
+                        strokeWidth={1.5}
+                        vectorEffect="non-scaling-stroke"
+                        opacity={0.5}
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Corner Handle Hit Areas - rendered in screen space as absolutely positioned divs */}
+          {includedWalls.map((wallId) => {
+            const corners = wallCorners[wallId];
+            if (!corners) return null;
+            return corners.map((corner, i) => {
+              const screenX = corner.x * zoom + panOffset.x;
+              const screenY = corner.y * zoom + panOffset.y;
+              const handleKey = `${wallId}-${i}`;
+              const isActive = draggingHandle?.wallId === wallId && draggingHandle?.index === i;
+              const isTop = topHandleKey === handleKey;
+              return (
+                <div
+                  key={`${wallId}-corner-${i}`}
+                  onPointerDown={(e) => handlePointerDown(wallId, i, e)}
+                  className="absolute cursor-move touch-none"
+                  style={{
+                    left: screenX - 16,
+                    top: screenY - 16,
+                    width: 32,
+                    height: 32,
+                    zIndex: isActive ? 210 : isTop ? 200 : 150 + includedWalls.indexOf(wallId) * 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    className="rounded-full bg-white border-[3px] border-[#7B6DED] shadow-md transition-transform"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      transform: isActive ? "scale(1.2)" : "scale(1)",
+                    }}
+                  />
+                </div>
+              );
+            });
+          })}
         </div>
 
         {/* Right Sidebar: Toolbar */}
