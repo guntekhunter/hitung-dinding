@@ -492,9 +492,9 @@ function MockupPageContent() {
     let pinchInitialMid = { x: 0, y: 0 };
     let pinchInitialPan = { x: 0, y: 0 };
 
-    // Limit zoom scale matching WallEditor (0.1 to 10)
+    // No lower limit on zoom-out; cap zoom-in at 10×
     const clampZoom = (z: number) =>
-      Math.min(10, Math.max(0.1, z));
+      Math.min(10, Math.max(0.001, z));
 
     const zoomAtPoint = (clientX: number, clientY: number, factor: number) => {
       const rect = container.getBoundingClientRect();
