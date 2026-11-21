@@ -625,6 +625,14 @@ function MockupPageContent() {
       });
     };
 
+    // Prevent native browser page zoom globally (Ctrl+wheel / pinch anywhere on the window)
+    const handleWindowWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener("wheel", handleWindowWheel, { passive: false });
     container.addEventListener("wheel", handleWheel, { passive: false });
     container.addEventListener("pointerdown", handlePointerDownPan);
     container.addEventListener("pointermove", handlePointerMovePan);
@@ -640,6 +648,7 @@ function MockupPageContent() {
     window.addEventListener("keyup", handleKeyUp);
 
     return () => {
+      window.removeEventListener("wheel", handleWindowWheel);
       container.removeEventListener("wheel", handleWheel);
       container.removeEventListener("pointerdown", handlePointerDownPan);
       container.removeEventListener("pointermove", handlePointerMovePan);
