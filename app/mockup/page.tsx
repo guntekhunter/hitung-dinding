@@ -490,10 +490,9 @@ function MockupPageContent() {
     let pinchInitialMid = { x: 0, y: 0 };
     let pinchInitialPan = { x: 0, y: 0 };
 
-    // No practical minimum zoom-out limit. Keep zoom positive to avoid
-    // invalid CSS transforms; retain a generous upper limit for stability.
+    // Limit zoom scale matching WallEditor (0.1 to 10)
     const clampZoom = (z: number) =>
-      Math.min(1e6, Math.max(Number.MIN_VALUE, z));
+      Math.min(10, Math.max(0.1, z));
 
     const zoomAtPoint = (clientX: number, clientY: number, factor: number) => {
       const rect = container.getBoundingClientRect();
@@ -511,12 +510,15 @@ function MockupPageContent() {
       });
     };
 
-    // Listen ONLY on the canvas viewport. Scrolling/zooming over the toolbar
-    // will not change the canvas or trigger browser zoom suppression.
+    // Only zoom when Ctrl or Shift is pressed, matching WallEditor behavior exactly.
+    // Plain wheel scrolls naturally or does nothing, ensuring the toolbar and normal mouse scrolling aren't hijacked.
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const factor = Math.exp(-e.deltaY * 0.0015);
-      zoomAtPoint(e.clientX, e.clientY, factor);
+      if (e.ctrlKey || e.shiftKey || e.metaKey) {
+        e.preventDefault();
+        const scaleBy = 1.1;
+        const factor = e.deltaY > 0 ? 1 / scaleBy : scaleBy;
+        zoomAtPoint(e.clientX, e.clientY, factor);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1379,13 +1381,13 @@ function MockupPageContent() {
   }
 
   return (
-    <main className="flex flex-col h-[calc(100vh-60px)] md:h-screen overflow-hidden bg-slate-50">
-      <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
+    <main className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50">
+      <div className="flex-1 min-h-0 relative">
         <div
           ref={containerRef}
-          className="flex-1 min-h-0 min-w-0 relative overflow-hidden bg-[#e5e5f7] outline-none"
+          className="w-full h-full relative overflow-hidden bg-[#e5e5f7] outline-none"
           tabIndex={0}
-          aria-label="Mockup canvas. Use the mouse wheel to zoom and Space plus drag to pan."
+          aria-label="Mockup canvas. Use Ctrl/Shift + mouse wheel to zoom and Space plus drag to pan."
           style={{
             touchAction: "none",
             cursor: spaceDownRef.current ? "grab" : "default",
@@ -1574,9 +1576,10 @@ function MockupPageContent() {
             });
           })}
         </div>
+      </div>
 
-        {/* Right Sidebar: Toolbar */}
-        <div className="w-full md:w-[320px] h-[45vh] md:h-full flex flex-col flex-shrink-0 border-t md:border-t-0 md:border-l border-gray-200 shadow-sm z-10 bg-white">
+      {/* Right Sidebar: Toolbar */}
+      <div className="w-full md:w-[320px] h-[45vh] md:h-full flex flex-col flex-shrink-0 border-t md:border-t-0 md:border-l border-gray-200 shadow-sm z-10 bg-white">
           <div className="flex justify-end p-4 gap-2">
             <button
               onClick={() => router.push("/projects")}
@@ -1756,7 +1759,6 @@ function MockupPageContent() {
             />
           </div>
         </div>
-      </div>
     </main>
   );
 }
