@@ -481,6 +481,8 @@ function MockupPageContent() {
 
   // Canvas-only zoom and pan. The toolbar is outside containerRef, so it
   // never receives canvas transforms or canvas wheel handling.
+  // IMPORTANT: depends on `loadingProject` so that the effect re-runs once
+  // the loading screen is replaced by the real canvas container element.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -510,15 +512,14 @@ function MockupPageContent() {
       });
     };
 
-    // Only zoom when Ctrl or Shift is pressed, matching WallEditor behavior exactly.
-    // Plain wheel scrolls naturally or does nothing, ensuring the toolbar and normal mouse scrolling aren't hijacked.
+    // Zoom on any wheel event over the canvas (no modifier key required).
+    // This matches the typical mockup viewer UX: scroll to zoom the canvas.
+    // The toolbar is outside this container, so it is never affected.
     const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.shiftKey || e.metaKey) {
-        e.preventDefault();
-        const scaleBy = 1.1;
-        const factor = e.deltaY > 0 ? 1 / scaleBy : scaleBy;
-        zoomAtPoint(e.clientX, e.clientY, factor);
-      }
+      e.preventDefault();
+      const scaleBy = 1.1;
+      const factor = e.deltaY > 0 ? 1 / scaleBy : scaleBy;
+      zoomAtPoint(e.clientX, e.clientY, factor);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -554,7 +555,8 @@ function MockupPageContent() {
       if (e.key === " " || e.code === "Space") spaceDownRef.current = false;
     };
 
-    // Pan using middle mouse (anywhere on canvas/image), Space + drag, or dragging the empty canvas.
+    // Pan using middle mouse button (button 1) or Space + left-click drag.
+    // Left-click drag on empty canvas background also pans.
     const handlePointerDownPan = (e: PointerEvent) => {
       const target = e.target as Node;
       const isMiddle = e.button === 1 || e.buttons === 4;
@@ -632,12 +634,22 @@ function MockupPageContent() {
       }
     };
 
+    // Prevent browser auto-scroll icon on middle-click inside the canvas
+    const handleAuxClick = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
+    };
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
+    };
+
     window.addEventListener("wheel", handleWindowWheel, { passive: false });
     container.addEventListener("wheel", handleWheel, { passive: false });
     container.addEventListener("pointerdown", handlePointerDownPan);
     container.addEventListener("pointermove", handlePointerMovePan);
     container.addEventListener("pointerup", handlePointerUpPan);
     container.addEventListener("pointercancel", handlePointerUpPan);
+    container.addEventListener("auxclick", handleAuxClick);
+    container.addEventListener("mousedown", handleMouseDown);
     container.addEventListener("touchstart", handleTouchStart, {
       passive: false,
     });
@@ -654,12 +666,15 @@ function MockupPageContent() {
       container.removeEventListener("pointermove", handlePointerMovePan);
       container.removeEventListener("pointerup", handlePointerUpPan);
       container.removeEventListener("pointercancel", handlePointerUpPan);
+      container.removeEventListener("auxclick", handleAuxClick);
+      container.removeEventListener("mousedown", handleMouseDown);
       container.removeEventListener("touchstart", handleTouchStart);
       container.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingProject]);
 
   // Center image on load and on container resize
   const centerImage = useCallback(() => {
@@ -1396,7 +1411,7 @@ function MockupPageContent() {
           ref={containerRef}
           className="w-full h-full relative overflow-hidden bg-[#e5e5f7] outline-none"
           tabIndex={0}
-          aria-label="Mockup canvas. Use Ctrl/Shift + mouse wheel to zoom and Space plus drag to pan."
+          aria-label="Mockup canvas. Use mouse wheel to zoom and middle-click or Space plus drag to pan."
           style={{
             touchAction: "none",
             cursor: spaceDownRef.current ? "grab" : "default",
