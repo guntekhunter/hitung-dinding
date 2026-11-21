@@ -176,8 +176,12 @@ function MockupPageContent() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const zoomRef = useRef(zoom);
   const panRef = useRef(panOffset);
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-  useEffect(() => { panRef.current = panOffset; }, [panOffset]);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  useEffect(() => {
+    panRef.current = panOffset;
+  }, [panOffset]);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const panStartOffsetRef = useRef({ x: 0, y: 0 });
@@ -346,17 +350,22 @@ function MockupPageContent() {
 
   // Handle Dragging - uses refs so the effect doesn't re-register on every zoom/pan change
   const draggingRef = useRef(draggingHandle);
-  useEffect(() => { draggingRef.current = draggingHandle; }, [draggingHandle]);
+  useEffect(() => {
+    draggingRef.current = draggingHandle;
+  }, [draggingHandle]);
 
-  const handlePointerDown = useCallback((wallId: string, index: number, e: React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    setCornersPast((prev) => [...prev, wallCorners]);
-    setCornersFuture([]);
-    setDraggingHandle({ wallId, index });
-    setTopHandleKey(`${wallId}-${index}`);
-  }, [wallCorners]);
+  const handlePointerDown = useCallback(
+    (wallId: string, index: number, e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      setCornersPast((prev) => [...prev, wallCorners]);
+      setCornersFuture([]);
+      setDraggingHandle({ wallId, index });
+      setTopHandleKey(`${wallId}-${index}`);
+    },
+    [wallCorners],
+  );
 
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
@@ -470,206 +479,174 @@ function MockupPageContent() {
     return () => window.removeEventListener("keydown", handleUndoRedo, true);
   }, []);
 
-  // Zoom Handling - multiplicative, zoom toward cursor, unlimited
+  // Canvas-only zoom and pan. The toolbar is outside containerRef, so it
+  // never receives canvas transforms or canvas wheel handling.
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
     let pinchInitialDist = 0;
     let pinchInitialZoom = 1;
     let pinchInitialMid = { x: 0, y: 0 };
     let pinchInitialPan = { x: 0, y: 0 };
 
-    const clampZoom = (z: number) => Math.max(1e-6, Math.min(1e6, z));
+    // No practical minimum zoom-out limit. Keep zoom positive to avoid
+    // invalid CSS transforms; retain a generous upper limit for stability.
+    const clampZoom = (z: number) =>
+      Math.min(1e6, Math.max(Number.MIN_VALUE, z));
 
-    // Global wheel handler: when ctrlKey is pressed anywhere on the window, prevent browser zoom!
-    const handleGlobalWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const container = containerRef.current;
-        if (!container) return;
-        const rect = container.getBoundingClientRect();
-        
-        // If cursor is outside the canvas container (e.g. over sidebar/toolbar), ignore zoom!
-        if (
-          e.clientX < rect.left ||
-          e.clientX > rect.right ||
-          e.clientY < rect.top ||
-          e.clientY > rect.bottom
-        ) {
-          return;
-        }
-
-        const cursorX = e.clientX - rect.left;
-        const cursorY = e.clientY - rect.top;
-
-        // Multiplicative zoom
-        const factor = Math.exp(-e.deltaY * 0.0015);
-        const oldZoom = zoomRef.current;
-        const newZoom = clampZoom(oldZoom * factor);
-
-        // Zoom toward cursor: adjust pan so point stays fixed
-        const newPanX = cursorX - (cursorX - panRef.current.x) * (newZoom / oldZoom);
-        const newPanY = cursorY - (cursorY - panRef.current.y) * (newZoom / oldZoom);
-
-        setZoom(newZoom);
-        setPanOffset({ x: newPanX, y: newPanY });
-      }
-    };
-
-    // Global listener to prevent native browser pinch/Ctrl+wheel zoom on the entire window (e.g. over toolbar)
-    // while keeping it passive: false so preventDefault works everywhere.
-    const preventWindowZoom = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-      }
-    };
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // If ctrlKey is pressed, handleGlobalWheel already handled it and prevented default
-      if (e.ctrlKey || e.metaKey) {
-        return;
-      }
-      e.preventDefault();
+    const zoomAtPoint = (clientX: number, clientY: number, factor: number) => {
       const rect = container.getBoundingClientRect();
-      const cursorX = e.clientX - rect.left;
-      const cursorY = e.clientY - rect.top;
-
-      // Multiplicative zoom
-      const factor = Math.exp(-e.deltaY * 0.0015);
+      const cursorX = clientX - rect.left;
+      const cursorY = clientY - rect.top;
       const oldZoom = zoomRef.current;
       const newZoom = clampZoom(oldZoom * factor);
+      if (!Number.isFinite(newZoom) || oldZoom <= 0) return;
 
-      // Zoom toward cursor: adjust pan so point under cursor stays fixed
-      const newPanX = cursorX - (cursorX - panRef.current.x) * (newZoom / oldZoom);
-      const newPanY = cursorY - (cursorY - panRef.current.y) * (newZoom / oldZoom);
-
+      const ratio = newZoom / oldZoom;
       setZoom(newZoom);
-      setPanOffset({ x: newPanX, y: newPanY });
+      setPanOffset({
+        x: cursorX - (cursorX - panRef.current.x) * ratio,
+        y: cursorY - (cursorY - panRef.current.y) * ratio,
+      });
+    };
+
+    // Listen ONLY on the canvas viewport. Scrolling/zooming over the toolbar
+    // will not change the canvas or trigger browser zoom suppression.
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      zoomAtPoint(e.clientX, e.clientY, factor);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === " " || e.code === "Space") {
-        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-          e.preventDefault();
+        if (
+          !(e.target instanceof HTMLInputElement) &&
+          !(e.target instanceof HTMLTextAreaElement) &&
+          !(e.target instanceof HTMLSelectElement) &&
+          !(e.target instanceof HTMLButtonElement)
+        ) {
           spaceDownRef.current = true;
+          e.preventDefault();
         }
       }
+      // Zoom shortcuts only apply while the canvas viewport is focused.
       if (
-        e.ctrlKey &&
-        (e.key === "=" || e.key === "-" || e.key === "+" || e.key === "_")
+        document.activeElement === container &&
+        (e.ctrlKey || e.metaKey) &&
+        ["=", "-", "+", "_"].includes(e.key)
       ) {
         e.preventDefault();
-        const factor = e.key === "=" || e.key === "+" ? 1.15 : 1 / 1.15;
-        const oldZoom = zoomRef.current;
-        const newZoom = clampZoom(oldZoom * factor);
-        // Zoom toward center of container
+        const factor = e.key === "-" || e.key === "_" ? 1 / 1.15 : 1.15;
         const rect = container.getBoundingClientRect();
-        const cx = rect.width / 2;
-        const cy = rect.height / 2;
-        const newPanX = cx - (cx - panRef.current.x) * (newZoom / oldZoom);
-        const newPanY = cy - (cy - panRef.current.y) * (newZoom / oldZoom);
-        setZoom(newZoom);
-        setPanOffset({ x: newPanX, y: newPanY });
+        zoomAtPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+          factor,
+        );
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === " " || e.code === "Space") {
-        spaceDownRef.current = false;
-      }
+      if (e.key === " " || e.code === "Space") spaceDownRef.current = false;
     };
 
-    // Pan: drag on background, middle mouse, space+drag
+    // Pan using middle mouse, Space + drag, or dragging the empty canvas.
     const handlePointerDownPan = (e: PointerEvent) => {
-      // Middle mouse button or space+left click or left click on empty background
+      const target = e.target as Node;
       const isMiddle = e.button === 1;
       const isSpaceDrag = e.button === 0 && spaceDownRef.current;
-      const isBackgroundDrag = e.button === 0 && !spaceDownRef.current && e.target === container;
+      const isBackgroundDrag =
+        e.button === 0 &&
+        !spaceDownRef.current &&
+        (target === container || target === container.firstElementChild);
+
       if (isMiddle || isSpaceDrag || isBackgroundDrag) {
         e.preventDefault();
         isPanningRef.current = true;
         panStartRef.current = { x: e.clientX, y: e.clientY };
         panStartOffsetRef.current = { ...panRef.current };
-        container.setPointerCapture(e.pointerId);
+        try {
+          container.setPointerCapture(e.pointerId);
+        } catch {}
       }
     };
 
     const handlePointerMovePan = (e: PointerEvent) => {
       if (!isPanningRef.current) return;
       e.preventDefault();
-      const dx = e.clientX - panStartRef.current.x;
-      const dy = e.clientY - panStartRef.current.y;
       setPanOffset({
-        x: panStartOffsetRef.current.x + dx,
-        y: panStartOffsetRef.current.y + dy,
+        x: panStartOffsetRef.current.x + e.clientX - panStartRef.current.x,
+        y: panStartOffsetRef.current.y + e.clientY - panStartRef.current.y,
       });
     };
 
     const handlePointerUpPan = (e: PointerEvent) => {
-      if (isPanningRef.current) {
-        isPanningRef.current = false;
-        try { container.releasePointerCapture(e.pointerId); } catch {}
-      }
+      if (!isPanningRef.current) return;
+      isPanningRef.current = false;
+      try {
+        container.releasePointerCapture(e.pointerId);
+      } catch {}
     };
 
-    // Touch pinch zoom
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const dist = Math.hypot(
-          e.touches[0].pageX - e.touches[1].pageX,
-          e.touches[0].pageY - e.touches[1].pageY,
-        );
-        pinchInitialDist = dist;
-        pinchInitialZoom = zoomRef.current;
-        const rect = container.getBoundingClientRect();
-        pinchInitialMid = {
-          x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
-          y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
-        };
-        pinchInitialPan = { ...panRef.current };
-      }
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      pinchInitialDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      pinchInitialZoom = zoomRef.current;
+      const rect = container.getBoundingClientRect();
+      pinchInitialMid = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+      };
+      pinchInitialPan = { ...panRef.current };
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const dist = Math.hypot(
-          e.touches[0].pageX - e.touches[1].pageX,
-          e.touches[0].pageY - e.touches[1].pageY,
-        );
-        const newZoom = clampZoom(pinchInitialZoom * (dist / pinchInitialDist));
-        // Zoom toward pinch midpoint
-        const newPanX = pinchInitialMid.x - (pinchInitialMid.x - pinchInitialPan.x) * (newZoom / pinchInitialZoom);
-        const newPanY = pinchInitialMid.y - (pinchInitialMid.y - pinchInitialPan.y) * (newZoom / pinchInitialZoom);
-        setZoom(newZoom);
-        setPanOffset({ x: newPanX, y: newPanY });
-      }
+      if (e.touches.length !== 2 || pinchInitialDist <= 0) return;
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const oldZoom = pinchInitialZoom;
+      const newZoom = clampZoom(oldZoom * (dist / pinchInitialDist));
+      const ratio = newZoom / oldZoom;
+      setZoom(newZoom);
+      setPanOffset({
+        x: pinchInitialMid.x - (pinchInitialMid.x - pinchInitialPan.x) * ratio,
+        y: pinchInitialMid.y - (pinchInitialMid.y - pinchInitialPan.y) * ratio,
+      });
     };
 
-    window.addEventListener("wheel", preventWindowZoom, { passive: false });
-    window.addEventListener("wheel", handleGlobalWheel, { passive: false });
     container.addEventListener("wheel", handleWheel, { passive: false });
-    window.addEventListener("keydown", handleKeyDown, { passive: false });
-    window.addEventListener("keyup", handleKeyUp);
     container.addEventListener("pointerdown", handlePointerDownPan);
     container.addEventListener("pointermove", handlePointerMovePan);
     container.addEventListener("pointerup", handlePointerUpPan);
-    container.addEventListener("touchstart", handleTouchStart, { passive: false });
-    container.addEventListener("touchmove", handleTouchMove, { passive: false });
+    container.addEventListener("pointercancel", handlePointerUpPan);
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: false,
+    });
+    container.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    window.addEventListener("keydown", handleKeyDown, { passive: false });
+    window.addEventListener("keyup", handleKeyUp);
 
     return () => {
-      window.removeEventListener("wheel", preventWindowZoom);
-      window.removeEventListener("wheel", handleGlobalWheel);
       container.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
       container.removeEventListener("pointerdown", handlePointerDownPan);
       container.removeEventListener("pointermove", handlePointerMovePan);
       container.removeEventListener("pointerup", handlePointerUpPan);
+      container.removeEventListener("pointercancel", handlePointerUpPan);
       container.removeEventListener("touchstart", handleTouchStart);
       container.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
 
@@ -1229,15 +1206,17 @@ function MockupPageContent() {
             if (data.url) {
               return { ...m, bgImage: data.url };
             } else {
-              throw new Error(data.error || "Failed to upload image to Cloudinary");
+              throw new Error(
+                data.error || "Failed to upload image to Cloudinary",
+              );
             }
           }
           return m;
-        })
+        }),
       );
 
       // Update state if the active mockup's bgImage was updated
-      const activeMockupNow = finalMockups.find(m => m.id === activeMockupId);
+      const activeMockupNow = finalMockups.find((m) => m.id === activeMockupId);
       if (activeMockupNow && activeMockupNow.bgImage !== bgImage) {
         setBgImage(activeMockupNow.bgImage);
       }
@@ -1327,10 +1306,10 @@ function MockupPageContent() {
 
   const handleRemoveMockup = async (idToRemove: string) => {
     if (mockupsList.length <= 1) return;
-    
+
     // Find the mockup to remove
-    const mockupToRemove = mockupsList.find(m => m.id === idToRemove);
-    
+    const mockupToRemove = mockupsList.find((m) => m.id === idToRemove);
+
     const newList = mockupsList.filter((m) => m.id !== idToRemove);
     setMockupsList(newList);
     if (activeMockupId === idToRemove) {
@@ -1344,7 +1323,10 @@ function MockupPageContent() {
     }
 
     // Attempt to delete image from Cloudinary if it exists and is a Cloudinary URL
-    if (mockupToRemove?.bgImage && mockupToRemove.bgImage.includes("cloudinary.com")) {
+    if (
+      mockupToRemove?.bgImage &&
+      mockupToRemove.bgImage.includes("cloudinary.com")
+    ) {
       try {
         await fetch("/api/delete-cloudinary", {
           method: "POST",
@@ -1401,8 +1383,13 @@ function MockupPageContent() {
       <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-100">
         <div
           ref={containerRef}
-          className="flex-1 min-h-0 min-w-0 relative overflow-hidden bg-[#e5e5f7]"
-          style={{ touchAction: "none", cursor: spaceDownRef.current ? "grab" : "default" }}
+          className="flex-1 min-h-0 min-w-0 relative overflow-hidden bg-[#e5e5f7] outline-none"
+          tabIndex={0}
+          aria-label="Mockup canvas. Use the mouse wheel to zoom and Space plus drag to pan."
+          style={{
+            touchAction: "none",
+            cursor: spaceDownRef.current ? "grab" : "default",
+          }}
         >
           {/* Viewport transform wrapper - applies zoom and pan */}
           <div
@@ -1495,7 +1482,12 @@ function MockupPageContent() {
           {/* Corner Handles Overlay - rendered in screen space, not clipped by overflow hidden */}
           <svg
             className="absolute inset-0 pointer-events-none"
-            style={{ width: "100%", height: "100%", zIndex: 100, overflow: "visible" }}
+            style={{
+              width: "100%",
+              height: "100%",
+              zIndex: 100,
+              overflow: "visible",
+            }}
           >
             {includedWalls.map((wallId) => {
               const corners = wallCorners[wallId];
@@ -1545,7 +1537,9 @@ function MockupPageContent() {
               const screenX = corner.x * zoom + panOffset.x;
               const screenY = corner.y * zoom + panOffset.y;
               const handleKey = `${wallId}-${i}`;
-              const isActive = draggingHandle?.wallId === wallId && draggingHandle?.index === i;
+              const isActive =
+                draggingHandle?.wallId === wallId &&
+                draggingHandle?.index === i;
               const isTop = topHandleKey === handleKey;
               return (
                 <div
@@ -1557,7 +1551,11 @@ function MockupPageContent() {
                     top: screenY - 16,
                     width: 32,
                     height: 32,
-                    zIndex: isActive ? 210 : isTop ? 200 : 150 + includedWalls.indexOf(wallId) * 10,
+                    zIndex: isActive
+                      ? 210
+                      : isTop
+                        ? 200
+                        : 150 + includedWalls.indexOf(wallId) * 10,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
