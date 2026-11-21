@@ -554,10 +554,10 @@ function MockupPageContent() {
       if (e.key === " " || e.code === "Space") spaceDownRef.current = false;
     };
 
-    // Pan using middle mouse, Space + drag, or dragging the empty canvas.
+    // Pan using middle mouse (anywhere on canvas/image), Space + drag, or dragging the empty canvas.
     const handlePointerDownPan = (e: PointerEvent) => {
       const target = e.target as Node;
-      const isMiddle = e.button === 1;
+      const isMiddle = e.button === 1 || e.buttons === 4;
       const isSpaceDrag = e.button === 0 && spaceDownRef.current;
       const isBackgroundDrag =
         e.button === 0 &&
