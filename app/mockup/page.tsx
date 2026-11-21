@@ -483,31 +483,29 @@ function MockupPageContent() {
     const handleGlobalWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        // If the wheel event happened outside containerRef, we still zoom the canvas towards its center or cursor
         const container = containerRef.current;
         if (!container) return;
         const rect = container.getBoundingClientRect();
         
-        let cursorX = e.clientX - rect.left;
-        let cursorY = e.clientY - rect.top;
-
-        // If cursor is outside container (e.g. over sidebar/toolbar), zoom towards container center instead
+        // If cursor is outside the canvas container (e.g. over sidebar/toolbar), ignore zoom!
         if (
           e.clientX < rect.left ||
           e.clientX > rect.right ||
           e.clientY < rect.top ||
           e.clientY > rect.bottom
         ) {
-          cursorX = rect.width / 2;
-          cursorY = rect.height / 2;
+          return;
         }
+
+        const cursorX = e.clientX - rect.left;
+        const cursorY = e.clientY - rect.top;
 
         // Multiplicative zoom
         const factor = Math.exp(-e.deltaY * 0.0015);
         const oldZoom = zoomRef.current;
         const newZoom = clampZoom(oldZoom * factor);
 
-        // Zoom toward point: adjust pan so point stays fixed
+        // Zoom toward cursor: adjust pan so point stays fixed
         const newPanX = cursorX - (cursorX - panRef.current.x) * (newZoom / oldZoom);
         const newPanY = cursorY - (cursorY - panRef.current.y) * (newZoom / oldZoom);
 
