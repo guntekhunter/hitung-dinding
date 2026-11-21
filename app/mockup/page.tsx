@@ -479,10 +479,51 @@ function MockupPageContent() {
 
     const clampZoom = (z: number) => Math.max(1e-6, Math.min(1e6, z));
 
+    // Global wheel handler: when ctrlKey is pressed anywhere on the window, prevent browser zoom!
+    const handleGlobalWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        // If the wheel event happened outside containerRef, we still zoom the canvas towards its center or cursor
+        const container = containerRef.current;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        
+        let cursorX = e.clientX - rect.left;
+        let cursorY = e.clientY - rect.top;
+
+        // If cursor is outside container (e.g. over sidebar/toolbar), zoom towards container center instead
+        if (
+          e.clientX < rect.left ||
+          e.clientX > rect.right ||
+          e.clientY < rect.top ||
+          e.clientY > rect.bottom
+        ) {
+          cursorX = rect.width / 2;
+          cursorY = rect.height / 2;
+        }
+
+        // Multiplicative zoom
+        const factor = Math.exp(-e.deltaY * 0.0015);
+        const oldZoom = zoomRef.current;
+        const newZoom = clampZoom(oldZoom * factor);
+
+        // Zoom toward point: adjust pan so point stays fixed
+        const newPanX = cursorX - (cursorX - panRef.current.x) * (newZoom / oldZoom);
+        const newPanY = cursorY - (cursorY - panRef.current.y) * (newZoom / oldZoom);
+
+        setZoom(newZoom);
+        setPanOffset({ x: newPanX, y: newPanY });
+      }
+    };
+
     const container = containerRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
+      // If ctrlKey is pressed, handleGlobalWheel already handled it and prevented default
+      if (e.ctrlKey || e.metaKey) {
+        return;
+      }
       e.preventDefault();
       const rect = container.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
@@ -601,6 +642,7 @@ function MockupPageContent() {
       }
     };
 
+    window.addEventListener("wheel", handleGlobalWheel, { passive: false });
     container.addEventListener("wheel", handleWheel, { passive: false });
     window.addEventListener("keydown", handleKeyDown, { passive: false });
     window.addEventListener("keyup", handleKeyUp);
@@ -611,6 +653,7 @@ function MockupPageContent() {
     container.addEventListener("touchmove", handleTouchMove, { passive: false });
 
     return () => {
+      window.removeEventListener("wheel", handleGlobalWheel);
       container.removeEventListener("wheel", handleWheel);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
